@@ -10,15 +10,20 @@ public class AudioCaptureService : IDisposable
 {
     private WaveInEvent? _waveIn;
     private bool _isRunning;
+    private bool _initialized;
 
     /// <summary>Wird ausgelöst wenn neue Audiodaten verfügbar sind.</summary>
     public event Action<byte[]>? AudioDataAvailable;
 
     public bool IsRunning => _isRunning;
 
-    public void Start()
+    /// <summary>
+    /// Erstellt das Audio-Device einmalig. Kann mehrfach Start/Stop aufrufen
+    /// ohne das Device jedes Mal neu zu öffnen.
+    /// </summary>
+    public void Initialize()
     {
-        if (_isRunning) return;
+        if (_initialized) return;
 
         _waveIn = new WaveInEvent
         {
@@ -27,7 +32,14 @@ public class AudioCaptureService : IDisposable
         };
 
         _waveIn.DataAvailable += OnDataAvailable;
-        _waveIn.StartRecording();
+        _initialized = true;
+    }
+
+    public void Start()
+    {
+        if (_isRunning) return;
+        if (!_initialized) Initialize();
+        _waveIn!.StartRecording();
         _isRunning = true;
     }
 
@@ -35,8 +47,6 @@ public class AudioCaptureService : IDisposable
     {
         if (!_isRunning) return;
         _waveIn?.StopRecording();
-        _waveIn?.Dispose();
-        _waveIn = null;
         _isRunning = false;
     }
 
@@ -48,5 +58,14 @@ public class AudioCaptureService : IDisposable
         AudioDataAvailable?.Invoke(chunk);
     }
 
-    public void Dispose() => Stop();
+    public void Dispose()
+    {
+        Stop();
+        if (_initialized)
+        {
+            _waveIn?.Dispose();
+            _waveIn = null;
+            _initialized = false;
+        }
+    }
 }

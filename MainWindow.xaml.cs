@@ -1,6 +1,9 @@
 using System.IO;
+using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
+using Serilog;
 using VoiceDictation.Helpers;
 using VoiceDictation.Services;
 
@@ -11,19 +14,25 @@ public partial class MainWindow : Window
     // ── Services ──────────────────────────────────────────────────────────
     private DeepgramService? _deepgram;
     private readonly AudioCaptureService _audio = new();
+    private readonly LogWindow _logWindow = new();
+    private static readonly LogWindowSink UiSink = new();
+    private System.Windows.Forms.NotifyIcon? _trayIcon;
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
-    private GlobalHotkey? _toggleHotkey;
-    private LowLevelKeyboardHook? _pttHook;
+    private readonly KeyboardHookService _keyboardHook = new();
 
-    // Virtuelle Tastencodes
-    private const uint VK_F9       = 0x78;
-    private const int  VK_RCONTROL = 0xA3;
+
+    // Shortcut-Einstellungen (Defaults)
+    private Key _toggleKey = Key.F9;
+    private ModifierKeys _toggleModifiers = ModifierKeys.None;
+    private Key _pttKey = Key.RightCtrl;
+    private ModifierKeys _pttModifiers = ModifierKeys.None;
 
     // ── Zustand ───────────────────────────────────────────────────────────
     private bool _connected;
     private bool _recording;
     private bool _isPttMode;
+    private bool _isLoading = true;
 
     // Pfad zur Einstellungs-Datei (API-Key speichern)
     private static readonly string SettingsPath =
@@ -41,24 +50,223 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        var logPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "VoiceDictation", "log.txt");
+
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.Sink(UiSink)
+            .WriteTo.File(logPath, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
+            .CreateLogger();
+
+        UiSink.SetCallback(_logWindow.AppendLog);
+
+        Log.Information("VoiceDictation gestartet");
+
+        SetupTrayIcon();
         LoadSettings();
+        // Init sound after LoadSettings so selected tone is applied
+        var toneItem = ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        SoundFeedback.Init((string?)toneItem?.Tag);
+        _isLoading = false;
 
         _audio.AudioDataAvailable += OnAudioData;
+        Loaded += (_, _) => ConnectButton.Focus();
+
+        _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
+        _keyboardHook.SetPttShortcut(_pttModifiers, _pttKey);
+        _keyboardHook.TogglePressed += OnToggleHotkey;
+        _keyboardHook.PttKeyDown += OnPttKeyDown;
+        _keyboardHook.PttKeyUp += OnPttKeyUp;
+
+        // Auto-connect nach Start (unabhängig von Fenster-Sichtbarkeit)
+        if (!string.IsNullOrWhiteSpace(ApiKeyBox.Password))
+            Dispatcher.BeginInvoke(async () => await ConnectAsync());
     }
 
     private void LoadSettings()
     {
-        if (File.Exists(SettingsPath))
-            ApiKeyBox.Password = File.ReadAllText(SettingsPath).Trim();
+        if (!File.Exists(SettingsPath))
+        {
+            CenterOnScreen();
+            return;
+        }
+
+        var lines = File.ReadAllLines(SettingsPath);
+        if (lines.Length > 0)
+            ApiKeyBox.Password = lines[0].Trim();
+
+        bool hasPosition = false;
+        foreach (var line in lines.Skip(1))
+        {
+            var parts = line.Split('=', 2);
+            if (parts.Length != 2) continue;
+            var key = parts[0].Trim();
+            var value = parts[1].Trim();
+
+            switch (key)
+            {
+                case "toggle":
+                    ParseToggleShortcut(value);
+                    break;
+                case "ptt":
+                    ParsePttShortcut(value);
+                    break;
+                case "language":
+                    SelectComboByTag(LanguageCombo, value);
+                    break;
+                case "mode":
+                    SelectComboByTag(ModeCombo, value);
+                    _isPttMode = value == "ptt";
+                    break;
+                case "tone":
+                    SelectComboByTag(ToneCombo, value);
+                    break;
+                case "left":
+                    if (double.TryParse(value, out var left)) { Left = left; hasPosition = true; }
+                    break;
+                case "top":
+                    if (double.TryParse(value, out var top)) { Top = top; hasPosition = true; }
+                    break;
+                case "width":
+                    if (double.TryParse(value, out var w) && w >= MinWidth) Width = w;
+                    break;
+                case "height":
+                    if (double.TryParse(value, out var h) && h >= MinHeight) Height = h;
+                    break;
+            }
+        }
+
+        // UI-Felder direkt setzen (Controls existieren nach InitializeComponent)
+        ToggleShortcutBox.Text = FormatShortcut(_toggleModifiers, _toggleKey);
+        PttShortcutBox.Text = FormatShortcut(_pttModifiers, _pttKey);
+
+        if (!hasPosition)
+            CenterOnScreen();
+    }
+
+    private void CenterOnScreen()
+    {
+        var screen = SystemParameters.WorkArea;
+        Left = (screen.Width - Width) / 2 + screen.Left;
+        Top = (screen.Height - Height) / 2 + screen.Top;
+    }
+
+    private void ParseToggleShortcut(string value)
+    {
+        (_toggleModifiers, _toggleKey) = ParseShortcut(value, _toggleKey);
+    }
+
+    private void ParsePttShortcut(string value)
+    {
+        (_pttModifiers, _pttKey) = ParseShortcut(value, _pttKey);
+    }
+
+    private static (ModifierKeys mods, Key key) ParseShortcut(string value, Key defaultKey)
+    {
+        var mods = ModifierKeys.None;
+        var key = defaultKey;
+        var parts = value.Split('+');
+        foreach (var part in parts)
+        {
+            var trimmed = part.Trim();
+            if (trimmed.Equals("Win", StringComparison.OrdinalIgnoreCase))
+                mods |= ModifierKeys.Windows;
+            else if (trimmed.Equals("Ctrl", StringComparison.OrdinalIgnoreCase))
+                mods |= ModifierKeys.Control;
+            else if (trimmed.Equals("Alt", StringComparison.OrdinalIgnoreCase))
+                mods |= ModifierKeys.Alt;
+            else if (trimmed.Equals("Shift", StringComparison.OrdinalIgnoreCase))
+                mods |= ModifierKeys.Shift;
+            else
+            {
+                var mappedKey = trimmed switch
+                {
+                    "L-Ctrl" => Key.LeftCtrl,
+                    "R-Ctrl" => Key.RightCtrl,
+                    "L-Alt" => Key.LeftAlt,
+                    "R-Alt" => Key.RightAlt,
+                    "L-Shift" => Key.LeftShift,
+                    "R-Shift" => Key.RightShift,
+                    _ => Enum.TryParse<Key>(trimmed, out var k) ? k : (Key?)null
+                };
+                if (mappedKey.HasValue)
+                    key = mappedKey.Value;
+            }
+        }
+        return (mods, key);
     }
 
     private void SaveSettings()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-        File.WriteAllText(SettingsPath, ApiKeyBox.Password.Trim());
+        var langItem = LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var modeItem = ModeCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var lines = new List<string>
+        {
+            ApiKeyBox.Password.Trim(),
+            $"toggle={FormatShortcut(_toggleModifiers, _toggleKey)}",
+            $"ptt={FormatShortcut(_pttModifiers, _pttKey)}",
+            $"language={(string)(langItem?.Tag ?? "de")}",
+            $"mode={(string)(modeItem?.Tag ?? "toggle")}",
+            $"tone={(string)((ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Sanft")}",
+            $"left={Left}",
+            $"top={Top}",
+            $"width={Width}",
+            $"height={Height}"
+        };
+        File.WriteAllLines(SettingsPath, lines);
+    }
+
+    private static void SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag)
+    {
+        foreach (System.Windows.Controls.ComboBoxItem item in combo.Items)
+        {
+            if ((string)item.Tag == tag)
+            {
+                combo.SelectedItem = item;
+                return;
+            }
+        }
+    }
+
+    private static string FormatShortcut(ModifierKeys mod, Key key)
+    {
+        var parts = new List<string>();
+        if (mod.HasFlag(ModifierKeys.Windows)) parts.Add("Win");
+        if (mod.HasFlag(ModifierKeys.Control)) parts.Add("Ctrl");
+        if (mod.HasFlag(ModifierKeys.Alt)) parts.Add("Alt");
+        if (mod.HasFlag(ModifierKeys.Shift)) parts.Add("Shift");
+        // Friendly names for modifier keys used as main key
+        var keyName = key switch
+        {
+            Key.LeftCtrl => "L-Ctrl",
+            Key.RightCtrl => "R-Ctrl",
+            Key.LeftAlt => "L-Alt",
+            Key.RightAlt => "R-Alt",
+            Key.LeftShift => "L-Shift",
+            Key.RightShift => "R-Shift",
+            _ => key.ToString()
+        };
+        parts.Add(keyName);
+        return string.Join("+", parts);
     }
 
     // ── UI Events ─────────────────────────────────────────────────────────
+
+    private void LogButton_Click(object sender, RoutedEventArgs e)
+    {
+        _logWindow.Show();
+        _logWindow.Activate();
+    }
+
+    private void ApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoading)
+            SaveSettings();
+    }
 
     private async void ConnectButton_Click(object sender, RoutedEventArgs e)
     {
@@ -68,26 +276,148 @@ public partial class MainWindow : Window
             await DisconnectAsync();
     }
 
+    private void LanguageCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!_isLoading)
+            SaveSettings();
+    }
+
     private void ModeCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         var item = (System.Windows.Controls.ComboBoxItem)ModeCombo.SelectedItem;
         _isPttMode = (string)item.Tag == "ptt";
+        if (_recording) StopRecording();
+        UpdateHotkeyInfoText();
+        if (!_isLoading)
+            SaveSettings();
+    }
 
-        if (HotkeyInfoText is null) return; // noch nicht geladen
+    private void ToneCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isLoading) return;
+        var item = (System.Windows.Controls.ComboBoxItem)ToneCombo.SelectedItem;
+        var preset = (string)item.Tag;
+        SoundFeedback.Init(preset);
+        SoundFeedback.PlayStart(); // preview
+        SaveSettings();
+    }
 
-        if (_isPttMode)
-            HotkeyInfoText.Text = "Rechte Strg gedrückt halten für Aufnahme";
+    // ── Shortcut Recorder ────────────────────────────────────────────────
+
+    private string? _shortcutBoxPreviousText;
+
+    private void ShortcutBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        var box = (System.Windows.Controls.TextBox)sender;
+        _shortcutBoxPreviousText = box.Text;
+        box.Text = "Taste drücken…";
+        box.Foreground = new SolidColorBrush(Color.FromRgb(0xF9, 0xE2, 0xAF));
+        _keyboardHook.SuppressWinKey = true;
+    }
+
+    private void ShortcutBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        var box = (System.Windows.Controls.TextBox)sender;
+        if (box.Text == "Taste drücken…")
+            box.Text = _shortcutBoxPreviousText ?? "";
+        box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
+        _keyboardHook.SuppressWinKey = false;
+    }
+
+    private void ShortcutBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        e.Handled = true;
+        var box = (System.Windows.Controls.TextBox)sender;
+
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        bool winHeld = _keyboardHook.IsWinDown;
+
+        // Win key itself is always ignored (tracked by interceptor)
+        if (key is Key.LWin or Key.RWin)
+            return;
+
+        // Other modifier keys: allow as "main key" when Win is held, otherwise wait for a real key
+        bool isModifierKey = key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
+            or Key.LeftShift or Key.RightShift;
+        if (isModifierKey && !winHeld)
+            return;
+
+        var modifiers = Keyboard.Modifiers;
+        if (winHeld)
+            modifiers |= ModifierKeys.Windows;
+
+        // When a modifier key is used as the main key, remove it from modifiers to avoid duplication
+        // e.g. Win+Ctrl: modifiers should be Windows only, key is LeftCtrl
+        if (isModifierKey)
+        {
+            if (key is Key.LeftCtrl or Key.RightCtrl) modifiers &= ~ModifierKeys.Control;
+            else if (key is Key.LeftAlt or Key.RightAlt) modifiers &= ~ModifierKeys.Alt;
+            else if (key is Key.LeftShift or Key.RightShift) modifiers &= ~ModifierKeys.Shift;
+        }
+
+        var displayText = FormatShortcut(modifiers, key);
+
+        if (key == Key.Escape)
+        {
+            box.Text = _shortcutBoxPreviousText ?? "";
+            box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
+            Keyboard.ClearFocus();
+            return;
+        }
+
+        bool isToggleBox = box == ToggleShortcutBox;
+
+        var otherBox = isToggleBox ? PttShortcutBox : ToggleShortcutBox;
+        if (otherBox.Text == displayText)
+        {
+            box.Text = "Bereits vergeben!";
+            box.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
+            return;
+        }
+
+        if (isToggleBox)
+        {
+            _toggleKey = key;
+            _toggleModifiers = modifiers;
+
+            if (_connected)
+                _keyboardHook.SetToggleShortcut(modifiers, key);
+        }
         else
-            HotkeyInfoText.Text = "F9 drücken um Aufnahme zu starten/stoppen";
+        {
+            _pttKey = key;
+            _pttModifiers = modifiers;
+
+            if (_connected)
+                _keyboardHook.SetPttShortcut(modifiers, key);
+        }
+
+        box.Text = displayText;
+        box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
+        SaveSettings();
+        UpdateHotkeyInfoText();
+        Keyboard.ClearFocus();
+    }
+
+    private void UpdateHotkeyInfoText()
+    {
+        if (HotkeyInfoText is null) return;
+        if (_isPttMode)
+            HotkeyInfoText.Text = $"{PttShortcutBox.Text} gedrückt halten für Aufnahme";
+        else
+            HotkeyInfoText.Text = $"{ToggleShortcutBox.Text} drücken um Aufnahme zu starten/stoppen";
     }
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         SaveSettings();
+        Log.Information("Anwendung wird beendet");
+        _trayIcon?.Dispose();
         _ = DisconnectAsync();
-        _pttHook?.Dispose();
-        _toggleHotkey?.Dispose();
+        _keyboardHook.Dispose();
         _audio.Dispose();
+        Application.Current.Shutdown();
+        Log.CloseAndFlush();
     }
 
     // ── Connect / Disconnect ──────────────────────────────────────────────
@@ -118,15 +448,18 @@ public partial class MainWindow : Window
             await _deepgram.ConnectAsync();
 
             _connected = true;
+            _audio.Initialize();
             RegisterHotkeys();
 
             SetStatus("Verbunden – bereit", Green);
             ConnectButton.Content = "Trennen";
             ConnectButton.Background = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
             SaveSettings();
+            Log.Information("Deepgram verbunden (Sprache: {Language})", language);
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "Deepgram-Verbindung fehlgeschlagen");
             SetStatus("Verbindung fehlgeschlagen", Red);
             MessageBox.Show($"Deepgram-Fehler:\n{ex.Message}", "Verbindungsfehler",
                 MessageBoxButton.OK, MessageBoxImage.Error);
@@ -140,8 +473,7 @@ public partial class MainWindow : Window
     private async Task DisconnectAsync()
     {
         StopRecording();
-        _pttHook?.Dispose();      _pttHook = null;
-        _toggleHotkey?.Dispose(); _toggleHotkey = null;
+        _keyboardHook.Uninstall();
 
         if (_deepgram is not null)
         {
@@ -153,35 +485,23 @@ public partial class MainWindow : Window
         SetStatus("Nicht verbunden", Red);
         ConnectButton.Content    = "Verbinden";
         ConnectButton.Background = Blue;
+        Log.Information("Deepgram getrennt");
     }
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
 
     private void RegisterHotkeys()
     {
-        // Toggle-Hotkey immer registrieren
-        try
-        {
-            _toggleHotkey = new GlobalHotkey(this, id: 1, GlobalHotkey.MOD_NONE, VK_F9);
-            _toggleHotkey.Pressed += OnToggleHotkey;
-        }
-        catch (Exception ex)
-        {
-            AppendTranscript($"[Hotkey-Fehler: {ex.Message}]");
-        }
-
-        // PTT-Hook immer aktiv (UI schaltet zwischen den Modi um)
-        _pttHook = new LowLevelKeyboardHook(VK_RCONTROL);
-        _pttHook.KeyDown += OnPttKeyDown;
-        _pttHook.KeyUp   += OnPttKeyUp;
+        _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
+        _keyboardHook.SetPttShortcut(_pttModifiers, _pttKey);
+        _keyboardHook.Install();
     }
 
     // ── Toggle-Modus ──────────────────────────────────────────────────────
 
     private void OnToggleHotkey()
     {
-        if (_isPttMode) return; // PTT-Modus ist aktiv
-
+        if (_isPttMode) return;
         Dispatcher.Invoke(() =>
         {
             if (_recording) StopRecording();
@@ -209,15 +529,23 @@ public partial class MainWindow : Window
     {
         if (_recording || !_connected) return;
         _recording = true;
+        SoundFeedback.PlayStart();
         _audio.Start();
         SetStatus("● Aufnahme läuft", Red);
     }
 
-    private void StopRecording()
+    private async void StopRecording()
     {
         if (!_recording) return;
-        _recording = false;
         _audio.Stop();
+        _recording = false;
+
+        // Deepgram-Puffer flushen, damit letztes Transkript sofort kommt
+        if (_deepgram is not null)
+            await _deepgram.SendFinalizeAsync();
+
+        SoundFeedback.PlayStop();
+
         if (_connected)
             SetStatus("Verbunden – bereit", Green);
     }
@@ -234,13 +562,18 @@ public partial class MainWindow : Window
 
     private void OnTranscriptReceived(string text)
     {
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(async () =>
         {
-            // Text ins aktive Fenster tippen (außer dieses Fenster)
-            KeyboardInjector.TypeText(text);
-
-            // Vorschau aktualisieren
+            // Show transcript FIRST so it always appears, even if injection fails
             AppendTranscript(text);
+            try
+            {
+                await KeyboardInjector.TypeTextAsync(text);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Fehler bei Textinjektion");
+            }
         });
     }
 
@@ -271,6 +604,52 @@ public partial class MainWindow : Window
                 await DisconnectAsync();
         });
 
+    // ── System Tray ──────────────────────────────────────────────────────
+
+    private void SetupTrayIcon()
+    {
+        var iconStream = Application.GetResourceStream(
+            new Uri("pack://application:,,,/Resources/mic.ico"))?.Stream;
+
+        _trayIcon = new System.Windows.Forms.NotifyIcon
+        {
+            Icon = iconStream != null ? new System.Drawing.Icon(iconStream) : System.Drawing.SystemIcons.Application,
+            Text = "Voice Dictation",
+            Visible = true
+        };
+
+        _trayIcon.Click += (_, _) => ShowFromTray();
+
+        var menu = new System.Windows.Forms.ContextMenuStrip();
+        menu.Items.Add("Öffnen", null, (_, _) => ShowFromTray());
+        menu.Items.Add("Beenden", null, (_, _) =>
+        {
+            _trayIcon.Visible = false;
+            _keyboardHook.Dispose();
+            Application.Current.Shutdown();
+        });
+        _trayIcon.ContextMenuStrip = menu;
+    }
+
+    private void ShowFromTray()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        ShowInTaskbar = true;
+        Activate();
+        ConnectButton.Focus();
+    }
+
+    protected override void OnStateChanged(EventArgs e)
+    {
+        base.OnStateChanged(e);
+        if (WindowState == WindowState.Minimized)
+        {
+            Visibility = Visibility.Hidden;
+            ShowInTaskbar = false;
+        }
+    }
+
     // ── Hilfsfunktionen ───────────────────────────────────────────────────
 
     private void SetStatus(string text, SolidColorBrush color)
@@ -278,4 +657,5 @@ public partial class MainWindow : Window
         StatusText.Text = text;
         StatusDot.Fill  = color;
     }
+
 }

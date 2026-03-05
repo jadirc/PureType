@@ -1,4 +1,6 @@
+using System.IO;
 using System.Runtime.InteropServices;
+using Serilog;
 
 namespace VoiceDictation.Services;
 
@@ -8,10 +10,21 @@ namespace VoiceDictation.Services;
 /// </summary>
 public static class KeyboardInjector
 {
+    private static readonly SemaphoreSlim ClipboardLock = new(1, 1);
+
     #region Win32
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct INPUT
@@ -48,6 +61,8 @@ public static class KeyboardInjector
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_UNICODE = 0x0004;
     private const uint KEYEVENTF_KEYUP  = 0x0002;
+    private const ushort VK_CONTROL = 0x11;
+    private const ushort VK_V = 0x56;
 
     #endregion
 
@@ -59,10 +74,72 @@ public static class KeyboardInjector
     {
         if (string.IsNullOrEmpty(text)) return;
 
-        // Leerzeichen vor dem Text, damit das Wort vom Vorherigen getrennt wird
-        // (Deepgram liefert Wörter ohne führendes Leerzeichen beim ersten Wort)
         var inputs = BuildInputs(text + " ");
         SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+    }
+
+    public static async Task TypeTextAsync(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+
+        var isTerminal = IsTerminalWindow();
+        Log.Debug("TypeTextAsync: isTerminal={IsTerminal}, text={Text}", isTerminal, text);
+
+        if (isTerminal)
+        {
+            await PasteViaClipboardAsync(text + " ");
+        }
+        else
+        {
+            var inputs = BuildInputs(text + " ");
+            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+        }
+    }
+
+    private static async Task PasteViaClipboardAsync(string text)
+    {
+        await ClipboardLock.WaitAsync();
+        try
+        {
+            // Clipboard can be locked by other apps — retry with delay
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                try
+                {
+                    System.Windows.Clipboard.SetText(text);
+                    break;
+                }
+                catch (COMException) when (attempt < 2)
+                {
+                    await Task.Delay(50);
+                }
+            }
+
+            var inputs = BuildCtrlV();
+            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+
+            // Warten bis Ziel-App den Paste verarbeitet hat
+            await Task.Delay(200);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Clipboard-Paste fehlgeschlagen");
+        }
+        finally
+        {
+            ClipboardLock.Release();
+        }
+    }
+
+    private static INPUT[] BuildCtrlV()
+    {
+        return new[]
+        {
+            new INPUT { Type = INPUT_KEYBOARD, Data = new INPUTUNION { ki = new KEYBDINPUT { wVk = VK_CONTROL } } },
+            new INPUT { Type = INPUT_KEYBOARD, Data = new INPUTUNION { ki = new KEYBDINPUT { wVk = VK_V } } },
+            new INPUT { Type = INPUT_KEYBOARD, Data = new INPUTUNION { ki = new KEYBDINPUT { wVk = VK_V, dwFlags = KEYEVENTF_KEYUP } } },
+            new INPUT { Type = INPUT_KEYBOARD, Data = new INPUTUNION { ki = new KEYBDINPUT { wVk = VK_CONTROL, dwFlags = KEYEVENTF_KEYUP } } },
+        };
     }
 
     private static INPUT[] BuildInputs(string text)
@@ -107,5 +184,59 @@ public static class KeyboardInjector
         }
 
         return list.ToArray();
+    }
+
+    private static readonly HashSet<string> TerminalWindowClasses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ConsoleWindowClass",
+        "CASCADIA_HOSTING_WINDOW_CLASS"
+    };
+
+    private static readonly HashSet<string> TerminalProcessNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "WindowsTerminal",
+        "warp",
+        "alacritty",
+        "kitty",
+        "wezterm-gui",
+        "cmd",
+        "powershell",
+        "pwsh"
+    };
+
+    private static bool IsTerminalWindow()
+    {
+        var hwnd = GetForegroundWindow();
+        if (hwnd == IntPtr.Zero) return false;
+
+        var className = new System.Text.StringBuilder(256);
+        GetClassName(hwnd, className, 256);
+        var cls = className.ToString();
+
+        if (TerminalWindowClasses.Contains(cls))
+        {
+            Log.Debug("Terminal erkannt via WindowClass: {ClassName}", cls);
+            return true;
+        }
+
+        GetWindowThreadProcessId(hwnd, out uint pid);
+        try
+        {
+            var process = System.Diagnostics.Process.GetProcessById((int)pid);
+            var name = Path.GetFileNameWithoutExtension(process.ProcessName);
+
+            if (TerminalProcessNames.Contains(name))
+            {
+                Log.Debug("Terminal erkannt via Prozess: {ProcessName} (Class: {ClassName})", name, cls);
+                return true;
+            }
+
+            Log.Debug("Kein Terminal: Class={ClassName}, Process={ProcessName}", cls, name);
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

@@ -1,0 +1,30 @@
+<Window x:Class="VoiceDictation.LogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Voice Dictation – Log"
+        Width="600" Height="400"
+        MinWidth="300" MinHeight="200"
+        Background="#1E1E2E"
+        FontFamily="Consolas">
+
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Button Grid.Row="0" Content="Löschen" Click="ClearButton_Click"
+                Background="#313244" Foreground="#CDD6F4"
+                BorderThickness="0" Padding="8,4" Margin="0,0,0,8"
+                HorizontalAlignment="Left" Cursor="Hand"/>
+
+        <TextBox Grid.Row="1" x:Name="LogTextBox"
+                 Background="#181825" Foreground="#A6ADC8"
+                 BorderBrush="#45475A" BorderThickness="1"
+                 FontSize="11" IsReadOnly="True"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Auto"
+                 TextWrapping="NoWrap"
+                 AcceptsReturn="True"/>
+    </Grid>
+</Window>

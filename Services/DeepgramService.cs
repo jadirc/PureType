@@ -12,6 +12,7 @@ public class DeepgramService : IAsyncDisposable
 {
     private ClientWebSocket? _ws;
     private CancellationTokenSource? _cts;
+    private System.Timers.Timer? _keepAliveTimer;
     private readonly string _apiKey;
     private readonly string _language;
 
@@ -46,6 +47,11 @@ public class DeepgramService : IAsyncDisposable
 
         await _ws.ConnectAsync(uri, _cts.Token);
 
+        // KeepAlive alle 8 Sekunden senden (Deepgram Idle-Timeout verhindern)
+        _keepAliveTimer = new System.Timers.Timer(8000);
+        _keepAliveTimer.Elapsed += async (_, _) => await SendKeepAliveAsync();
+        _keepAliveTimer.Start();
+
         // Empfangs-Loop im Hintergrund starten
         _ = Task.Run(ReceiveLoopAsync);
     }
@@ -68,6 +74,44 @@ public class DeepgramService : IAsyncDisposable
         {
             ErrorOccurred?.Invoke($"Sende-Fehler: {ex.Message}");
         }
+    }
+
+    private static readonly byte[] KeepAlivePayload =
+        Encoding.UTF8.GetBytes("{\"type\":\"KeepAlive\"}");
+
+    private static readonly byte[] FinalizePayload =
+        Encoding.UTF8.GetBytes("{\"type\":\"Finalize\"}");
+
+    /// <summary>
+    /// Signalisiert Deepgram, gepufferte Audiodaten sofort zu transkribieren.
+    /// Wichtig für Push-to-Talk: beim Loslassen aufrufen.
+    /// </summary>
+    public async Task SendFinalizeAsync()
+    {
+        if (_ws?.State != WebSocketState.Open) return;
+        try
+        {
+            await _ws.SendAsync(
+                new ArraySegment<byte>(FinalizePayload),
+                WebSocketMessageType.Text,
+                endOfMessage: true,
+                _cts?.Token ?? CancellationToken.None);
+        }
+        catch { /* ignorieren */ }
+    }
+
+    private async Task SendKeepAliveAsync()
+    {
+        if (_ws?.State != WebSocketState.Open) return;
+        try
+        {
+            await _ws.SendAsync(
+                new ArraySegment<byte>(KeepAlivePayload),
+                WebSocketMessageType.Text,
+                endOfMessage: true,
+                _cts?.Token ?? CancellationToken.None);
+        }
+        catch { /* ignorieren – ReceiveLoop erkennt Disconnect */ }
     }
 
     private async Task ReceiveLoopAsync()
@@ -127,6 +171,8 @@ public class DeepgramService : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _keepAliveTimer?.Stop();
+        _keepAliveTimer?.Dispose();
         _cts?.Cancel();
         if (_ws?.State == WebSocketState.Open)
         {
