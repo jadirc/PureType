@@ -10,6 +10,10 @@ Built with WPF (.NET 8), powered by [Deepgram](https://deepgram.com/)'s Nova-2 s
 
 ---
 
+<p align="center">
+  <img src="docs/screenshot.png" alt="Voice Dictation screenshot" width="350">
+</p>
+
 ## Features
 
 - **Real-time transcription** — Audio is streamed to Deepgram and transcribed on the fly with the Nova-2 model
