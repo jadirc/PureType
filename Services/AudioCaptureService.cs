@@ -22,7 +22,7 @@ public class AudioCaptureService : IDisposable
 
         _waveIn = new WaveInEvent
         {
-            WaveFormat = new WaveFormat(sampleRate: 16000, bits: 16, channels: 1),
+            WaveFormat = new WaveFormat(rate: 16000, bits: 16, channels: 1),
             BufferMilliseconds = 100
         };
 
