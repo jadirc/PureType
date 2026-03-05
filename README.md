@@ -37,7 +37,7 @@ Built with WPF (.NET 8), powered by [Deepgram](https://deepgram.com/)'s Nova-2 s
 
 ## Download
 
-Grab the latest release from the [Releases page](https://github.com/jd-/VoiceDictation/releases):
+Grab the latest release from the [Releases page](https://github.com/jadirc/VoiceDictation/releases):
 
 | Asset | Description |
 |---|---|
@@ -47,7 +47,7 @@ Grab the latest release from the [Releases page](https://github.com/jd-/VoiceDic
 ## Getting Started
 
 ```bash
-git clone https://github.com/jd-/VoiceDictation.git
+git clone https://github.com/jadirc/VoiceDictation.git
 cd VoiceDictation
 dotnet run
 ```
