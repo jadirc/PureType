@@ -101,6 +101,10 @@
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>  <!-- Status -->
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="Auto"/>  <!-- Button -->
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="*"/>     <!-- Transkript -->
             <RowDefinition Height="12"/>
             <RowDefinition Height="Auto"/>  <!-- API Key -->
             <RowDefinition Height="12"/>
@@ -115,10 +119,6 @@
             <RowDefinition Height="Auto"/>  <!-- Signalton -->
             <RowDefinition Height="12"/>
             <RowDefinition Height="Auto"/>  <!-- Hotkey Info -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="*"/>     <!-- Transkript -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Button -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
@@ -136,8 +136,45 @@
             </StackPanel>
         </Border>
 
+        <!-- Button -->
+        <Button Grid.Row="2" x:Name="ConnectButton"
+                Content="Verbinden"
+                Click="ConnectButton_Click"
+                Background="#89B4FA" Foreground="#1E1E2E"
+                FontWeight="SemiBold" FontSize="14"
+                BorderThickness="0" Padding="0,11"
+                Cursor="Hand"/>
+
+        <!-- Transkript Vorschau -->
+        <Border Grid.Row="4" Background="#181825" CornerRadius="6">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" Margin="10,6,6,0">
+                    <TextBlock Text="TRANSKRIPT" Foreground="#BAC2DE"
+                               FontSize="11" FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+                    <Button Content="Log" Click="LogButton_Click"
+                            HorizontalAlignment="Right"
+                            Background="Transparent" Foreground="#6C7086"
+                            FontSize="11" BorderThickness="0"
+                            Padding="6,2" Cursor="Hand"/>
+                </Grid>
+                <ScrollViewer Grid.Row="1" x:Name="TranscriptScroll"
+                              VerticalScrollBarVisibility="Auto"
+                              Padding="10,4,10,10">
+                    <TextBlock x:Name="TranscriptText"
+                               Foreground="#A6E3A1" FontSize="13"
+                               TextWrapping="Wrap" LineHeight="20"
+                               Text="Hier erscheint das erkannte Transkript …"/>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
         <!-- API Key -->
-        <StackPanel Grid.Row="2">
+        <StackPanel Grid.Row="6">
             <TextBlock Text="DEEPGRAM API KEY" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <PasswordBox x:Name="ApiKeyBox"
@@ -149,7 +186,7 @@
         </StackPanel>
 
         <!-- Sprache -->
-        <StackPanel Grid.Row="4">
+        <StackPanel Grid.Row="8">
             <TextBlock Text="SPRACHE" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="LanguageCombo" Padding="10,7" FontSize="13"
@@ -161,7 +198,7 @@
         </StackPanel>
 
         <!-- Modus -->
-        <StackPanel Grid.Row="6">
+        <StackPanel Grid.Row="10">
             <TextBlock Text="MODUS" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="ModeCombo" Padding="10,7" FontSize="13"
@@ -172,7 +209,7 @@
         </StackPanel>
 
         <!-- Toggle Shortcut -->
-        <StackPanel Grid.Row="8">
+        <StackPanel Grid.Row="12">
             <TextBlock Text="TOGGLE SHORTCUT" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <TextBox x:Name="ToggleShortcutBox"
@@ -187,7 +224,7 @@
         </StackPanel>
 
         <!-- PTT Shortcut -->
-        <StackPanel Grid.Row="10">
+        <StackPanel Grid.Row="14">
             <TextBlock Text="PTT SHORTCUT" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <TextBox x:Name="PttShortcutBox"
@@ -202,7 +239,7 @@
         </StackPanel>
 
         <!-- Signalton -->
-        <StackPanel Grid.Row="12">
+        <StackPanel Grid.Row="16">
             <TextBlock Text="SIGNALTON" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="ToneCombo" Padding="10,7" FontSize="13"
@@ -217,44 +254,11 @@
         </StackPanel>
 
         <!-- Hotkey Info -->
-        <Border Grid.Row="14" Background="#181825" CornerRadius="6" Padding="10,7">
+        <Border Grid.Row="18" Background="#181825" CornerRadius="6" Padding="10,7">
             <TextBlock x:Name="HotkeyInfoText"
                        Text="F9 drücken um Aufnahme zu starten/stoppen"
                        Foreground="#89B4FA" FontSize="12" TextWrapping="Wrap"
                        TextAlignment="Center"/>
         </Border>
-
-        <!-- Transkript Vorschau -->
-        <Border Grid.Row="16" Background="#181825" CornerRadius="6">
-            <ScrollViewer x:Name="TranscriptScroll"
-                          VerticalScrollBarVisibility="Auto"
-                          Padding="10">
-                <TextBlock x:Name="TranscriptText"
-                           Foreground="#A6E3A1" FontSize="13"
-                           TextWrapping="Wrap" LineHeight="20"
-                           Text="Hier erscheint das erkannte Transkript …"/>
-            </ScrollViewer>
-        </Border>
-
-        <!-- Buttons -->
-        <Grid Grid.Row="18">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="8"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" x:Name="ConnectButton"
-                    Content="Verbinden"
-                    Click="ConnectButton_Click"
-                    Background="#89B4FA" Foreground="#1E1E2E"
-                    FontWeight="SemiBold" FontSize="14"
-                    BorderThickness="0" Padding="0,11"
-                    Cursor="Hand"/>
-            <Button Grid.Column="2" Content="Log"
-                    Click="LogButton_Click"
-                    Background="#313244" Foreground="#BAC2DE"
-                    FontSize="12" BorderThickness="0"
-                    Padding="12,11" Cursor="Hand"/>
-        </Grid>
     </Grid>
 </Window>
