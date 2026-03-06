@@ -1,0 +1,19 @@
+<Window x:Class="VoiceDictation.ToastWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Focusable="False"
+        IsHitTestVisible="False"
+        SizeToContent="WidthAndHeight"
+        Background="Transparent">
+    <Border Background="#E61E1E2E" CornerRadius="8" Padding="14,8">
+        <StackPanel Orientation="Horizontal">
+            <Ellipse x:Name="Dot" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBlock x:Name="MessageText" Foreground="#CDD6F4" FontSize="13" FontFamily="Segoe UI" VerticalAlignment="Center"/>
+        </StackPanel>
+    </Border>
+</Window>
