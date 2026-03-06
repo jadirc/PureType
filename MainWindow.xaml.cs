@@ -102,6 +102,7 @@ public partial class MainWindow : Window
         _keyboardHook.TogglePressed += OnToggleHotkey;
         _keyboardHook.PttKeyDown += OnPttKeyDown;
         _keyboardHook.PttKeyUp += OnPttKeyUp;
+        _keyboardHook.RecordingWinPlusModifier += OnRecordingWinPlusModifier;
 
         // Auto-connect on startup (independent of window visibility)
         var autoProvider = (ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
@@ -648,6 +649,48 @@ public partial class MainWindow : Window
         Keyboard.ClearFocus();
     }
 
+
+    private void OnRecordingWinPlusModifier(int heldVk)
+    {
+        // Find the focused shortcut TextBox (if any)
+        var focused = Keyboard.FocusedElement as System.Windows.Controls.TextBox;
+        if (focused is not (var box and not null) || (box != ToggleShortcutBox && box != PttShortcutBox))
+            return;
+
+        var key = KeyInterop.KeyFromVirtualKey(heldVk);
+        var modifiers = ModifierKeys.Windows;
+
+        var displayText = FormatShortcut(modifiers, key);
+
+        bool isToggleBox = box == ToggleShortcutBox;
+        var otherBox = isToggleBox ? PttShortcutBox : ToggleShortcutBox;
+        if (otherBox.Text == displayText)
+        {
+            box.Text = "Already assigned!";
+            box.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
+            return;
+        }
+
+        if (isToggleBox)
+        {
+            _toggleKey = key;
+            _toggleModifiers = modifiers;
+            if (_connected)
+                _keyboardHook.SetToggleShortcut(modifiers, key);
+        }
+        else
+        {
+            _pttKey = key;
+            _pttModifiers = modifiers;
+            if (_connected)
+                _keyboardHook.SetPttShortcut(modifiers, key);
+        }
+
+        box.Text = displayText;
+        box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
+        SaveSettings();
+        Keyboard.ClearFocus();
+    }
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {

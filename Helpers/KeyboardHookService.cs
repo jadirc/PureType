@@ -74,6 +74,10 @@ public class KeyboardHookService : IDisposable
     public event Action? PttKeyDown;
     public event Action? PttKeyUp;
 
+    /// <summary>Fired during shortcut recording when Win is pressed while a modifier key is already held.
+    /// The parameter is the VK code of the held modifier key.</summary>
+    public event Action<int>? RecordingWinPlusModifier;
+
     public KeyboardHookService()
     {
         _proc = HookCallback;
@@ -131,7 +135,24 @@ public class KeyboardHookService : IDisposable
 
                 // Only suppress during shortcut recording
                 if (SuppressWinKey)
+                {
+                    // When Win is pressed while a modifier key is already held,
+                    // notify so shortcut recording works regardless of key press order.
+                    if (isDown)
+                    {
+                        int heldVk = 0;
+                        if ((GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0) heldVk = VK_LCONTROL;
+                        else if ((GetAsyncKeyState(VK_RCONTROL) & 0x8000) != 0) heldVk = VK_RCONTROL;
+                        else if ((GetAsyncKeyState(VK_LMENU) & 0x8000) != 0) heldVk = VK_LMENU;
+                        else if ((GetAsyncKeyState(VK_RMENU) & 0x8000) != 0) heldVk = VK_RMENU;
+                        else if ((GetAsyncKeyState(VK_LSHIFT) & 0x8000) != 0) heldVk = VK_LSHIFT;
+                        else if ((GetAsyncKeyState(VK_RSHIFT) & 0x8000) != 0) heldVk = VK_RSHIFT;
+
+                        if (heldVk != 0)
+                            RecordingWinPlusModifier?.Invoke(heldVk);
+                    }
                     return (IntPtr)1;
+                }
             }
 
             // ── Skip shortcut detection while recording a new shortcut ──
