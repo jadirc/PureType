@@ -31,6 +31,46 @@ public class KeyboardHookService : IDisposable
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int vKey);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct INPUT
+    {
+        public uint type;
+        public INPUTUNION u;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    private struct INPUTUNION
+    {
+        [FieldOffset(0)] public KEYBDINPUT ki;
+        [FieldOffset(0)] public MOUSEINPUT mi; // ensures correct union size on x64
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KEYBDINPUT
+    {
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MOUSEINPUT
+    {
+        public int dx, dy, mouseData, dwFlags, time;
+        public IntPtr dwExtraInfo;
+    }
+
+    private const uint INPUT_KEYBOARD = 1;
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+
+    /// <summary>Magic value placed in dwExtraInfo to identify our own simulated Win key taps.</summary>
+    private static readonly IntPtr SIMULATED_WIN_EXTRA = (IntPtr)0x56444B48; // "VDKH"
+
     private const int WH_KEYBOARD_LL = 13;
     private const int WM_KEYDOWN    = 0x0100;
     private const int WM_KEYUP      = 0x0101;
@@ -68,6 +108,9 @@ public class KeyboardHookService : IDisposable
     /// <summary>Set true while shortcut-recording TextBox is focused.
     /// Suppresses Win key and disables toggle/PTT event firing.</summary>
     public bool SuppressWinKey { get; set; }
+
+    /// <summary>True when Win was consumed by one of our shortcuts (don't replay on release).</summary>
+    private bool _winConsumed;
 
     // ── Events ──
     public event Action? TogglePressed;
@@ -123,16 +166,36 @@ public class KeyboardHookService : IDisposable
             bool isDown = wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN;
             bool isUp   = wParam == WM_KEYUP   || wParam == WM_SYSKEYUP;
 
+            // ── Let our own simulated Win key through ──
+            // KBDLLHOOKSTRUCT: vkCode(0) scanCode(4) flags(8) time(12) dwExtraInfo(16)
+            IntPtr extraInfo = Marshal.ReadIntPtr(lParam, 16);
+            if (extraInfo == SIMULATED_WIN_EXTRA && (vkCode is VK_LWIN or VK_RWIN))
+                return CallNextHookEx(_hookId, nCode, wParam, lParam);
+
+            bool winIsShortcutModifier = _toggleModifiers.HasFlag(ModifierKeys.Windows)
+                                      || _pttModifiers.HasFlag(ModifierKeys.Windows);
+
             // ── Win key tracking & suppression ──
             if (vkCode is VK_LWIN or VK_RWIN)
             {
-                if (isDown) IsWinDown = true;
-                else if (isUp) { IsWinDown = false; _toggleFired = false; }
+                if (isDown && !IsWinDown)
+                {
+                    IsWinDown = true;
+                    _winConsumed = false;
+                }
+                else if (isUp)
+                {
+                    IsWinDown = false;
+                    _toggleFired = false;
 
-                bool shouldSuppress = SuppressWinKey
-                    || _toggleModifiers.HasFlag(ModifierKeys.Windows)
-                    || _pttModifiers.HasFlag(ModifierKeys.Windows);
-                if (shouldSuppress)
+                    // If Win was suppressed but never used for a shortcut, replay it
+                    if (!SuppressWinKey && winIsShortcutModifier && !_winConsumed)
+                    {
+                        SimulateWinKeyTap(vkCode);
+                    }
+                }
+
+                if (SuppressWinKey || winIsShortcutModifier)
                     return (IntPtr)1;
             }
 
@@ -146,6 +209,8 @@ public class KeyboardHookService : IDisposable
                 if (AreModifiersHeld(_toggleModifiers))
                 {
                     _toggleFired = true;
+                    if (_toggleModifiers.HasFlag(ModifierKeys.Windows))
+                        _winConsumed = true;
                     TogglePressed?.Invoke();
                 }
             }
@@ -159,6 +224,8 @@ public class KeyboardHookService : IDisposable
                 if (isDown && !_pttDown && AreModifiersHeld(_pttModifiers))
                 {
                     _pttDown = true;
+                    if (_pttModifiers.HasFlag(ModifierKeys.Windows))
+                        _winConsumed = true;
                     PttKeyDown?.Invoke();
                 }
                 else if (isUp && _pttDown)
@@ -166,6 +233,14 @@ public class KeyboardHookService : IDisposable
                     _pttDown = false;
                     PttKeyUp?.Invoke();
                 }
+            }
+
+            // ── Mark Win consumed for unrelated Win combos (Win+E, Win+D, etc.) ──
+            if (IsWinDown && winIsShortcutModifier && isDown
+                && vkCode is not VK_LWIN and not VK_RWIN
+                && vkCode != _toggleVKey && vkCode != _pttVKey)
+            {
+                _winConsumed = true;
             }
         }
 
@@ -189,6 +264,25 @@ public class KeyboardHookService : IDisposable
             && (GetAsyncKeyState(VK_RSHIFT) & 0x8000) == 0)
             return false;
         return true;
+    }
+
+    private void SimulateWinKeyTap(int vkCode)
+    {
+        var inputs = new[]
+        {
+            new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUNION { ki = new KEYBDINPUT { wVk = (ushort)vkCode, dwExtraInfo = SIMULATED_WIN_EXTRA } }
+            },
+            new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUNION { ki = new KEYBDINPUT { wVk = (ushort)vkCode, dwFlags = KEYEVENTF_KEYUP, dwExtraInfo = SIMULATED_WIN_EXTRA } }
+            }
+        };
+
+        SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
     }
 
     public void Dispose()
