@@ -275,16 +275,7 @@
             </ComboBox>
         </StackPanel>
 
-        <!-- Modus -->
-        <StackPanel Grid.Row="18">
-            <TextBlock Text="MODUS" Foreground="#BAC2DE"
-                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <ComboBox x:Name="ModeCombo" Padding="10,7" FontSize="13"
-                      SelectionChanged="ModeCombo_SelectionChanged">
-                <ComboBoxItem Content="Toggle" Tag="toggle" IsSelected="True"/>
-                <ComboBoxItem Content="Push-to-Talk" Tag="ptt"/>
-            </ComboBox>
-        </StackPanel>
+        <!-- (Mode dropdown removed — both Toggle and PTT are always active) -->
 
         <!-- Toggle Shortcut -->
         <StackPanel Grid.Row="20">

@@ -32,7 +32,8 @@ public partial class MainWindow : Window
     // ── State ────────────────────────────────────────────────────────────
     private bool _connected;
     private bool _recording;
-    private bool _isPttMode;
+    private enum RecordingSource { None, Toggle, Ptt }
+    private RecordingSource _recordingSource = RecordingSource.None;
     private VadService? _vad;
     private string _interimText = "";
     private bool _isLoading = true;
@@ -144,9 +145,7 @@ public partial class MainWindow : Window
                     SelectComboByTag(LanguageCombo, value);
                     break;
                 case "mode":
-                    SelectComboByTag(ModeCombo, value);
-                    _isPttMode = value == "ptt";
-                    break;
+                    break; // legacy setting, ignored — both modes always active
                 case "tone":
                     SelectComboByTag(ToneCombo, value);
                     break;
@@ -249,7 +248,6 @@ public partial class MainWindow : Window
     {
         Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
         var langItem = LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-        var modeItem = ModeCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var micItem = MicrophoneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var micName = micItem?.Content?.ToString() ?? "";
         var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
@@ -260,7 +258,6 @@ public partial class MainWindow : Window
             $"toggle={FormatShortcut(_toggleModifiers, _toggleKey)}",
             $"ptt={FormatShortcut(_pttModifiers, _pttKey)}",
             $"language={(string)(langItem?.Tag ?? "de")}",
-            $"mode={(string)(modeItem?.Tag ?? "toggle")}",
             $"tone={(string)((ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Sanft")}",
             $"microphone={micName}",
             $"keywords={KeywordsBox.Text.Trim()}",
@@ -339,15 +336,6 @@ public partial class MainWindow : Window
             SaveSettings();
     }
 
-    private void ModeCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        var item = (System.Windows.Controls.ComboBoxItem)ModeCombo.SelectedItem;
-        _isPttMode = (string)item.Tag == "ptt";
-        if (_recording) StopRecording();
-        UpdateHotkeyInfoText();
-        if (!_isLoading)
-            SaveSettings();
-    }
 
     private void ToneCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
@@ -664,10 +652,7 @@ public partial class MainWindow : Window
     private void UpdateHotkeyInfoText()
     {
         if (HotkeyInfoText is null) return;
-        if (_isPttMode)
-            HotkeyInfoText.Text = $"{PttShortcutBox.Text} gedrückt halten für Aufnahme";
-        else
-            HotkeyInfoText.Text = $"{ToggleShortcutBox.Text} drücken um Aufnahme zu starten/stoppen";
+        HotkeyInfoText.Text = $"{ToggleShortcutBox.Text} = Toggle | {PttShortcutBox.Text} = Push-to-Talk";
     }
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -793,11 +778,19 @@ public partial class MainWindow : Window
 
     private void OnToggleHotkey()
     {
-        if (_isPttMode) return;
         Dispatcher.Invoke(() =>
         {
-            if (_recording) StopRecording();
-            else            StartRecording();
+            if (_recording)
+            {
+                if (_recordingSource != RecordingSource.Toggle) return;
+                _recordingSource = RecordingSource.None;
+                StopRecording();
+            }
+            else
+            {
+                _recordingSource = RecordingSource.Toggle;
+                StartRecording();
+            }
         });
     }
 
@@ -805,14 +798,22 @@ public partial class MainWindow : Window
 
     private void OnPttKeyDown()
     {
-        if (!_isPttMode || !_connected) return;
-        Dispatcher.Invoke(StartRecording);
+        if (!_connected || _recording) return;
+        Dispatcher.Invoke(() =>
+        {
+            _recordingSource = RecordingSource.Ptt;
+            StartRecording();
+        });
     }
 
     private void OnPttKeyUp()
     {
-        if (!_isPttMode) return;
-        Dispatcher.Invoke(StopRecording);
+        if (_recordingSource != RecordingSource.Ptt) return;
+        Dispatcher.Invoke(() =>
+        {
+            _recordingSource = RecordingSource.None;
+            StopRecording();
+        });
     }
 
     // ── Start/Stop Recording ───────────────────────────────────────────────
