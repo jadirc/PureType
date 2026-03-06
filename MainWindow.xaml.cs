@@ -18,6 +18,9 @@ public partial class MainWindow : Window
     private readonly LogWindow _logWindow = new();
     private static readonly LogWindowSink UiSink = new();
     private System.Windows.Forms.NotifyIcon? _trayIcon;
+    private System.Windows.Forms.ToolStripLabel? _trayStatusLabel;
+    private System.Windows.Forms.ToolStripMenuItem? _trayConnectItem;
+    private System.Windows.Forms.ToolStripMenuItem? _trayMuteItem;
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
     private readonly KeyboardHookService _keyboardHook = new();
@@ -35,6 +38,7 @@ public partial class MainWindow : Window
     private enum RecordingSource { None, Toggle, Ptt }
     private RecordingSource _recordingSource = RecordingSource.None;
     private VadService? _vad;
+    private bool _muted;
     private string _interimText = "";
     private bool _isLoading = true;
     private string? _savedMicrophoneDevice;
@@ -771,6 +775,7 @@ public partial class MainWindow : Window
             ConnectButton.Background = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
             SaveSettings();
             Log.Information("{Provider} connected (Language: {Language})", label, language);
+            UpdateTrayMenu();
         }
         catch (Exception ex)
         {
@@ -802,6 +807,7 @@ public partial class MainWindow : Window
         ConnectButton.Content    = "Connect";
         ConnectButton.Background = Blue;
         Log.Information("Provider disconnected");
+        UpdateTrayMenu();
     }
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
@@ -876,6 +882,7 @@ public partial class MainWindow : Window
             _vad.SilenceDetected += () => Dispatcher.Invoke(StopRecording);
             _vad.Reset();
         }
+        UpdateTrayMenu();
     }
 
     private async void StopRecording()
@@ -897,6 +904,7 @@ public partial class MainWindow : Window
 
         if (_connected)
             SetStatus("Connected – ready", Green);
+        UpdateTrayMenu();
     }
 
     // ── Audio → Provider ───────────────────────────────────────────────────
@@ -904,7 +912,8 @@ public partial class MainWindow : Window
     private async void OnAudioData(byte[] chunk)
     {
         if (_provider is null || !_recording) return;
-        await _provider.SendAudioAsync(chunk);
+        if (!_muted)
+            await _provider.SendAudioAsync(chunk);
         _vad?.ProcessAudio(chunk);
     }
 
@@ -978,9 +987,47 @@ public partial class MainWindow : Window
             Visible = true
         };
 
-        _trayIcon.Click += (_, _) => ShowFromTray();
+        _trayIcon.MouseClick += (_, e) =>
+        {
+            if (e.Button == System.Windows.Forms.MouseButtons.Left)
+                ShowFromTray();
+        };
 
         var menu = new System.Windows.Forms.ContextMenuStrip();
+
+        // Status label (non-clickable)
+        _trayStatusLabel = new System.Windows.Forms.ToolStripLabel("Not connected")
+        {
+            ForeColor = System.Drawing.Color.FromArgb(0xF3, 0x8B, 0xA8)
+        };
+        menu.Items.Add(_trayStatusLabel);
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+
+        // Connect / Disconnect toggle
+        _trayConnectItem = new System.Windows.Forms.ToolStripMenuItem("Connect", null, async (_, _) =>
+        {
+            await Dispatcher.InvokeAsync(async () =>
+            {
+                if (_connected)
+                    await DisconnectAsync();
+                else
+                    await ConnectAsync();
+            });
+        });
+        menu.Items.Add(_trayConnectItem);
+
+        // Mute toggle
+        _trayMuteItem = new System.Windows.Forms.ToolStripMenuItem("Mute", null, (_, _) =>
+        {
+            Dispatcher.Invoke(ToggleMute);
+        })
+        {
+            CheckOnClick = false
+        };
+        menu.Items.Add(_trayMuteItem);
+
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+
         menu.Items.Add("Open", null, (_, _) => ShowFromTray());
         menu.Items.Add("Exit", null, (_, _) =>
         {
@@ -989,6 +1036,53 @@ public partial class MainWindow : Window
             Application.Current.Shutdown();
         });
         _trayIcon.ContextMenuStrip = menu;
+    }
+
+    private void ToggleMute()
+    {
+        _muted = !_muted;
+        if (_trayMuteItem != null)
+            _trayMuteItem.Checked = _muted;
+
+        if (_muted)
+            SetStatus("Muted", Yellow);
+        else if (_recording)
+            SetStatus("● Recording", Red);
+        else if (_connected)
+            SetStatus("Connected – ready", Green);
+        else
+            SetStatus("Not connected", Red);
+
+        Log.Information("Mute {State}", _muted ? "enabled" : "disabled");
+        UpdateTrayMenu();
+    }
+
+    private void UpdateTrayMenu()
+    {
+        if (_trayStatusLabel == null || _trayConnectItem == null) return;
+
+        if (_muted)
+        {
+            _trayStatusLabel.Text = "Muted";
+            _trayStatusLabel.ForeColor = System.Drawing.Color.FromArgb(0xF9, 0xE2, 0xAF);
+        }
+        else if (_recording)
+        {
+            _trayStatusLabel.Text = "Recording";
+            _trayStatusLabel.ForeColor = System.Drawing.Color.FromArgb(0xF3, 0x8B, 0xA8);
+        }
+        else if (_connected)
+        {
+            _trayStatusLabel.Text = "Connected";
+            _trayStatusLabel.ForeColor = System.Drawing.Color.FromArgb(0xA6, 0xE3, 0xA1);
+        }
+        else
+        {
+            _trayStatusLabel.Text = "Not connected";
+            _trayStatusLabel.ForeColor = System.Drawing.Color.FromArgb(0xF3, 0x8B, 0xA8);
+        }
+
+        _trayConnectItem.Text = _connected ? "Disconnect" : "Connect";
     }
 
     private void ShowFromTray()
