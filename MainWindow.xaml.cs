@@ -462,7 +462,7 @@ public partial class MainWindow : Window
 
         if (WhisperModelManager.IsModelDownloaded(modelName))
         {
-            MessageBox.Show("Modell ist bereits heruntergeladen.", "Info",
+            MessageBox.Show("Model is already downloaded.", "Info",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -477,13 +477,13 @@ public partial class MainWindow : Window
                 progress => Dispatcher.Invoke(() => DownloadProgress.Value = progress * 100));
 
             PopulateWhisperModels();
-            MessageBox.Show($"Modell '{modelName}' erfolgreich heruntergeladen.", "Fertig",
+            MessageBox.Show($"Model '{modelName}' downloaded successfully.", "Done",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Model download failed");
-            MessageBox.Show($"Download fehlgeschlagen:\n{ex.Message}", "Fehler",
+            MessageBox.Show($"Download failed:\n{ex.Message}", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
@@ -560,7 +560,7 @@ public partial class MainWindow : Window
     {
         var box = (System.Windows.Controls.TextBox)sender;
         _shortcutBoxPreviousText = box.Text;
-        box.Text = "Taste drücken…";
+        box.Text = "Press a key…";
         box.Foreground = new SolidColorBrush(Color.FromRgb(0xF9, 0xE2, 0xAF));
         _keyboardHook.SuppressWinKey = true;
     }
@@ -568,7 +568,7 @@ public partial class MainWindow : Window
     private void ShortcutBox_LostFocus(object sender, RoutedEventArgs e)
     {
         var box = (System.Windows.Controls.TextBox)sender;
-        if (box.Text == "Taste drücken…")
+        if (box.Text == "Press a key…")
             box.Text = _shortcutBoxPreviousText ?? "";
         box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
         _keyboardHook.SuppressWinKey = false;
@@ -620,7 +620,7 @@ public partial class MainWindow : Window
         var otherBox = isToggleBox ? PttShortcutBox : ToggleShortcutBox;
         if (otherBox.Text == displayText)
         {
-            box.Text = "Bereits vergeben!";
+            box.Text = "Already assigned!";
             box.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
             return;
         }
@@ -668,7 +668,7 @@ public partial class MainWindow : Window
         var providerItem = (System.Windows.Controls.ComboBoxItem)ProviderCombo.SelectedItem;
         var providerType = (string)providerItem.Tag;
 
-        SetStatus("Verbinde …", Yellow);
+        SetStatus("Connecting …", Yellow);
         ConnectButton.IsEnabled = false;
 
         try
@@ -683,10 +683,10 @@ public partial class MainWindow : Window
 
                 if (!WhisperModelManager.IsModelDownloaded(modelName))
                 {
-                    MessageBox.Show("Bitte zuerst das Whisper-Modell herunterladen.", "Fehler",
+                    MessageBox.Show("Please download the Whisper model first.", "Error",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                     ConnectButton.IsEnabled = true;
-                    SetStatus("Nicht verbunden", Red);
+                    SetStatus("Not connected", Red);
                     return;
                 }
 
@@ -697,10 +697,10 @@ public partial class MainWindow : Window
                 var apiKey = ApiKeyBox.Password.Trim();
                 if (string.IsNullOrEmpty(apiKey))
                 {
-                    MessageBox.Show("Bitte einen Deepgram API Key eingeben.", "Fehler",
+                    MessageBox.Show("Please enter a Deepgram API key.", "Error",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                     ConnectButton.IsEnabled = true;
-                    SetStatus("Nicht verbunden", Red);
+                    SetStatus("Not connected", Red);
                     return;
                 }
                 var keywords = KeywordsBox.Text
@@ -720,9 +720,9 @@ public partial class MainWindow : Window
             _audio.Initialize();
             RegisterHotkeys();
 
-            var label = providerType == "whisper" ? "Whisper (lokal)" : "Deepgram";
-            SetStatus($"Verbunden - {label}", Green);
-            ConnectButton.Content = "Trennen";
+            var label = providerType == "whisper" ? "Whisper (local)" : "Deepgram";
+            SetStatus($"Connected - {label}", Green);
+            ConnectButton.Content = "Disconnect";
             ConnectButton.Background = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
             SaveSettings();
             Log.Information("{Provider} connected (Language: {Language})", label, language);
@@ -730,8 +730,8 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Log.Error(ex, "Connection failed");
-            SetStatus("Verbindung fehlgeschlagen", Red);
-            MessageBox.Show($"Fehler:\n{ex.Message}", "Verbindungsfehler",
+            SetStatus("Connection failed", Red);
+            MessageBox.Show($"Error:\n{ex.Message}", "Connection Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
@@ -753,8 +753,8 @@ public partial class MainWindow : Window
             await _provider.DisposeAsync();
             _provider = null;
         }
-        SetStatus("Nicht verbunden", Red);
-        ConnectButton.Content    = "Verbinden";
+        SetStatus("Not connected", Red);
+        ConnectButton.Content    = "Connect";
         ConnectButton.Background = Blue;
         Log.Information("Provider disconnected");
     }
@@ -818,7 +818,7 @@ public partial class MainWindow : Window
         _recording = true;
         SoundFeedback.PlayStart();
         _audio.Start();
-        SetStatus("● Aufnahme läuft", Red);
+        SetStatus("● Recording", Red);
 
         if (VadCheck.IsChecked == true)
         {
@@ -846,7 +846,7 @@ public partial class MainWindow : Window
         SoundFeedback.PlayStop();
 
         if (_connected)
-            SetStatus("Verbunden – bereit", Green);
+            SetStatus("Connected – ready", Green);
     }
 
     // ── Audio → Provider ───────────────────────────────────────────────────
@@ -890,7 +890,7 @@ public partial class MainWindow : Window
     private void AppendTranscript(string text)
     {
         var current = TranscriptText.Text;
-        if (current == "Hier erscheint das erkannte Transkript …")
+        if (current == "Transcript will appear here …")
             current = "";
 
         // Keep last ~500 characters
@@ -905,7 +905,7 @@ public partial class MainWindow : Window
     // ── Error / Disconnect ─────────────────────────────────────────────────
 
     private void OnError(string message) =>
-        Dispatcher.Invoke(() => SetStatus($"Fehler: {message}", Red));
+        Dispatcher.Invoke(() => SetStatus($"Error: {message}", Red));
 
     private void OnDisconnected() =>
         Dispatcher.Invoke(async () =>
@@ -931,8 +931,8 @@ public partial class MainWindow : Window
         _trayIcon.Click += (_, _) => ShowFromTray();
 
         var menu = new System.Windows.Forms.ContextMenuStrip();
-        menu.Items.Add("Öffnen", null, (_, _) => ShowFromTray());
-        menu.Items.Add("Beenden", null, (_, _) =>
+        menu.Items.Add("Open", null, (_, _) => ShowFromTray());
+        menu.Items.Add("Exit", null, (_, _) =>
         {
             _trayIcon.Visible = false;
             _keyboardHook.Dispose();

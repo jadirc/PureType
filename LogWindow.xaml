@@ -13,7 +13,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Button Grid.Row="0" Content="Löschen" Click="ClearButton_Click"
+        <Button Grid.Row="0" Content="Clear" Click="ClearButton_Click"
                 Background="#313244" Foreground="#CDD6F4"
                 BorderThickness="0" Padding="8,4" Margin="0,0,0,8"
                 HorizontalAlignment="Left" Cursor="Hand"/>
