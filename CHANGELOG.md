@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.1](https://github.com/jadirc/VoiceDictation/compare/v1.0.0...v1.0.1) (2026-03-06)
+
+
+### Bug Fixes
+
+* remove PublishTrimmed from self-contained build ([01345db](https://github.com/jadirc/VoiceDictation/commit/01345dbd13706f4faf2bf58f4f09d831065fe317))
+
 ## 1.0.0 (2026-03-06)
 
 
