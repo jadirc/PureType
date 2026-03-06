@@ -16,7 +16,7 @@ public class DeepgramService : IAsyncDisposable
     private readonly string _apiKey;
     private readonly string _language;
 
-    public event Action<string>? TranscriptReceived;
+    public event Action<string, bool>? TranscriptReceived;
     public event Action<string>? ErrorOccurred;
     public event Action? Disconnected;
 
@@ -42,7 +42,7 @@ public class DeepgramService : IAsyncDisposable
             $"&model=nova-3" +
             $"&language={_language}" +
             $"&smart_format=true" +
-            $"&interim_results=false" +
+            $"&interim_results=true" +
             $"&punctuate=true");
 
         await _ws.ConnectAsync(uri, _cts.Token);
@@ -163,8 +163,9 @@ public class DeepgramService : IAsyncDisposable
             if (alts.GetArrayLength() == 0) return;
 
             var transcript = alts[0].GetProperty("transcript").GetString();
+            var isFinal = root.TryGetProperty("is_final", out var isFinalProp) && isFinalProp.GetBoolean();
             if (!string.IsNullOrWhiteSpace(transcript))
-                TranscriptReceived?.Invoke(transcript.Trim());
+                TranscriptReceived?.Invoke(transcript.Trim(), isFinal);
         }
         catch { /* ungültiges JSON ignorieren */ }
     }

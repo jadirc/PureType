@@ -165,10 +165,15 @@
                 <ScrollViewer Grid.Row="1" x:Name="TranscriptScroll"
                               VerticalScrollBarVisibility="Auto"
                               Padding="10,4,10,10">
-                    <TextBlock x:Name="TranscriptText"
-                               Foreground="#A6E3A1" FontSize="13"
-                               TextWrapping="Wrap" LineHeight="20"
-                               Text="Hier erscheint das erkannte Transkript …"/>
+                    <StackPanel>
+                        <TextBlock x:Name="TranscriptText"
+                                   Foreground="#A6E3A1" FontSize="13"
+                                   TextWrapping="Wrap" LineHeight="20"
+                                   Text="Hier erscheint das erkannte Transkript …"/>
+                        <TextBlock x:Name="InterimText"
+                                   Foreground="#6C7086" FontStyle="Italic" FontSize="13"
+                                   TextWrapping="Wrap" LineHeight="20"/>
+                    </StackPanel>
                 </ScrollViewer>
             </Grid>
         </Border>

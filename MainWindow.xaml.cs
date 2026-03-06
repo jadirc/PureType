@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private bool _connected;
     private bool _recording;
     private bool _isPttMode;
+    private string _interimText = "";
     private bool _isLoading = true;
 
     // Pfad zur Einstellungs-Datei (API-Key speichern)
@@ -540,6 +541,9 @@ public partial class MainWindow : Window
         _audio.Stop();
         _recording = false;
 
+        _interimText = "";
+        InterimText.Text = "";
+
         // Deepgram-Puffer flushen, damit letztes Transkript sofort kommt
         if (_deepgram is not null)
             await _deepgram.SendFinalizeAsync();
@@ -560,19 +564,29 @@ public partial class MainWindow : Window
 
     // ── Transkript erhalten ───────────────────────────────────────────────
 
-    private void OnTranscriptReceived(string text)
+    private void OnTranscriptReceived(string text, bool isFinal)
     {
         Dispatcher.BeginInvoke(async () =>
         {
-            // Show transcript FIRST so it always appears, even if injection fails
-            AppendTranscript(text);
-            try
+            if (isFinal)
             {
-                await KeyboardInjector.TypeTextAsync(text);
+                _interimText = "";
+                InterimText.Text = "";
+                AppendTranscript(text);
+                try
+                {
+                    await KeyboardInjector.TypeTextAsync(text);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Fehler bei Textinjektion");
+                }
             }
-            catch (Exception ex)
+            else
             {
-                Log.Error(ex, "Fehler bei Textinjektion");
+                _interimText = text;
+                InterimText.Text = text;
+                TranscriptScroll.ScrollToBottom();
             }
         });
     }
