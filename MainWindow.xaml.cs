@@ -24,10 +24,10 @@ public partial class MainWindow : Window
 
 
     // Shortcut settings (defaults)
-    private Key _toggleKey = Key.F9;
-    private ModifierKeys _toggleModifiers = ModifierKeys.None;
-    private Key _pttKey = Key.RightCtrl;
-    private ModifierKeys _pttModifiers = ModifierKeys.None;
+    private Key _toggleKey = Key.X;
+    private ModifierKeys _toggleModifiers = ModifierKeys.Control | ModifierKeys.Alt;
+    private Key _pttKey = Key.LeftCtrl;
+    private ModifierKeys _pttModifiers = ModifierKeys.Windows;
 
     // ── State ────────────────────────────────────────────────────────────
     private bool _connected;

@@ -289,7 +289,7 @@
                      BorderBrush="#45475A" BorderThickness="1"
                      Padding="10,8" FontSize="13"
                      IsReadOnly="True" Cursor="Hand"
-                     Text="F9"
+                     Text="Ctrl+Alt+X"
                      GotFocus="ShortcutBox_GotFocus"
                      LostFocus="ShortcutBox_LostFocus"
                      PreviewKeyDown="ShortcutBox_PreviewKeyDown"/>
@@ -304,7 +304,7 @@
                      BorderBrush="#45475A" BorderThickness="1"
                      Padding="10,8" FontSize="13"
                      IsReadOnly="True" Cursor="Hand"
-                     Text="Right Ctrl"
+                     Text="Win+L-Ctrl"
                      GotFocus="ShortcutBox_GotFocus"
                      LostFocus="ShortcutBox_LostFocus"
                      PreviewKeyDown="ShortcutBox_PreviewKeyDown"/>
