@@ -39,7 +39,7 @@ public class DeepgramService : IAsyncDisposable
             $"?encoding=linear16" +
             $"&sample_rate=16000" +
             $"&channels=1" +
-            $"&model=nova-2" +
+            $"&model=nova-3" +
             $"&language={_language}" +
             $"&smart_format=true" +
             $"&interim_results=false" +
