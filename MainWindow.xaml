@@ -135,6 +135,8 @@
             <RowDefinition Height="Auto"/>  <!-- Row 32: VAD -->
             <RowDefinition Height="4"/>
             <RowDefinition Height="Auto"/>  <!-- Row 34: Replacements -->
+            <RowDefinition Height="4"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 36: LLM Post-Processing -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
@@ -358,5 +360,62 @@
                 FontSize="12" BorderThickness="0"
                 Padding="0,4" Cursor="Hand"
                 HorizontalAlignment="Left"/>
+        <!-- LLM Post-Processing -->
+        <StackPanel Grid.Row="36" x:Name="LlmPanel">
+            <CheckBox x:Name="LlmEnabledCheck"
+                      Content="  AI Post-Processing"
+                      Foreground="#CDD6F4" FontSize="12"
+                      Checked="LlmEnabledCheck_Changed"
+                      Unchecked="LlmEnabledCheck_Changed"/>
+            <StackPanel x:Name="LlmSettingsPanel" Visibility="Collapsed" Margin="0,8,0,0">
+                <TextBlock Text="LLM PROVIDER" Foreground="#BAC2DE"
+                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <ComboBox x:Name="LlmProviderCombo" Padding="10,7" FontSize="13"
+                          SelectionChanged="LlmProviderCombo_SelectionChanged">
+                    <ComboBoxItem Content="OpenAI-compatible" Tag="openai" IsSelected="True"/>
+                    <ComboBoxItem Content="Anthropic Claude" Tag="anthropic"/>
+                </ComboBox>
+
+                <TextBlock Text="API KEY" Foreground="#BAC2DE"
+                           FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
+                <PasswordBox x:Name="LlmApiKeyBox"
+                             Background="#313244" Foreground="#CDD6F4"
+                             BorderBrush="#45475A" BorderThickness="1"
+                             Padding="10,8" FontFamily="Consolas" FontSize="13"
+                             PasswordChar="●"
+                             PasswordChanged="LlmApiKeyBox_PasswordChanged"/>
+
+                <StackPanel x:Name="LlmBaseUrlPanel">
+                    <TextBlock Text="BASE URL" Foreground="#BAC2DE"
+                               FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
+                    <TextBox x:Name="LlmBaseUrlBox"
+                             Text="https://api.openai.com/v1"
+                             Background="#313244" Foreground="#CDD6F4"
+                             BorderBrush="#45475A" BorderThickness="1"
+                             Padding="10,8" FontFamily="Consolas" FontSize="13"
+                             LostFocus="LlmSettingChanged"/>
+                </StackPanel>
+
+                <TextBlock Text="MODEL" Foreground="#BAC2DE"
+                           FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
+                <TextBox x:Name="LlmModelBox"
+                         Text="gpt-4o-mini"
+                         Background="#313244" Foreground="#CDD6F4"
+                         BorderBrush="#45475A" BorderThickness="1"
+                         Padding="10,8" FontFamily="Consolas" FontSize="13"
+                         LostFocus="LlmSettingChanged"/>
+
+                <TextBlock Text="SYSTEM PROMPT" Foreground="#BAC2DE"
+                           FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
+                <TextBox x:Name="LlmPromptBox"
+                         Text="Clean up the following dictated text. Fix punctuation, grammar, and formatting. Keep the meaning unchanged. Reply with only the corrected text."
+                         Background="#313244" Foreground="#CDD6F4"
+                         BorderBrush="#45475A" BorderThickness="1"
+                         Padding="10,8" FontSize="12"
+                         TextWrapping="Wrap" AcceptsReturn="True"
+                         Height="80" VerticalScrollBarVisibility="Auto"
+                         LostFocus="LlmSettingChanged"/>
+            </StackPanel>
+        </StackPanel>
     </Grid>
 </Window>

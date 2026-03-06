@@ -176,6 +176,26 @@ public partial class MainWindow : Window
                 case "start_minimized":
                     StartMinimizedCheck.IsChecked = value.Equals("True", StringComparison.OrdinalIgnoreCase);
                     break;
+                case "llm_enabled":
+                    LlmEnabledCheck.IsChecked = value.Equals("True", StringComparison.OrdinalIgnoreCase);
+                    LlmSettingsPanel.Visibility = LlmEnabledCheck.IsChecked == true
+                        ? Visibility.Visible : Visibility.Collapsed;
+                    break;
+                case "llm_provider":
+                    SelectComboByTag(LlmProviderCombo, value);
+                    break;
+                case "llm_apikey":
+                    LlmApiKeyBox.Password = value;
+                    break;
+                case "llm_baseurl":
+                    LlmBaseUrlBox.Text = value;
+                    break;
+                case "llm_model":
+                    LlmModelBox.Text = value;
+                    break;
+                case "llm_prompt":
+                    LlmPromptBox.Text = value.Replace("\\n", "\n");
+                    break;
                 case "left":
                     if (double.TryParse(value, out var left)) { Left = left; hasPosition = true; }
                     break;
@@ -273,6 +293,12 @@ public partial class MainWindow : Window
             $"whisper_model={(string)(whisperModelItem?.Tag ?? "tiny")}",
             $"vad={VadCheck.IsChecked == true}",
             $"start_minimized={StartMinimizedCheck.IsChecked == true}",
+            $"llm_enabled={LlmEnabledCheck.IsChecked == true}",
+            $"llm_provider={(string)((LlmProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "openai")}",
+            $"llm_apikey={LlmApiKeyBox.Password.Trim()}",
+            $"llm_baseurl={LlmBaseUrlBox.Text.Trim()}",
+            $"llm_model={LlmModelBox.Text.Trim()}",
+            $"llm_prompt={LlmPromptBox.Text.Trim().Replace("\n", "\\n")}",
             $"left={Left}",
             $"top={Top}",
             $"width={Width}",
@@ -538,6 +564,32 @@ public partial class MainWindow : Window
     {
         if (!_isLoading)
             SaveSettings();
+    }
+
+    private void LlmEnabledCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isLoading) return;
+        LlmSettingsPanel.Visibility = LlmEnabledCheck.IsChecked == true
+            ? Visibility.Visible : Visibility.Collapsed;
+        SaveSettings();
+    }
+
+    private void LlmProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isLoading || LlmProviderCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
+        var isOpenAi = (string)item.Tag == "openai";
+        LlmBaseUrlPanel.Visibility = isOpenAi ? Visibility.Visible : Visibility.Collapsed;
+        SaveSettings();
+    }
+
+    private void LlmApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoading) SaveSettings();
+    }
+
+    private void LlmSettingChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoading) SaveSettings();
     }
 
     private static void SetAutostart(bool enable)
