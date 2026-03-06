@@ -133,6 +133,8 @@
             <RowDefinition Height="Auto"/>  <!-- Row 30: Start minimized -->
             <RowDefinition Height="4"/>
             <RowDefinition Height="Auto"/>  <!-- Row 32: VAD -->
+            <RowDefinition Height="4"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 34: Replacements -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
@@ -348,5 +350,13 @@
                   Margin="0,4,0,0"
                   Checked="VadCheck_Changed"
                   Unchecked="VadCheck_Changed"/>
+
+        <!-- Replacements -->
+        <Button Grid.Row="34" Content="Text Replacements …"
+                Click="ReplacementsButton_Click"
+                Background="Transparent" Foreground="#89B4FA"
+                FontSize="12" BorderThickness="0"
+                Padding="0,4" Cursor="Hand"
+                HorizontalAlignment="Left"/>
     </Grid>
 </Window>

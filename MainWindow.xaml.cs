@@ -505,6 +505,20 @@ public partial class MainWindow : Window
 
     // ── Autostart ────────────────────────────────────────────────────────
 
+    private ReplacementsWindow? _replacementsWindow;
+
+    private void ReplacementsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_replacementsWindow is { IsLoaded: true })
+        {
+            _replacementsWindow.Activate();
+            return;
+        }
+        _replacementsWindow = new ReplacementsWindow(_replacements);
+        _replacementsWindow.Owner = this;
+        _replacementsWindow.Show();
+    }
+
     private void VadCheck_Changed(object sender, RoutedEventArgs e)
     {
         if (!_isLoading)
