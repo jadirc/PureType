@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using Microsoft.Win32;
 using Serilog;
 using VoiceDictation.Helpers;
 using VoiceDictation.Services;
@@ -34,6 +35,11 @@ public partial class MainWindow : Window
     private bool _isPttMode;
     private string _interimText = "";
     private bool _isLoading = true;
+    private string? _savedMicrophoneDevice;
+
+    // ── Autostart ────────────────────────────────────────────────────────
+    private const string AutostartRegistryKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+    private const string AutostartValueName = "VoiceDictation";
 
     // Pfad zur Einstellungs-Datei (API-Key speichern)
     private static readonly string SettingsPath =
@@ -74,6 +80,8 @@ public partial class MainWindow : Window
         _isLoading = false;
 
         _audio.AudioDataAvailable += OnAudioData;
+        _audio.AudioLevelChanged += OnAudioLevel;
+        PopulateMicrophones();
         Loaded += (_, _) => ConnectButton.Focus();
 
         _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
@@ -125,6 +133,13 @@ public partial class MainWindow : Window
                 case "tone":
                     SelectComboByTag(ToneCombo, value);
                     break;
+                case "microphone":
+                    _savedMicrophoneDevice = value;
+                    SelectMicrophoneByName(value);
+                    break;
+                case "keywords":
+                    KeywordsBox.Text = value;
+                    break;
                 case "left":
                     if (double.TryParse(value, out var left)) { Left = left; hasPosition = true; }
                     break;
@@ -143,6 +158,7 @@ public partial class MainWindow : Window
         // UI-Felder direkt setzen (Controls existieren nach InitializeComponent)
         ToggleShortcutBox.Text = FormatShortcut(_toggleModifiers, _toggleKey);
         PttShortcutBox.Text = FormatShortcut(_pttModifiers, _pttKey);
+        AutostartCheck.IsChecked = IsAutostartEnabled();
 
         if (!hasPosition)
             CenterOnScreen();
@@ -205,6 +221,8 @@ public partial class MainWindow : Window
         Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
         var langItem = LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var modeItem = ModeCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var micItem = MicrophoneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var micName = micItem?.Content?.ToString() ?? "";
         var lines = new List<string>
         {
             ApiKeyBox.Password.Trim(),
@@ -213,6 +231,8 @@ public partial class MainWindow : Window
             $"language={(string)(langItem?.Tag ?? "de")}",
             $"mode={(string)(modeItem?.Tag ?? "toggle")}",
             $"tone={(string)((ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Sanft")}",
+            $"microphone={micName}",
+            $"keywords={KeywordsBox.Text.Trim()}",
             $"left={Left}",
             $"top={Top}",
             $"width={Width}",
@@ -301,6 +321,113 @@ public partial class MainWindow : Window
         SoundFeedback.Init(preset);
         SoundFeedback.PlayStart(); // preview
         SaveSettings();
+    }
+
+    // ── Mikrofon ──────────────────────────────────────────────────────────
+
+    private void PopulateMicrophones()
+    {
+        MicrophoneCombo.Items.Clear();
+        var devices = AudioCaptureService.GetDevices();
+        foreach (var (number, name) in devices)
+        {
+            var item = new System.Windows.Controls.ComboBoxItem
+            {
+                Content = name,
+                Tag = number
+            };
+            MicrophoneCombo.Items.Add(item);
+        }
+        if (MicrophoneCombo.Items.Count > 0)
+            MicrophoneCombo.SelectedIndex = 0;
+    }
+
+    private void SelectMicrophoneByName(string name)
+    {
+        foreach (System.Windows.Controls.ComboBoxItem item in MicrophoneCombo.Items)
+        {
+            if (item.Content?.ToString() == name)
+            {
+                MicrophoneCombo.SelectedItem = item;
+                return;
+            }
+        }
+    }
+
+    private void MicrophoneCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (MicrophoneCombo.SelectedItem is System.Windows.Controls.ComboBoxItem item && item.Tag is int deviceNumber)
+        {
+            _audio.SetDevice(deviceNumber);
+            if (!_isLoading)
+                SaveSettings();
+        }
+    }
+
+    // ── VU Meter ─────────────────────────────────────────────────────────
+
+    private void OnAudioLevel(double level)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            var parent = (System.Windows.Controls.Border)VuMeterBar.Parent;
+            VuMeterBar.Width = level * parent.ActualWidth;
+        });
+    }
+
+    // ── Keywords ─────────────────────────────────────────────────────────
+
+    private void KeywordsBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoading)
+            SaveSettings();
+    }
+
+    // ── Autostart ────────────────────────────────────────────────────────
+
+    private void AutostartCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoading)
+        {
+            SetAutostart(AutostartCheck.IsChecked == true);
+            SaveSettings();
+        }
+    }
+
+    private static void SetAutostart(bool enable)
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(AutostartRegistryKey, writable: true);
+            if (key == null) return;
+
+            if (enable)
+            {
+                var exePath = Environment.ProcessPath ?? System.Reflection.Assembly.GetExecutingAssembly().Location;
+                key.SetValue(AutostartValueName, $"\"{exePath}\"");
+            }
+            else
+            {
+                key.DeleteValue(AutostartValueName, throwOnMissingValue: false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Autostart-Registrierung fehlgeschlagen");
+        }
+    }
+
+    private static bool IsAutostartEnabled()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(AutostartRegistryKey);
+            return key?.GetValue(AutostartValueName) != null;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     // ── Shortcut Recorder ────────────────────────────────────────────────
@@ -441,7 +568,11 @@ public partial class MainWindow : Window
 
         try
         {
-            _deepgram = new DeepgramService(apiKey, language);
+            var keywords = KeywordsBox.Text
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .ToArray();
+            _deepgram = new DeepgramService(apiKey, language, keywords.Length > 0 ? keywords : null);
             _deepgram.TranscriptReceived += OnTranscriptReceived;
             _deepgram.ErrorOccurred      += OnError;
             _deepgram.Disconnected       += OnDisconnected;
@@ -543,6 +674,7 @@ public partial class MainWindow : Window
 
         _interimText = "";
         InterimText.Text = "";
+        VuMeterBar.Width = 0;
 
         // Deepgram-Puffer flushen, damit letztes Transkript sofort kommt
         if (_deepgram is not null)

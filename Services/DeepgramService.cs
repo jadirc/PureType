@@ -15,6 +15,7 @@ public class DeepgramService : IAsyncDisposable
     private System.Timers.Timer? _keepAliveTimer;
     private readonly string _apiKey;
     private readonly string _language;
+    private readonly string[] _keywords;
 
     public event Action<string, bool>? TranscriptReceived;
     public event Action<string>? ErrorOccurred;
@@ -22,10 +23,11 @@ public class DeepgramService : IAsyncDisposable
 
     public bool IsConnected => _ws?.State == WebSocketState.Open;
 
-    public DeepgramService(string apiKey, string language = "de")
+    public DeepgramService(string apiKey, string language = "de", string[]? keywords = null)
     {
         _apiKey = apiKey;
         _language = language;
+        _keywords = keywords ?? Array.Empty<string>();
     }
 
     public async Task ConnectAsync()
@@ -34,7 +36,7 @@ public class DeepgramService : IAsyncDisposable
         _ws = new ClientWebSocket();
         _ws.Options.SetRequestHeader("Authorization", $"Token {_apiKey}");
 
-        var uri = new Uri(
+        var uriBuilder =
             $"wss://api.deepgram.com/v1/listen" +
             $"?encoding=linear16" +
             $"&sample_rate=16000" +
@@ -43,7 +45,15 @@ public class DeepgramService : IAsyncDisposable
             $"&language={_language}" +
             $"&smart_format=true" +
             $"&interim_results=true" +
-            $"&punctuate=true");
+            $"&punctuate=true";
+
+        foreach (var kw in _keywords)
+        {
+            if (!string.IsNullOrWhiteSpace(kw))
+                uriBuilder += $"&keywords={Uri.EscapeDataString(kw.Trim())}";
+        }
+
+        var uri = new Uri(uriBuilder);
 
         await _ws.ConnectAsync(uri, _cts.Token);
 
