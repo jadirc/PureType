@@ -5,8 +5,8 @@ using System.Text.Json;
 namespace VoiceDictation.Services;
 
 /// <summary>
-/// Verbindet sich mit der Deepgram Streaming-API via WebSocket
-/// und liefert erkannte Transkripte per Event.
+/// Connects to the Deepgram Streaming API via WebSocket
+/// and delivers recognized transcripts via events.
 /// </summary>
 public class DeepgramService : ITranscriptionProvider
 {
@@ -57,17 +57,17 @@ public class DeepgramService : ITranscriptionProvider
 
         await _ws.ConnectAsync(uri, _cts.Token);
 
-        // KeepAlive alle 8 Sekunden senden (Deepgram Idle-Timeout verhindern)
+        // Send KeepAlive every 8 seconds (prevent Deepgram idle timeout)
         _keepAliveTimer = new System.Timers.Timer(8000);
         _keepAliveTimer.Elapsed += async (_, _) => await SendKeepAliveAsync();
         _keepAliveTimer.Start();
 
-        // Empfangs-Loop im Hintergrund starten
+        // Start receive loop in background
         _ = Task.Run(ReceiveLoopAsync);
     }
 
     /// <summary>
-    /// Sendet rohe PCM-16 Audiodaten (16kHz, Mono) an Deepgram.
+    /// Sends raw PCM-16 audio data (16kHz, Mono) to Deepgram.
     /// </summary>
     public async Task SendAudioAsync(byte[] audioData)
     {
@@ -82,7 +82,7 @@ public class DeepgramService : ITranscriptionProvider
         }
         catch (Exception ex)
         {
-            ErrorOccurred?.Invoke($"Sende-Fehler: {ex.Message}");
+            ErrorOccurred?.Invoke($"Send error: {ex.Message}");
         }
     }
 
@@ -93,8 +93,8 @@ public class DeepgramService : ITranscriptionProvider
         Encoding.UTF8.GetBytes("{\"type\":\"Finalize\"}");
 
     /// <summary>
-    /// Signalisiert Deepgram, gepufferte Audiodaten sofort zu transkribieren.
-    /// Wichtig für Push-to-Talk: beim Loslassen aufrufen.
+    /// Signals Deepgram to immediately transcribe buffered audio data.
+    /// Important for Push-to-Talk: call on key release.
     /// </summary>
     public async Task SendFinalizeAsync()
     {
@@ -107,7 +107,7 @@ public class DeepgramService : ITranscriptionProvider
                 endOfMessage: true,
                 _cts?.Token ?? CancellationToken.None);
         }
-        catch { /* ignorieren */ }
+        catch { /* ignore */ }
     }
 
     private async Task SendKeepAliveAsync()
@@ -121,7 +121,7 @@ public class DeepgramService : ITranscriptionProvider
                 endOfMessage: true,
                 _cts?.Token ?? CancellationToken.None);
         }
-        catch { /* ignorieren – ReceiveLoop erkennt Disconnect */ }
+        catch { /* ignore — ReceiveLoop detects disconnect */ }
     }
 
     private async Task ReceiveLoopAsync()
@@ -149,7 +149,7 @@ public class DeepgramService : ITranscriptionProvider
                 }
             }
         }
-        catch (OperationCanceledException) { /* normal beim Stoppen */ }
+        catch (OperationCanceledException) { /* normal when stopping */ }
         catch (Exception ex)
         {
             ErrorOccurred?.Invoke(ex.Message);
@@ -167,7 +167,7 @@ public class DeepgramService : ITranscriptionProvider
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            // Deepgram Antwortformat: channel.alternatives[0].transcript
+            // Deepgram response format: channel.alternatives[0].transcript
             if (!root.TryGetProperty("channel", out var channel)) return;
             if (!channel.TryGetProperty("alternatives", out var alts)) return;
             if (alts.GetArrayLength() == 0) return;
@@ -177,7 +177,7 @@ public class DeepgramService : ITranscriptionProvider
             if (!string.IsNullOrWhiteSpace(transcript))
                 TranscriptReceived?.Invoke(transcript.Trim(), isFinal);
         }
-        catch { /* ungültiges JSON ignorieren */ }
+        catch { /* ignore invalid JSON */ }
     }
 
     public async ValueTask DisposeAsync()
@@ -194,7 +194,7 @@ public class DeepgramService : ITranscriptionProvider
                     "Closing",
                     CancellationToken.None);
             }
-            catch { /* ignorieren beim Dispose */ }
+            catch { /* ignore during Dispose */ }
         }
         _ws?.Dispose();
         _cts?.Dispose();

@@ -53,7 +53,7 @@ public static class WhisperModelManager
         {
             try
             {
-                Log.Information("Downloading Whisper model {Model} (Versuch {Attempt}/{Max})", modelName, attempt, maxRetries);
+                Log.Information("Downloading Whisper model {Model} (attempt {Attempt}/{Max})", modelName, attempt, maxRetries);
 
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromMinutes(30);
@@ -87,7 +87,7 @@ public static class WhisperModelManager
             }
             catch (Exception ex) when (attempt < maxRetries)
             {
-                Log.Warning(ex, "Download-Versuch {Attempt} fehlgeschlagen, erneuter Versuch in 2s", attempt);
+                Log.Warning(ex, "Download attempt {Attempt} failed, retrying in 2s", attempt);
                 try { File.Delete(tempPath); } catch { /* ignore */ }
                 await Task.Delay(2000, ct);
                 onProgress?.Invoke(0);

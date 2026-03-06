@@ -33,7 +33,7 @@ public class WhisperService : ITranscriptionProvider
     {
         var modelPath = WhisperModelManager.GetModelPath(_modelName);
         if (!File.Exists(modelPath))
-            throw new FileNotFoundException($"Whisper-Modell nicht gefunden: {modelPath}. Bitte zuerst herunterladen.");
+            throw new FileNotFoundException($"Whisper model not found: {modelPath}. Please download it first.");
 
         await Task.Run(() =>
         {
@@ -46,7 +46,7 @@ public class WhisperService : ITranscriptionProvider
         });
 
         _connected = true;
-        Log.Information("Whisper-Engine geladen: Modell={Model}, Sprache={Language}", _modelName, _language);
+        Log.Information("Whisper engine loaded: Model={Model}, Language={Language}", _modelName, _language);
     }
 
     public Task SendAudioAsync(byte[] audioData)
@@ -101,8 +101,8 @@ public class WhisperService : ITranscriptionProvider
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Whisper-Transkription fehlgeschlagen");
-            ErrorOccurred?.Invoke($"Whisper-Fehler: {ex.Message}");
+            Log.Error(ex, "Whisper transcription failed");
+            ErrorOccurred?.Invoke($"Whisper error: {ex.Message}");
         }
     }
 

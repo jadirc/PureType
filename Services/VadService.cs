@@ -43,7 +43,7 @@ public class VadService
         }
         else if (DateTime.UtcNow - _lastSpeechTime > _silenceTimeout)
         {
-            Log.Debug("VAD: Stille erkannt nach {Seconds}s", _silenceTimeout.TotalSeconds);
+            Log.Debug("VAD: Silence detected after {Seconds}s", _silenceTimeout.TotalSeconds);
             SilenceDetected?.Invoke();
             _lastSpeechTime = DateTime.UtcNow; // prevent repeated firing
         }

@@ -23,13 +23,13 @@ public partial class MainWindow : Window
     private readonly KeyboardHookService _keyboardHook = new();
 
 
-    // Shortcut-Einstellungen (Defaults)
+    // Shortcut settings (defaults)
     private Key _toggleKey = Key.F9;
     private ModifierKeys _toggleModifiers = ModifierKeys.None;
     private Key _pttKey = Key.RightCtrl;
     private ModifierKeys _pttModifiers = ModifierKeys.None;
 
-    // ── Zustand ───────────────────────────────────────────────────────────
+    // ── State ────────────────────────────────────────────────────────────
     private bool _connected;
     private bool _recording;
     private bool _isPttMode;
@@ -43,12 +43,12 @@ public partial class MainWindow : Window
     private const string AutostartRegistryKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
     private const string AutostartValueName = "VoiceDictation";
 
-    // Pfad zur Einstellungs-Datei (API-Key speichern)
+    // Path to settings file (stores API key)
     private static readonly string SettingsPath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                      "VoiceDictation", "settings.txt");
 
-    // ── Farben ────────────────────────────────────────────────────────────
+    // ── Colors ────────────────────────────────────────────────────────────
     private static readonly SolidColorBrush Red    = new(Color.FromRgb(0xF3, 0x8B, 0xA8));
     private static readonly SolidColorBrush Green  = new(Color.FromRgb(0xA6, 0xE3, 0xA1));
     private static readonly SolidColorBrush Yellow = new(Color.FromRgb(0xF9, 0xE2, 0xAF));
@@ -72,7 +72,7 @@ public partial class MainWindow : Window
 
         UiSink.SetCallback(_logWindow.AppendLog);
 
-        Log.Information("VoiceDictation gestartet");
+        Log.Information("VoiceDictation started");
 
         SetupTrayIcon();
         LoadSettings();
@@ -100,12 +100,12 @@ public partial class MainWindow : Window
         _keyboardHook.PttKeyDown += OnPttKeyDown;
         _keyboardHook.PttKeyUp += OnPttKeyUp;
 
-        // Auto-connect nach Start (unabhängig von Fenster-Sichtbarkeit)
+        // Auto-connect on startup (independent of window visibility)
         var autoProvider = (ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
         if (autoProvider == "whisper" || !string.IsNullOrWhiteSpace(ApiKeyBox.Password))
             Dispatcher.BeginInvoke(async () => await ConnectAsync());
 
-        // Fenster anzeigen wenn "Minimiert starten" nicht angehakt
+        // Show window if "Start minimized" is not checked
         if (StartMinimizedCheck.IsChecked != true)
             Dispatcher.BeginInvoke(() => ShowFromTray());
     }
@@ -182,7 +182,7 @@ public partial class MainWindow : Window
             }
         }
 
-        // UI-Felder direkt setzen (Controls existieren nach InitializeComponent)
+        // Set UI fields directly (controls exist after InitializeComponent)
         ToggleShortcutBox.Text = FormatShortcut(_toggleModifiers, _toggleKey);
         PttShortcutBox.Text = FormatShortcut(_pttModifiers, _pttKey);
         AutostartCheck.IsChecked = IsAutostartEnabled();
@@ -356,7 +356,7 @@ public partial class MainWindow : Window
         SaveSettings();
     }
 
-    // ── Mikrofon ──────────────────────────────────────────────────────────
+    // ── Microphone ────────────────────────────────────────────────────────
 
     private void PopulateMicrophones()
     {
@@ -416,7 +416,7 @@ public partial class MainWindow : Window
             SaveSettings();
     }
 
-    // ── Provider / Whisper Modell ────────────────────────────────────────
+    // ── Provider / Whisper Model ────────────────────────────────────────
 
     private void PopulateWhisperModels()
     {
@@ -524,7 +524,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "Autostart-Registrierung fehlgeschlagen");
+            Log.Warning(ex, "Autostart registration failed");
         }
     }
 
@@ -650,7 +650,7 @@ public partial class MainWindow : Window
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         SaveSettings();
-        Log.Information("Anwendung wird beendet");
+        Log.Information("Application shutting down");
         _trayIcon?.Dispose();
         _ = DisconnectAsync();
         _keyboardHook.Dispose();
@@ -723,11 +723,11 @@ public partial class MainWindow : Window
             ConnectButton.Content = "Trennen";
             ConnectButton.Background = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
             SaveSettings();
-            Log.Information("{Provider} verbunden (Sprache: {Language})", label, language);
+            Log.Information("{Provider} connected (Language: {Language})", label, language);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Verbindung fehlgeschlagen");
+            Log.Error(ex, "Connection failed");
             SetStatus("Verbindung fehlgeschlagen", Red);
             MessageBox.Show($"Fehler:\n{ex.Message}", "Verbindungsfehler",
                 MessageBoxButton.OK, MessageBoxImage.Error);
@@ -753,7 +753,7 @@ public partial class MainWindow : Window
         SetStatus("Nicht verbunden", Red);
         ConnectButton.Content    = "Verbinden";
         ConnectButton.Background = Blue;
-        Log.Information("Provider getrennt");
+        Log.Information("Provider disconnected");
     }
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
@@ -765,7 +765,7 @@ public partial class MainWindow : Window
         _keyboardHook.Install();
     }
 
-    // ── Toggle-Modus ──────────────────────────────────────────────────────
+    // ── Toggle Mode ───────────────────────────────────────────────────────
 
     private void OnToggleHotkey()
     {
@@ -791,7 +791,7 @@ public partial class MainWindow : Window
         Dispatcher.Invoke(StopRecording);
     }
 
-    // ── Aufnahme starten/stoppen ──────────────────────────────────────────
+    // ── Start/Stop Recording ───────────────────────────────────────────────
 
     private void StartRecording()
     {
@@ -820,7 +820,7 @@ public partial class MainWindow : Window
         InterimText.Text = "";
         VuMeterBar.Width = 0;
 
-        // Provider-Puffer flushen, damit letztes Transkript sofort kommt
+        // Flush provider buffer so the last transcript arrives immediately
         if (_provider is not null)
             await _provider.SendFinalizeAsync();
 
@@ -830,7 +830,7 @@ public partial class MainWindow : Window
             SetStatus("Verbunden – bereit", Green);
     }
 
-    // ── Audio → Provider ──────────────────────────────────────────────────
+    // ── Audio → Provider ───────────────────────────────────────────────────
 
     private async void OnAudioData(byte[] chunk)
     {
@@ -839,7 +839,7 @@ public partial class MainWindow : Window
         _vad?.ProcessAudio(chunk);
     }
 
-    // ── Transkript erhalten ───────────────────────────────────────────────
+    // ── Transcript Received ────────────────────────────────────────────────
 
     private void OnTranscriptReceived(string text, bool isFinal)
     {
@@ -856,7 +856,7 @@ public partial class MainWindow : Window
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Fehler bei Textinjektion");
+                    Log.Error(ex, "Text injection error");
                 }
             }
             else
@@ -874,7 +874,7 @@ public partial class MainWindow : Window
         if (current == "Hier erscheint das erkannte Transkript …")
             current = "";
 
-        // Letzte ~500 Zeichen behalten
+        // Keep last ~500 characters
         var newText = (current + text + " ").TrimStart();
         if (newText.Length > 500)
             newText = newText[^500..];
@@ -883,7 +883,7 @@ public partial class MainWindow : Window
         TranscriptScroll.ScrollToBottom();
     }
 
-    // ── Fehler / Disconnect ───────────────────────────────────────────────
+    // ── Error / Disconnect ─────────────────────────────────────────────────
 
     private void OnError(string message) =>
         Dispatcher.Invoke(() => SetStatus($"Fehler: {message}", Red));
@@ -891,7 +891,7 @@ public partial class MainWindow : Window
     private void OnDisconnected() =>
         Dispatcher.Invoke(async () =>
         {
-            if (_connected) // unerwartet getrennt
+            if (_connected) // unexpectedly disconnected
                 await DisconnectAsync();
         });
 
@@ -941,7 +941,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // ── Hilfsfunktionen ───────────────────────────────────────────────────
+    // ── Helper Functions ──────────────────────────────────────────────────
 
     private void SetStatus(string text, SolidColorBrush color)
     {

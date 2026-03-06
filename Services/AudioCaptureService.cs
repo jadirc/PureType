@@ -3,8 +3,8 @@ using NAudio.Wave;
 namespace VoiceDictation.Services;
 
 /// <summary>
-/// Nimmt Mikrofon-Audio mit NAudio auf (16kHz, 16bit, Mono)
-/// und liefert PCM-Chunks per Event.
+/// Captures microphone audio using NAudio (16kHz, 16bit, Mono)
+/// and delivers PCM chunks via event.
 /// </summary>
 public class AudioCaptureService : IDisposable
 {
@@ -13,16 +13,16 @@ public class AudioCaptureService : IDisposable
     private bool _initialized;
     private int _deviceNumber;
 
-    /// <summary>Wird ausgelöst wenn neue Audiodaten verfügbar sind.</summary>
+    /// <summary>Fired when new audio data is available.</summary>
     public event Action<byte[]>? AudioDataAvailable;
 
-    /// <summary>Wird mit dem aktuellen Audio-Pegel (0.0–1.0) ausgelöst.</summary>
+    /// <summary>Fired with current audio level (0.0-1.0).</summary>
     public event Action<double>? AudioLevelChanged;
 
     public bool IsRunning => _isRunning;
 
     /// <summary>
-    /// Gibt eine Liste aller verfügbaren Aufnahmegeräte zurück.
+    /// Returns a list of all available recording devices.
     /// </summary>
     public static List<(int Number, string Name)> GetDevices()
     {
@@ -36,7 +36,7 @@ public class AudioCaptureService : IDisposable
     }
 
     /// <summary>
-    /// Setzt das Aufnahmegerät. Erfordert erneutes Initialize().
+    /// Sets the recording device. Requires re-initialization.
     /// </summary>
     public void SetDevice(int deviceNumber)
     {
@@ -51,8 +51,8 @@ public class AudioCaptureService : IDisposable
     }
 
     /// <summary>
-    /// Erstellt das Audio-Device einmalig. Kann mehrfach Start/Stop aufrufen
-    /// ohne das Device jedes Mal neu zu öffnen.
+    /// Initializes the audio device once. Supports multiple Start/Stop cycles
+    /// without reopening the device.
     /// </summary>
     public void Initialize()
     {
@@ -99,7 +99,7 @@ public class AudioCaptureService : IDisposable
         Array.Copy(e.Buffer, chunk, e.BytesRecorded);
         AudioDataAvailable?.Invoke(chunk);
 
-        // RMS-Pegel berechnen und melden
+        // Calculate and report RMS level
         double sumSquares = 0;
         int sampleCount = e.BytesRecorded / 2;
         for (int i = 0; i < e.BytesRecorded - 1; i += 2)
