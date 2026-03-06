@@ -820,6 +820,11 @@ public partial class MainWindow : Window
         _audio.Start();
         SetStatus("● Recording", Red);
 
+        // Add separator between recording sessions in transcript
+        var current = TranscriptText.Text;
+        if (!string.IsNullOrEmpty(current) && current != "Transcript will appear here …")
+            TranscriptText.Text = current + "\n────────────────────\n";
+
         if (VadCheck.IsChecked == true)
         {
             _vad = new VadService();
@@ -894,7 +899,7 @@ public partial class MainWindow : Window
             current = "";
 
         // Keep last ~500 characters
-        var newText = (current + text + " ").TrimStart();
+        var newText = (current + text).TrimStart();
         if (newText.Length > 500)
             newText = newText[^500..];
 
