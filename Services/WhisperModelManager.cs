@@ -36,6 +36,8 @@ public static class WhisperModelManager
 
     public static async Task DownloadModelAsync(string modelName, Action<double>? onProgress = null, CancellationToken ct = default)
     {
+        const int maxRetries = 3;
+
         Directory.CreateDirectory(ModelsDir);
 
         var model = AvailableModels.FirstOrDefault(m => m.Name == modelName);
@@ -44,29 +46,52 @@ public static class WhisperModelManager
         var targetPath = Path.Combine(ModelsDir, fileName);
         var tempPath = targetPath + ".tmp";
 
-        Log.Information("Downloading Whisper model {Model} from {Url}", modelName, url);
+        // Clean up leftover temp file from previous failed attempt
+        try { File.Delete(tempPath); } catch { /* ignore */ }
 
-        using var http = new HttpClient();
-        using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
-        response.EnsureSuccessStatusCode();
-
-        var totalBytes = response.Content.Headers.ContentLength ?? -1;
-        long downloaded = 0;
-
-        await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920);
-        await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
-
-        var buffer = new byte[81920];
-        int bytesRead;
-        while ((bytesRead = await contentStream.ReadAsync(buffer, ct)) > 0)
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
-            downloaded += bytesRead;
-            if (totalBytes > 0)
-                onProgress?.Invoke((double)downloaded / totalBytes);
-        }
+            try
+            {
+                Log.Information("Downloading Whisper model {Model} (Versuch {Attempt}/{Max})", modelName, attempt, maxRetries);
 
-        File.Move(tempPath, targetPath, overwrite: true);
-        Log.Information("Whisper model {Model} downloaded ({Bytes} bytes)", modelName, downloaded);
+                using var http = new HttpClient();
+                http.Timeout = TimeSpan.FromMinutes(30);
+                using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+                response.EnsureSuccessStatusCode();
+
+                var totalBytes = response.Content.Headers.ContentLength ?? -1;
+                long downloaded = 0;
+
+                await using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite, 81920))
+                await using (var contentStream = await response.Content.ReadAsStreamAsync(ct))
+                {
+                    var buffer = new byte[81920];
+                    int bytesRead;
+                    while ((bytesRead = await contentStream.ReadAsync(buffer, ct)) > 0)
+                    {
+                        await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
+                        downloaded += bytesRead;
+                        if (totalBytes > 0)
+                            onProgress?.Invoke((double)downloaded / totalBytes);
+                    }
+                }
+
+                File.Move(tempPath, targetPath, overwrite: true);
+                Log.Information("Whisper model {Model} downloaded ({Bytes} bytes)", modelName, downloaded);
+                return; // success
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // don't retry on cancellation
+            }
+            catch (Exception ex) when (attempt < maxRetries)
+            {
+                Log.Warning(ex, "Download-Versuch {Attempt} fehlgeschlagen, erneuter Versuch in 2s", attempt);
+                try { File.Delete(tempPath); } catch { /* ignore */ }
+                await Task.Delay(2000, ct);
+                onProgress?.Invoke(0);
+            }
+        }
     }
 }

@@ -73,7 +73,15 @@ public class AudioCaptureService : IDisposable
     {
         if (_isRunning) return;
         if (!_initialized) Initialize();
-        _waveIn!.StartRecording();
+        try
+        {
+            _waveIn!.StartRecording();
+        }
+        catch (InvalidOperationException)
+        {
+            // NAudio may still be in recording state internally — ignore
+            return;
+        }
         _isRunning = true;
     }
 
