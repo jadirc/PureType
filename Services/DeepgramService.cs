@@ -8,7 +8,7 @@ namespace VoiceDictation.Services;
 /// Verbindet sich mit der Deepgram Streaming-API via WebSocket
 /// und liefert erkannte Transkripte per Event.
 /// </summary>
-public class DeepgramService : IAsyncDisposable
+public class DeepgramService : ITranscriptionProvider
 {
     private ClientWebSocket? _ws;
     private CancellationTokenSource? _cts;
