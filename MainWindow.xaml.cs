@@ -868,7 +868,7 @@ public partial class MainWindow : Window
         if (!string.IsNullOrEmpty(current) && current != "Transcript will appear here …")
             TranscriptText.Text = current + "\n────────────────────\n";
 
-        if (VadCheck.IsChecked == true)
+        if (VadCheck.IsChecked == true && _recordingSource == RecordingSource.Toggle)
         {
             _vad = new VadService();
             _vad.SilenceDetected += () => Dispatcher.Invoke(StopRecording);

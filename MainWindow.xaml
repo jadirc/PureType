@@ -186,10 +186,13 @@
                               VerticalScrollBarVisibility="Auto"
                               Padding="10,4,10,10">
                     <StackPanel>
-                        <TextBlock x:Name="TranscriptText"
-                                   Foreground="#A6E3A1" FontSize="13"
-                                   TextWrapping="Wrap" LineHeight="20"
-                                   Text="Transcript will appear here …"/>
+                        <TextBox x:Name="TranscriptText"
+                                 Foreground="#A6E3A1" FontSize="13"
+                                 TextWrapping="Wrap"
+                                 Text="Transcript will appear here …"
+                                 IsReadOnly="True" BorderThickness="0"
+                                 Background="Transparent" Padding="0"
+                                 IsTabStop="False"/>
                         <TextBlock x:Name="InterimText"
                                    Foreground="#6C7086" FontStyle="Italic" FontSize="13"
                                    TextWrapping="Wrap" LineHeight="20"/>
