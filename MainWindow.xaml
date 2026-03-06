@@ -130,7 +130,9 @@
             <RowDefinition Height="12"/>
             <RowDefinition Height="Auto"/>  <!-- Row 28: Autostart -->
             <RowDefinition Height="4"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 30: VAD -->
+            <RowDefinition Height="Auto"/>  <!-- Row 30: Start minimiert -->
+            <RowDefinition Height="4"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 32: VAD -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
@@ -344,8 +346,16 @@
                   Checked="AutostartCheck_Changed"
                   Unchecked="AutostartCheck_Changed"/>
 
+        <!-- Start minimiert -->
+        <CheckBox Grid.Row="30" x:Name="StartMinimizedCheck"
+                  Content="  Minimiert starten"
+                  Foreground="#CDD6F4" FontSize="12"
+                  Margin="0,4,0,0"
+                  Checked="StartMinimizedCheck_Changed"
+                  Unchecked="StartMinimizedCheck_Changed"/>
+
         <!-- VAD Auto-Stop -->
-        <CheckBox Grid.Row="30" x:Name="VadCheck"
+        <CheckBox Grid.Row="32" x:Name="VadCheck"
                   Content="  Auto-Stop bei Stille (3s)"
                   Foreground="#CDD6F4" FontSize="12"
                   Margin="0,4,0,0"

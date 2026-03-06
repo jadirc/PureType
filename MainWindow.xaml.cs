@@ -104,6 +104,10 @@ public partial class MainWindow : Window
         var autoProvider = (ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
         if (autoProvider == "whisper" || !string.IsNullOrWhiteSpace(ApiKeyBox.Password))
             Dispatcher.BeginInvoke(async () => await ConnectAsync());
+
+        // Fenster anzeigen wenn "Minimiert starten" nicht angehakt
+        if (StartMinimizedCheck.IsChecked != true)
+            Dispatcher.BeginInvoke(() => ShowFromTray());
     }
 
     private void LoadSettings()
@@ -159,6 +163,9 @@ public partial class MainWindow : Window
                     break;
                 case "vad":
                     VadCheck.IsChecked = value.Equals("True", StringComparison.OrdinalIgnoreCase);
+                    break;
+                case "start_minimized":
+                    StartMinimizedCheck.IsChecked = value.Equals("True", StringComparison.OrdinalIgnoreCase);
                     break;
                 case "left":
                     if (double.TryParse(value, out var left)) { Left = left; hasPosition = true; }
@@ -258,6 +265,7 @@ public partial class MainWindow : Window
             $"provider={(string)(providerItem?.Tag ?? "deepgram")}",
             $"whisper_model={(string)(whisperModelItem?.Tag ?? "tiny")}",
             $"vad={VadCheck.IsChecked == true}",
+            $"start_minimized={StartMinimizedCheck.IsChecked == true}",
             $"left={Left}",
             $"top={Top}",
             $"width={Width}",
@@ -489,6 +497,12 @@ public partial class MainWindow : Window
             SetAutostart(AutostartCheck.IsChecked == true);
             SaveSettings();
         }
+    }
+
+    private void StartMinimizedCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoading)
+            SaveSettings();
     }
 
     private static void SetAutostart(bool enable)
