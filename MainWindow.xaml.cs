@@ -870,6 +870,7 @@ public partial class MainWindow : Window
         SoundFeedback.PlayStart();
         _audio.Start();
         SetStatus("● Recording", Red);
+        ToastWindow.ShowToast("Recording started", true);
 
         // Add separator between recording sessions in transcript
         var current = TranscriptText.Text;
@@ -901,6 +902,7 @@ public partial class MainWindow : Window
             await _provider.SendFinalizeAsync();
 
         SoundFeedback.PlayStop();
+        ToastWindow.ShowToast("Recording stopped", false);
 
         if (_connected)
             SetStatus("Connected – ready", Green);
