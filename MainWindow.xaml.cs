@@ -24,6 +24,9 @@ public partial class MainWindow : Window
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
     private readonly KeyboardHookService _keyboardHook = new();
+    private readonly ReplacementService _replacements = new(
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                     "VoiceDictation", "replacements.txt"));
 
 
     // Shortcut settings (defaults)
@@ -706,6 +709,7 @@ public partial class MainWindow : Window
         _ = DisconnectAsync();
         _keyboardHook.Dispose();
         _audio.Dispose();
+        _replacements.Dispose();
         Application.Current.Shutdown();
         Log.CloseAndFlush();
     }
@@ -929,10 +933,11 @@ public partial class MainWindow : Window
             {
                 _interimText = "";
                 InterimText.Text = "";
-                AppendTranscript(text);
+                var processed = _replacements.Apply(text);
+                AppendTranscript(processed);
                 try
                 {
-                    await KeyboardInjector.TypeTextAsync(text);
+                    await KeyboardInjector.TypeTextAsync(processed);
                 }
                 catch (Exception ex)
                 {
