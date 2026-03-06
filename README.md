@@ -35,13 +35,19 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 - **Auto-connect** — Reconnects automatically on startup if an API key is saved
 - **Dark UI** — Catppuccin Mocha-inspired dark theme
 
+## Important Notes
+
+> **Local Whisper mode currently requires an NVIDIA GPU with CUDA support.** CPU-only inference is not yet supported. Make sure you have up-to-date [NVIDIA drivers](https://www.nvidia.com/drivers) with CUDA installed.
+
+> **Deepgram (cloud mode)** requires a [Deepgram account](https://console.deepgram.com/). A free tier is available, but usage beyond the free quota will incur costs. See [Deepgram pricing](https://deepgram.com/pricing) for details.
+
 ## Prerequisites
 
 - **Windows 10/11**
 - [**.NET 8 SDK**](https://dotnet.microsoft.com/download/dotnet/8.0) or later
-- A [**Deepgram API key**](https://console.deepgram.com/) (free tier available) — only needed for cloud mode
-- For local Whisper mode: GGML models are downloaded automatically on first use (~150 MB–1.5 GB depending on model size)
-- For CUDA GPU acceleration: a compatible NVIDIA GPU with CUDA drivers
+- **For Whisper (local):** NVIDIA GPU with CUDA drivers (required)
+- **For Deepgram (cloud):** A [Deepgram API key](https://console.deepgram.com/) (free tier available, pay-as-you-go beyond that)
+- Whisper GGML models are downloaded automatically on first use (~150 MB–1.5 GB depending on model size)
 
 ## Download
 
