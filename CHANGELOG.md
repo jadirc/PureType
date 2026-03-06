@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 1.0.0 (2026-03-06)
+
+
+### Bug Fixes
+
+* correct GitHub username in README URLs ([df762f5](https://github.com/jadirc/VoiceDictation/commit/df762f5541c8297a2e2802d5c0901656c02cc1cb))
+
 ## [0.1.0] - 2026-03-05
 
 ### Added
