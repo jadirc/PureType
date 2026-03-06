@@ -106,25 +106,29 @@
             <RowDefinition Height="8"/>
             <RowDefinition Height="*"/>     <!-- Row 4: Transkript -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 6: API Key -->
+            <RowDefinition Height="Auto"/>  <!-- Row 6: Provider -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 8: Mikrofon -->
+            <RowDefinition Height="Auto"/>  <!-- Row 8: Whisper Modell -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 10: Keywords -->
+            <RowDefinition Height="Auto"/>  <!-- Row 10: API Key -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 12: Sprache -->
+            <RowDefinition Height="Auto"/>  <!-- Row 12: Mikrofon -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 14: Modus -->
+            <RowDefinition Height="Auto"/>  <!-- Row 14: Keywords -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 16: Toggle Shortcut -->
+            <RowDefinition Height="Auto"/>  <!-- Row 16: Sprache -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 18: PTT Shortcut -->
+            <RowDefinition Height="Auto"/>  <!-- Row 18: Modus -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 20: Signalton -->
+            <RowDefinition Height="Auto"/>  <!-- Row 20: Toggle Shortcut -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 22: Hotkey Info -->
+            <RowDefinition Height="Auto"/>  <!-- Row 22: PTT Shortcut -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 24: Autostart -->
+            <RowDefinition Height="Auto"/>  <!-- Row 24: Signalton -->
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 26: Hotkey Info -->
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 28: Autostart -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
@@ -190,8 +194,41 @@
             </Grid>
         </Border>
 
-        <!-- API Key -->
+        <!-- Provider -->
         <StackPanel Grid.Row="6">
+            <TextBlock Text="PROVIDER" Foreground="#BAC2DE"
+                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <ComboBox x:Name="ProviderCombo" Padding="10,7" FontSize="13"
+                      SelectionChanged="ProviderCombo_SelectionChanged">
+                <ComboBoxItem Content="Deepgram (Cloud)" Tag="deepgram" IsSelected="True"/>
+                <ComboBoxItem Content="Whisper (Lokal)" Tag="whisper"/>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- Whisper Modell -->
+        <StackPanel Grid.Row="8" x:Name="WhisperModelPanel" Visibility="Collapsed">
+            <TextBlock Text="WHISPER MODELL" Foreground="#BAC2DE"
+                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <ComboBox x:Name="WhisperModelCombo" Grid.Column="0" Padding="10,7" FontSize="13"/>
+                <Button x:Name="DownloadModelButton" Grid.Column="1" Content="DL"
+                        Click="DownloadModelButton_Click"
+                        Background="#89B4FA" Foreground="#1E1E2E"
+                        FontWeight="SemiBold" FontSize="12"
+                        BorderThickness="0" Padding="10,7" Margin="6,0,0,0"
+                        Cursor="Hand" ToolTip="Modell herunterladen"/>
+            </Grid>
+            <ProgressBar x:Name="DownloadProgress" Height="4" Margin="0,6,0,0"
+                         Visibility="Collapsed" Minimum="0" Maximum="100"
+                         Background="#181825" Foreground="#A6E3A1"/>
+        </StackPanel>
+
+        <!-- API Key -->
+        <StackPanel Grid.Row="10">
             <TextBlock Text="DEEPGRAM API KEY" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <PasswordBox x:Name="ApiKeyBox"
@@ -203,7 +240,7 @@
         </StackPanel>
 
         <!-- Mikrofon -->
-        <StackPanel Grid.Row="8">
+        <StackPanel Grid.Row="12">
             <TextBlock Text="MIKROFON" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="MicrophoneCombo" Padding="10,7" FontSize="13"
@@ -211,7 +248,7 @@
         </StackPanel>
 
         <!-- Keywords (Boost) -->
-        <StackPanel Grid.Row="10">
+        <StackPanel Grid.Row="14">
             <TextBlock Text="KEYWORDS (Boost)" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <TextBox x:Name="KeywordsBox"
@@ -223,7 +260,7 @@
         </StackPanel>
 
         <!-- Sprache -->
-        <StackPanel Grid.Row="12">
+        <StackPanel Grid.Row="16">
             <TextBlock Text="SPRACHE" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="LanguageCombo" Padding="10,7" FontSize="13"
@@ -235,7 +272,7 @@
         </StackPanel>
 
         <!-- Modus -->
-        <StackPanel Grid.Row="14">
+        <StackPanel Grid.Row="18">
             <TextBlock Text="MODUS" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="ModeCombo" Padding="10,7" FontSize="13"
@@ -246,7 +283,7 @@
         </StackPanel>
 
         <!-- Toggle Shortcut -->
-        <StackPanel Grid.Row="16">
+        <StackPanel Grid.Row="20">
             <TextBlock Text="TOGGLE SHORTCUT" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <TextBox x:Name="ToggleShortcutBox"
@@ -261,7 +298,7 @@
         </StackPanel>
 
         <!-- PTT Shortcut -->
-        <StackPanel Grid.Row="18">
+        <StackPanel Grid.Row="22">
             <TextBlock Text="PTT SHORTCUT" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <TextBox x:Name="PttShortcutBox"
@@ -276,7 +313,7 @@
         </StackPanel>
 
         <!-- Signalton -->
-        <StackPanel Grid.Row="20">
+        <StackPanel Grid.Row="24">
             <TextBlock Text="SIGNALTON" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="ToneCombo" Padding="10,7" FontSize="13"
@@ -291,7 +328,7 @@
         </StackPanel>
 
         <!-- Hotkey Info -->
-        <Border Grid.Row="22" Background="#181825" CornerRadius="6" Padding="10,7">
+        <Border Grid.Row="26" Background="#181825" CornerRadius="6" Padding="10,7">
             <TextBlock x:Name="HotkeyInfoText"
                        Text="F9 drücken um Aufnahme zu starten/stoppen"
                        Foreground="#89B4FA" FontSize="12" TextWrapping="Wrap"
@@ -299,7 +336,7 @@
         </Border>
 
         <!-- Autostart -->
-        <CheckBox Grid.Row="24" x:Name="AutostartCheck"
+        <CheckBox Grid.Row="28" x:Name="AutostartCheck"
                   Content="  Mit Windows starten"
                   Foreground="#CDD6F4" FontSize="12"
                   Checked="AutostartCheck_Changed"

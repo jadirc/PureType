@@ -13,7 +13,7 @@ namespace VoiceDictation;
 public partial class MainWindow : Window
 {
     // ── Services ──────────────────────────────────────────────────────────
-    private DeepgramService? _deepgram;
+    private ITranscriptionProvider? _provider;
     private readonly AudioCaptureService _audio = new();
     private readonly LogWindow _logWindow = new();
     private static readonly LogWindowSink UiSink = new();
@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private string _interimText = "";
     private bool _isLoading = true;
     private string? _savedMicrophoneDevice;
+    private string? _savedWhisperModel;
 
     // ── Autostart ────────────────────────────────────────────────────────
     private const string AutostartRegistryKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
@@ -82,6 +83,14 @@ public partial class MainWindow : Window
         _audio.AudioDataAvailable += OnAudioData;
         _audio.AudioLevelChanged += OnAudioLevel;
         PopulateMicrophones();
+        PopulateWhisperModels();
+        if (_savedWhisperModel != null)
+            SelectComboByTag(WhisperModelCombo, _savedWhisperModel);
+
+        var provItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        WhisperModelPanel.Visibility = (string?)provItem?.Tag == "whisper"
+            ? Visibility.Visible : Visibility.Collapsed;
+
         Loaded += (_, _) => ConnectButton.Focus();
 
         _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
@@ -91,7 +100,8 @@ public partial class MainWindow : Window
         _keyboardHook.PttKeyUp += OnPttKeyUp;
 
         // Auto-connect nach Start (unabhängig von Fenster-Sichtbarkeit)
-        if (!string.IsNullOrWhiteSpace(ApiKeyBox.Password))
+        var autoProvider = (ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+        if (autoProvider == "whisper" || !string.IsNullOrWhiteSpace(ApiKeyBox.Password))
             Dispatcher.BeginInvoke(async () => await ConnectAsync());
     }
 
@@ -139,6 +149,12 @@ public partial class MainWindow : Window
                     break;
                 case "keywords":
                     KeywordsBox.Text = value;
+                    break;
+                case "provider":
+                    SelectComboByTag(ProviderCombo, value);
+                    break;
+                case "whisper_model":
+                    _savedWhisperModel = value;
                     break;
                 case "left":
                     if (double.TryParse(value, out var left)) { Left = left; hasPosition = true; }
@@ -223,6 +239,8 @@ public partial class MainWindow : Window
         var modeItem = ModeCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var micItem = MicrophoneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var micName = micItem?.Content?.ToString() ?? "";
+        var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var whisperModelItem = WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var lines = new List<string>
         {
             ApiKeyBox.Password.Trim(),
@@ -233,6 +251,8 @@ public partial class MainWindow : Window
             $"tone={(string)((ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Sanft")}",
             $"microphone={micName}",
             $"keywords={KeywordsBox.Text.Trim()}",
+            $"provider={(string)(providerItem?.Tag ?? "deepgram")}",
+            $"whisper_model={(string)(whisperModelItem?.Tag ?? "tiny")}",
             $"left={Left}",
             $"top={Top}",
             $"width={Width}",
@@ -381,6 +401,72 @@ public partial class MainWindow : Window
     {
         if (!_isLoading)
             SaveSettings();
+    }
+
+    // ── Provider / Whisper Modell ────────────────────────────────────────
+
+    private void PopulateWhisperModels()
+    {
+        WhisperModelCombo.Items.Clear();
+        foreach (var (name, displayName, _) in WhisperModelManager.AvailableModels)
+        {
+            var suffix = WhisperModelManager.IsModelDownloaded(name) ? " [OK]" : "";
+            var item = new System.Windows.Controls.ComboBoxItem
+            {
+                Content = displayName + suffix,
+                Tag = name
+            };
+            WhisperModelCombo.Items.Add(item);
+        }
+        if (WhisperModelCombo.Items.Count > 0)
+            WhisperModelCombo.SelectedIndex = 0;
+    }
+
+    private void ProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isLoading || ProviderCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
+        var isWhisper = (string)item.Tag == "whisper";
+        WhisperModelPanel.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
+        if (!_isLoading)
+            SaveSettings();
+    }
+
+    private async void DownloadModelButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (WhisperModelCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
+        var modelName = (string)item.Tag;
+
+        if (WhisperModelManager.IsModelDownloaded(modelName))
+        {
+            MessageBox.Show("Modell ist bereits heruntergeladen.", "Info",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        DownloadModelButton.IsEnabled = false;
+        DownloadProgress.Visibility = Visibility.Visible;
+        DownloadProgress.Value = 0;
+
+        try
+        {
+            await WhisperModelManager.DownloadModelAsync(modelName,
+                progress => Dispatcher.Invoke(() => DownloadProgress.Value = progress * 100));
+
+            PopulateWhisperModels();
+            MessageBox.Show($"Modell '{modelName}' erfolgreich heruntergeladen.", "Fertig",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Model download failed");
+            MessageBox.Show($"Download fehlgeschlagen:\n{ex.Message}", "Fehler",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            DownloadModelButton.IsEnabled = true;
+            DownloadProgress.Visibility = Visibility.Collapsed;
+        }
     }
 
     // ── Autostart ────────────────────────────────────────────────────────
@@ -552,48 +638,73 @@ public partial class MainWindow : Window
 
     private async Task ConnectAsync()
     {
-        var apiKey = ApiKeyBox.Password.Trim();
-        if (string.IsNullOrEmpty(apiKey))
-        {
-            MessageBox.Show("Bitte einen Deepgram API Key eingeben.", "Fehler",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        var langItem = (System.Windows.Controls.ComboBoxItem)LanguageCombo.SelectedItem;
-        var language = (string)langItem.Tag;
+        var providerItem = (System.Windows.Controls.ComboBoxItem)ProviderCombo.SelectedItem;
+        var providerType = (string)providerItem.Tag;
 
         SetStatus("Verbinde …", Yellow);
         ConnectButton.IsEnabled = false;
 
         try
         {
-            var keywords = KeywordsBox.Text
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(k => !string.IsNullOrWhiteSpace(k))
-                .ToArray();
-            _deepgram = new DeepgramService(apiKey, language, keywords.Length > 0 ? keywords : null);
-            _deepgram.TranscriptReceived += OnTranscriptReceived;
-            _deepgram.ErrorOccurred      += OnError;
-            _deepgram.Disconnected       += OnDisconnected;
+            var langItem = (System.Windows.Controls.ComboBoxItem)LanguageCombo.SelectedItem;
+            var language = (string)langItem.Tag;
 
-            await _deepgram.ConnectAsync();
+            if (providerType == "whisper")
+            {
+                var modelItem = WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+                var modelName = (string)(modelItem?.Tag ?? "tiny");
+
+                if (!WhisperModelManager.IsModelDownloaded(modelName))
+                {
+                    MessageBox.Show("Bitte zuerst das Whisper-Modell herunterladen.", "Fehler",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ConnectButton.IsEnabled = true;
+                    SetStatus("Nicht verbunden", Red);
+                    return;
+                }
+
+                _provider = new WhisperService(modelName, language);
+            }
+            else
+            {
+                var apiKey = ApiKeyBox.Password.Trim();
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    MessageBox.Show("Bitte einen Deepgram API Key eingeben.", "Fehler",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ConnectButton.IsEnabled = true;
+                    SetStatus("Nicht verbunden", Red);
+                    return;
+                }
+                var keywords = KeywordsBox.Text
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(k => !string.IsNullOrWhiteSpace(k))
+                    .ToArray();
+                _provider = new DeepgramService(apiKey, language, keywords.Length > 0 ? keywords : null);
+            }
+
+            _provider.TranscriptReceived += OnTranscriptReceived;
+            _provider.ErrorOccurred += OnError;
+            _provider.Disconnected += OnDisconnected;
+
+            await _provider.ConnectAsync();
 
             _connected = true;
             _audio.Initialize();
             RegisterHotkeys();
 
-            SetStatus("Verbunden – bereit", Green);
+            var label = providerType == "whisper" ? "Whisper (lokal)" : "Deepgram";
+            SetStatus($"Verbunden - {label}", Green);
             ConnectButton.Content = "Trennen";
             ConnectButton.Background = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
             SaveSettings();
-            Log.Information("Deepgram verbunden (Sprache: {Language})", language);
+            Log.Information("{Provider} verbunden (Sprache: {Language})", label, language);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Deepgram-Verbindung fehlgeschlagen");
+            Log.Error(ex, "Verbindung fehlgeschlagen");
             SetStatus("Verbindung fehlgeschlagen", Red);
-            MessageBox.Show($"Deepgram-Fehler:\n{ex.Message}", "Verbindungsfehler",
+            MessageBox.Show($"Fehler:\n{ex.Message}", "Verbindungsfehler",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
@@ -607,17 +718,17 @@ public partial class MainWindow : Window
         StopRecording();
         _keyboardHook.Uninstall();
 
-        if (_deepgram is not null)
+        if (_provider is not null)
         {
-            await _deepgram.DisposeAsync();
-            _deepgram = null;
+            await _provider.DisposeAsync();
+            _provider = null;
         }
 
         _connected = false;
         SetStatus("Nicht verbunden", Red);
         ConnectButton.Content    = "Verbinden";
         ConnectButton.Background = Blue;
-        Log.Information("Deepgram getrennt");
+        Log.Information("Provider getrennt");
     }
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
@@ -676,9 +787,9 @@ public partial class MainWindow : Window
         InterimText.Text = "";
         VuMeterBar.Width = 0;
 
-        // Deepgram-Puffer flushen, damit letztes Transkript sofort kommt
-        if (_deepgram is not null)
-            await _deepgram.SendFinalizeAsync();
+        // Provider-Puffer flushen, damit letztes Transkript sofort kommt
+        if (_provider is not null)
+            await _provider.SendFinalizeAsync();
 
         SoundFeedback.PlayStop();
 
@@ -686,12 +797,12 @@ public partial class MainWindow : Window
             SetStatus("Verbunden – bereit", Green);
     }
 
-    // ── Audio → Deepgram ──────────────────────────────────────────────────
+    // ── Audio → Provider ──────────────────────────────────────────────────
 
     private async void OnAudioData(byte[] chunk)
     {
-        if (_deepgram is null || !_recording) return;
-        await _deepgram.SendAudioAsync(chunk);
+        if (_provider is null || !_recording) return;
+        await _provider.SendAudioAsync(chunk);
     }
 
     // ── Transkript erhalten ───────────────────────────────────────────────
