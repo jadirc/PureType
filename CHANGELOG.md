@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.1](https://github.com/jadirc/VoiceDictation/compare/v1.0.0...v1.0.1) (2026-03-06)
+
+
+### Bug Fixes
+
+* allow Win+modifier shortcut recording regardless of key press order ([ce8a842](https://github.com/jadirc/VoiceDictation/commit/ce8a84275eec2d1cb780b025e50574b1cb4750b9))
+
 ## 1.0.0 (2026-03-06)
 
 
