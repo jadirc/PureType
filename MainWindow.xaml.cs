@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     private bool _muted;
     private string _interimText = "";
     private bool _isLoading = true;
+    private readonly List<string> _sessionChunks = new();
     private string? _savedMicrophoneDevice;
     private string? _savedWhisperModel;
 
@@ -936,6 +937,7 @@ public partial class MainWindow : Window
     private void StartRecording()
     {
         if (_recording || !_connected) return;
+        _sessionChunks.Clear();
         _recording = true;
         SoundFeedback.PlayStart();
         _audio.Start();
@@ -974,6 +976,12 @@ public partial class MainWindow : Window
         SoundFeedback.PlayStop();
         ToastWindow.ShowToast("Recording stopped", false);
 
+        if (LlmEnabledCheck.IsChecked == true && _sessionChunks.Count > 0)
+        {
+            var fullText = string.Join("", _sessionChunks);
+            _ = ProcessWithLlmAsync(fullText);
+        }
+
         if (_connected)
             SetStatus("Connected – ready", Green);
         UpdateTrayMenu();
@@ -1009,6 +1017,7 @@ public partial class MainWindow : Window
                 {
                     Log.Error(ex, "Text injection error");
                 }
+                _sessionChunks.Add(processed);
             }
             else
             {
@@ -1174,6 +1183,47 @@ public partial class MainWindow : Window
         {
             Visibility = Visibility.Hidden;
             ShowInTaskbar = false;
+        }
+    }
+
+    // ── LLM Post-Processing ────────────────────────────────────────────────
+
+    private async Task ProcessWithLlmAsync(string text)
+    {
+        try
+        {
+            var providerItem = LlmProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            var providerTag = (string)(providerItem?.Tag ?? "openai");
+            var apiKey = LlmApiKeyBox.Password.Trim();
+            var model = LlmModelBox.Text.Trim();
+            var prompt = LlmPromptBox.Text.Trim();
+
+            if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(model))
+            {
+                Log.Warning("LLM post-processing skipped: missing API key or model");
+                return;
+            }
+
+            ILlmClient client = providerTag == "anthropic"
+                ? new AnthropicLlmClient(apiKey, model)
+                : new OpenAiLlmClient(apiKey, LlmBaseUrlBox.Text.Trim(), model);
+
+            Log.Information("Sending {Length} chars to LLM ({Provider}/{Model})", text.Length, providerTag, model);
+            ToastWindow.ShowToast("Processing with AI …", true);
+
+            var result = await client.ProcessAsync(prompt, text);
+            var processed = _replacements.Apply(result);
+
+            Log.Information("LLM result: {Length} chars", processed.Length);
+            ToastWindow.ShowToast("AI processing complete", false);
+
+            System.Windows.Clipboard.SetText(processed);
+            Log.Information("LLM result copied to clipboard");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "LLM post-processing failed");
+            ToastWindow.ShowToast("AI processing failed", true);
         }
     }
 
