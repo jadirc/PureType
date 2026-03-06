@@ -11,7 +11,62 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-release:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish framework-dependent
+        run: >
+          dotnet publish
+          -c Release
+          -r win-x64
+          --self-contained false
+          -p:Version=${{ needs.release-please.outputs.version }}
+          -p:PublishSingleFile=true
+          -o publish/framework-dependent
+
+      - name: Publish self-contained portable
+        run: >
+          dotnet publish
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:Version=${{ needs.release-please.outputs.version }}
+          -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:PublishTrimmed=true
+          -p:TrimMode=partial
+          -o publish/self-contained
+
+      - name: Create ZIPs
+        shell: pwsh
+        run: |
+          $tag = "${{ needs.release-please.outputs.tag_name }}"
+          Compress-Archive -Path publish/framework-dependent/* -DestinationPath "VoiceDictation-${tag}-win-x64.zip"
+          Compress-Archive -Path publish/self-contained/* -DestinationPath "VoiceDictation-${tag}-win-x64-portable.zip"
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: |
+            VoiceDictation-*.zip
