@@ -322,13 +322,6 @@
             </ComboBox>
         </StackPanel>
 
-        <!-- Hotkey Info -->
-        <Border Grid.Row="26" Background="#181825" CornerRadius="6" Padding="10,7">
-            <TextBlock x:Name="HotkeyInfoText"
-                       Text="F9 drücken um Aufnahme zu starten/stoppen"
-                       Foreground="#89B4FA" FontSize="12" TextWrapping="Wrap"
-                       TextAlignment="Center"/>
-        </Border>
 
         <!-- Autostart -->
         <CheckBox Grid.Row="28" x:Name="AutostartCheck"

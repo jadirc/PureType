@@ -645,15 +645,9 @@ public partial class MainWindow : Window
         box.Text = displayText;
         box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
         SaveSettings();
-        UpdateHotkeyInfoText();
         Keyboard.ClearFocus();
     }
 
-    private void UpdateHotkeyInfoText()
-    {
-        if (HotkeyInfoText is null) return;
-        HotkeyInfoText.Text = $"{ToggleShortcutBox.Text} = Toggle | {PttShortcutBox.Text} = Push-to-Talk";
-    }
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
