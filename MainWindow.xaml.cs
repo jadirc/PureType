@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using Microsoft.Win32;
 using Serilog;
 using VoiceDictation.Helpers;
 using VoiceDictation.Services;
@@ -12,7 +13,7 @@ namespace VoiceDictation;
 public partial class MainWindow : Window
 {
     // ── Services ──────────────────────────────────────────────────────────
-    private DeepgramService? _deepgram;
+    private ITranscriptionProvider? _provider;
     private readonly AudioCaptureService _audio = new();
     private readonly LogWindow _logWindow = new();
     private static readonly LogWindowSink UiSink = new();
@@ -22,24 +23,33 @@ public partial class MainWindow : Window
     private readonly KeyboardHookService _keyboardHook = new();
 
 
-    // Shortcut-Einstellungen (Defaults)
+    // Shortcut settings (defaults)
     private Key _toggleKey = Key.F9;
     private ModifierKeys _toggleModifiers = ModifierKeys.None;
     private Key _pttKey = Key.RightCtrl;
     private ModifierKeys _pttModifiers = ModifierKeys.None;
 
-    // ── Zustand ───────────────────────────────────────────────────────────
+    // ── State ────────────────────────────────────────────────────────────
     private bool _connected;
     private bool _recording;
-    private bool _isPttMode;
+    private enum RecordingSource { None, Toggle, Ptt }
+    private RecordingSource _recordingSource = RecordingSource.None;
+    private VadService? _vad;
+    private string _interimText = "";
     private bool _isLoading = true;
+    private string? _savedMicrophoneDevice;
+    private string? _savedWhisperModel;
 
-    // Pfad zur Einstellungs-Datei (API-Key speichern)
+    // ── Autostart ────────────────────────────────────────────────────────
+    private const string AutostartRegistryKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+    private const string AutostartValueName = "VoiceDictation";
+
+    // Path to settings file (stores API key)
     private static readonly string SettingsPath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                      "VoiceDictation", "settings.txt");
 
-    // ── Farben ────────────────────────────────────────────────────────────
+    // ── Colors ────────────────────────────────────────────────────────────
     private static readonly SolidColorBrush Red    = new(Color.FromRgb(0xF3, 0x8B, 0xA8));
     private static readonly SolidColorBrush Green  = new(Color.FromRgb(0xA6, 0xE3, 0xA1));
     private static readonly SolidColorBrush Yellow = new(Color.FromRgb(0xF9, 0xE2, 0xAF));
@@ -63,16 +73,28 @@ public partial class MainWindow : Window
 
         UiSink.SetCallback(_logWindow.AppendLog);
 
-        Log.Information("VoiceDictation gestartet");
+        Log.Information("VoiceDictation started");
 
         SetupTrayIcon();
         LoadSettings();
         // Init sound after LoadSettings so selected tone is applied
         var toneItem = ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         SoundFeedback.Init((string?)toneItem?.Tag);
-        _isLoading = false;
 
         _audio.AudioDataAvailable += OnAudioData;
+        _audio.AudioLevelChanged += OnAudioLevel;
+        PopulateMicrophones();
+        PopulateWhisperModels();
+        if (_savedWhisperModel != null)
+            SelectComboByTag(WhisperModelCombo, _savedWhisperModel);
+
+        var provItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        WhisperModelPanel.Visibility = (string?)provItem?.Tag == "whisper"
+            ? Visibility.Visible : Visibility.Collapsed;
+
+        // Enable settings persistence only after all controls are populated
+        _isLoading = false;
+
         Loaded += (_, _) => ConnectButton.Focus();
 
         _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
@@ -81,9 +103,14 @@ public partial class MainWindow : Window
         _keyboardHook.PttKeyDown += OnPttKeyDown;
         _keyboardHook.PttKeyUp += OnPttKeyUp;
 
-        // Auto-connect nach Start (unabhängig von Fenster-Sichtbarkeit)
-        if (!string.IsNullOrWhiteSpace(ApiKeyBox.Password))
+        // Auto-connect on startup (independent of window visibility)
+        var autoProvider = (ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+        if (autoProvider == "whisper" || !string.IsNullOrWhiteSpace(ApiKeyBox.Password))
             Dispatcher.BeginInvoke(async () => await ConnectAsync());
+
+        // Show window if "Start minimized" is not checked
+        if (StartMinimizedCheck.IsChecked != true)
+            Dispatcher.BeginInvoke(() => ShowFromTray());
     }
 
     private void LoadSettings()
@@ -118,11 +145,28 @@ public partial class MainWindow : Window
                     SelectComboByTag(LanguageCombo, value);
                     break;
                 case "mode":
-                    SelectComboByTag(ModeCombo, value);
-                    _isPttMode = value == "ptt";
-                    break;
+                    break; // legacy setting, ignored — both modes always active
                 case "tone":
                     SelectComboByTag(ToneCombo, value);
+                    break;
+                case "microphone":
+                    _savedMicrophoneDevice = value;
+                    SelectMicrophoneByName(value);
+                    break;
+                case "keywords":
+                    KeywordsBox.Text = value;
+                    break;
+                case "provider":
+                    SelectComboByTag(ProviderCombo, value);
+                    break;
+                case "whisper_model":
+                    _savedWhisperModel = value;
+                    break;
+                case "vad":
+                    VadCheck.IsChecked = value.Equals("True", StringComparison.OrdinalIgnoreCase);
+                    break;
+                case "start_minimized":
+                    StartMinimizedCheck.IsChecked = value.Equals("True", StringComparison.OrdinalIgnoreCase);
                     break;
                 case "left":
                     if (double.TryParse(value, out var left)) { Left = left; hasPosition = true; }
@@ -139,9 +183,10 @@ public partial class MainWindow : Window
             }
         }
 
-        // UI-Felder direkt setzen (Controls existieren nach InitializeComponent)
+        // Set UI fields directly (controls exist after InitializeComponent)
         ToggleShortcutBox.Text = FormatShortcut(_toggleModifiers, _toggleKey);
         PttShortcutBox.Text = FormatShortcut(_pttModifiers, _pttKey);
+        AutostartCheck.IsChecked = IsAutostartEnabled();
 
         if (!hasPosition)
             CenterOnScreen();
@@ -203,15 +248,23 @@ public partial class MainWindow : Window
     {
         Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
         var langItem = LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-        var modeItem = ModeCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var micItem = MicrophoneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var micName = micItem?.Content?.ToString() ?? "";
+        var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var whisperModelItem = WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var lines = new List<string>
         {
             ApiKeyBox.Password.Trim(),
             $"toggle={FormatShortcut(_toggleModifiers, _toggleKey)}",
             $"ptt={FormatShortcut(_pttModifiers, _pttKey)}",
             $"language={(string)(langItem?.Tag ?? "de")}",
-            $"mode={(string)(modeItem?.Tag ?? "toggle")}",
             $"tone={(string)((ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Sanft")}",
+            $"microphone={micName}",
+            $"keywords={KeywordsBox.Text.Trim()}",
+            $"provider={(string)(providerItem?.Tag ?? "deepgram")}",
+            $"whisper_model={(string)(whisperModelItem?.Tag ?? "tiny")}",
+            $"vad={VadCheck.IsChecked == true}",
+            $"start_minimized={StartMinimizedCheck.IsChecked == true}",
             $"left={Left}",
             $"top={Top}",
             $"width={Width}",
@@ -220,16 +273,17 @@ public partial class MainWindow : Window
         File.WriteAllLines(SettingsPath, lines);
     }
 
-    private static void SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag)
+    private static bool SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag)
     {
         foreach (System.Windows.Controls.ComboBoxItem item in combo.Items)
         {
             if ((string)item.Tag == tag)
             {
                 combo.SelectedItem = item;
-                return;
+                return true;
             }
         }
+        return false;
     }
 
     private static string FormatShortcut(ModifierKeys mod, Key key)
@@ -282,15 +336,6 @@ public partial class MainWindow : Window
             SaveSettings();
     }
 
-    private void ModeCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        var item = (System.Windows.Controls.ComboBoxItem)ModeCombo.SelectedItem;
-        _isPttMode = (string)item.Tag == "ptt";
-        if (_recording) StopRecording();
-        UpdateHotkeyInfoText();
-        if (!_isLoading)
-            SaveSettings();
-    }
 
     private void ToneCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
@@ -302,6 +347,211 @@ public partial class MainWindow : Window
         SaveSettings();
     }
 
+    // ── Microphone ────────────────────────────────────────────────────────
+
+    private void PopulateMicrophones()
+    {
+        MicrophoneCombo.Items.Clear();
+        var devices = AudioCaptureService.GetDevices();
+        foreach (var (number, name) in devices)
+        {
+            var item = new System.Windows.Controls.ComboBoxItem
+            {
+                Content = name,
+                Tag = number
+            };
+            MicrophoneCombo.Items.Add(item);
+        }
+        if (MicrophoneCombo.Items.Count > 0)
+            MicrophoneCombo.SelectedIndex = 0;
+    }
+
+    private void SelectMicrophoneByName(string name)
+    {
+        foreach (System.Windows.Controls.ComboBoxItem item in MicrophoneCombo.Items)
+        {
+            if (item.Content?.ToString() == name)
+            {
+                MicrophoneCombo.SelectedItem = item;
+                return;
+            }
+        }
+    }
+
+    private void MicrophoneCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (MicrophoneCombo.SelectedItem is System.Windows.Controls.ComboBoxItem item && item.Tag is int deviceNumber)
+        {
+            _audio.SetDevice(deviceNumber);
+            if (!_isLoading)
+                SaveSettings();
+        }
+    }
+
+    // ── VU Meter ─────────────────────────────────────────────────────────
+
+    private void OnAudioLevel(double level)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            var parent = (System.Windows.Controls.Border)VuMeterBar.Parent;
+            VuMeterBar.Width = level * parent.ActualWidth;
+        });
+    }
+
+    // ── Keywords ─────────────────────────────────────────────────────────
+
+    private void KeywordsBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoading)
+            SaveSettings();
+    }
+
+    // ── Provider / Whisper Model ────────────────────────────────────────
+
+    private void PopulateWhisperModels()
+    {
+        // Remember current selection
+        var previousTag = (WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+
+        WhisperModelCombo.Items.Clear();
+        foreach (var (name, displayName, _) in WhisperModelManager.AvailableModels)
+        {
+            var isDownloaded = WhisperModelManager.IsModelDownloaded(name);
+            var suffix = isDownloaded ? " \u2713" : "";
+            var item = new System.Windows.Controls.ComboBoxItem
+            {
+                Content = displayName + suffix,
+                Tag = name,
+                FontWeight = isDownloaded ? FontWeights.SemiBold : FontWeights.Normal
+            };
+            WhisperModelCombo.Items.Add(item);
+        }
+
+        // Restore previous selection, or fall back to first downloaded, or first item
+        if (previousTag != null && SelectComboByTag(WhisperModelCombo, previousTag)) { }
+        else
+        {
+            // Select first downloaded model
+            foreach (System.Windows.Controls.ComboBoxItem item in WhisperModelCombo.Items)
+            {
+                if (WhisperModelManager.IsModelDownloaded((string)item.Tag))
+                {
+                    WhisperModelCombo.SelectedItem = item;
+                    break;
+                }
+            }
+            if (WhisperModelCombo.SelectedItem == null && WhisperModelCombo.Items.Count > 0)
+                WhisperModelCombo.SelectedIndex = 0;
+        }
+    }
+
+    private void ProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isLoading || ProviderCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
+        var isWhisper = (string)item.Tag == "whisper";
+        WhisperModelPanel.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
+        if (!_isLoading)
+            SaveSettings();
+    }
+
+    private async void DownloadModelButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (WhisperModelCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
+        var modelName = (string)item.Tag;
+
+        if (WhisperModelManager.IsModelDownloaded(modelName))
+        {
+            MessageBox.Show("Model is already downloaded.", "Info",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        DownloadModelButton.IsEnabled = false;
+        DownloadProgress.Visibility = Visibility.Visible;
+        DownloadProgress.Value = 0;
+
+        try
+        {
+            await WhisperModelManager.DownloadModelAsync(modelName,
+                progress => Dispatcher.Invoke(() => DownloadProgress.Value = progress * 100));
+
+            PopulateWhisperModels();
+            MessageBox.Show($"Model '{modelName}' downloaded successfully.", "Done",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Model download failed");
+            MessageBox.Show($"Download failed:\n{ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            DownloadModelButton.IsEnabled = true;
+            DownloadProgress.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    // ── Autostart ────────────────────────────────────────────────────────
+
+    private void VadCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoading)
+            SaveSettings();
+    }
+
+    private void AutostartCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoading)
+        {
+            SetAutostart(AutostartCheck.IsChecked == true);
+            SaveSettings();
+        }
+    }
+
+    private void StartMinimizedCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoading)
+            SaveSettings();
+    }
+
+    private static void SetAutostart(bool enable)
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(AutostartRegistryKey, writable: true);
+            if (key == null) return;
+
+            if (enable)
+            {
+                var exePath = Environment.ProcessPath ?? System.Reflection.Assembly.GetExecutingAssembly().Location;
+                key.SetValue(AutostartValueName, $"\"{exePath}\"");
+            }
+            else
+            {
+                key.DeleteValue(AutostartValueName, throwOnMissingValue: false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Autostart registration failed");
+        }
+    }
+
+    private static bool IsAutostartEnabled()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(AutostartRegistryKey);
+            return key?.GetValue(AutostartValueName) != null;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     // ── Shortcut Recorder ────────────────────────────────────────────────
 
     private string? _shortcutBoxPreviousText;
@@ -310,7 +560,7 @@ public partial class MainWindow : Window
     {
         var box = (System.Windows.Controls.TextBox)sender;
         _shortcutBoxPreviousText = box.Text;
-        box.Text = "Taste drücken…";
+        box.Text = "Press a key…";
         box.Foreground = new SolidColorBrush(Color.FromRgb(0xF9, 0xE2, 0xAF));
         _keyboardHook.SuppressWinKey = true;
     }
@@ -318,7 +568,7 @@ public partial class MainWindow : Window
     private void ShortcutBox_LostFocus(object sender, RoutedEventArgs e)
     {
         var box = (System.Windows.Controls.TextBox)sender;
-        if (box.Text == "Taste drücken…")
+        if (box.Text == "Press a key…")
             box.Text = _shortcutBoxPreviousText ?? "";
         box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
         _keyboardHook.SuppressWinKey = false;
@@ -370,7 +620,7 @@ public partial class MainWindow : Window
         var otherBox = isToggleBox ? PttShortcutBox : ToggleShortcutBox;
         if (otherBox.Text == displayText)
         {
-            box.Text = "Bereits vergeben!";
+            box.Text = "Already assigned!";
             box.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
             return;
         }
@@ -395,23 +645,14 @@ public partial class MainWindow : Window
         box.Text = displayText;
         box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
         SaveSettings();
-        UpdateHotkeyInfoText();
         Keyboard.ClearFocus();
     }
 
-    private void UpdateHotkeyInfoText()
-    {
-        if (HotkeyInfoText is null) return;
-        if (_isPttMode)
-            HotkeyInfoText.Text = $"{PttShortcutBox.Text} gedrückt halten für Aufnahme";
-        else
-            HotkeyInfoText.Text = $"{ToggleShortcutBox.Text} drücken um Aufnahme zu starten/stoppen";
-    }
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         SaveSettings();
-        Log.Information("Anwendung wird beendet");
+        Log.Information("Application shutting down");
         _trayIcon?.Dispose();
         _ = DisconnectAsync();
         _keyboardHook.Dispose();
@@ -424,44 +665,73 @@ public partial class MainWindow : Window
 
     private async Task ConnectAsync()
     {
-        var apiKey = ApiKeyBox.Password.Trim();
-        if (string.IsNullOrEmpty(apiKey))
-        {
-            MessageBox.Show("Bitte einen Deepgram API Key eingeben.", "Fehler",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
+        var providerItem = (System.Windows.Controls.ComboBoxItem)ProviderCombo.SelectedItem;
+        var providerType = (string)providerItem.Tag;
 
-        var langItem = (System.Windows.Controls.ComboBoxItem)LanguageCombo.SelectedItem;
-        var language = (string)langItem.Tag;
-
-        SetStatus("Verbinde …", Yellow);
+        SetStatus("Connecting …", Yellow);
         ConnectButton.IsEnabled = false;
 
         try
         {
-            _deepgram = new DeepgramService(apiKey, language);
-            _deepgram.TranscriptReceived += OnTranscriptReceived;
-            _deepgram.ErrorOccurred      += OnError;
-            _deepgram.Disconnected       += OnDisconnected;
+            var langItem = (System.Windows.Controls.ComboBoxItem)LanguageCombo.SelectedItem;
+            var language = (string)langItem.Tag;
 
-            await _deepgram.ConnectAsync();
+            if (providerType == "whisper")
+            {
+                var modelItem = WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+                var modelName = (string)(modelItem?.Tag ?? "tiny");
+
+                if (!WhisperModelManager.IsModelDownloaded(modelName))
+                {
+                    MessageBox.Show("Please download the Whisper model first.", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ConnectButton.IsEnabled = true;
+                    SetStatus("Not connected", Red);
+                    return;
+                }
+
+                _provider = new WhisperService(modelName, language);
+            }
+            else
+            {
+                var apiKey = ApiKeyBox.Password.Trim();
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    MessageBox.Show("Please enter a Deepgram API key.", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ConnectButton.IsEnabled = true;
+                    SetStatus("Not connected", Red);
+                    return;
+                }
+                var keywords = KeywordsBox.Text
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(k => !string.IsNullOrWhiteSpace(k))
+                    .ToArray();
+                _provider = new DeepgramService(apiKey, language, keywords.Length > 0 ? keywords : null);
+            }
+
+            _provider.TranscriptReceived += OnTranscriptReceived;
+            _provider.ErrorOccurred += OnError;
+            _provider.Disconnected += OnDisconnected;
+
+            await _provider.ConnectAsync();
 
             _connected = true;
             _audio.Initialize();
             RegisterHotkeys();
 
-            SetStatus("Verbunden – bereit", Green);
-            ConnectButton.Content = "Trennen";
+            var label = providerType == "whisper" ? "Whisper (local)" : "Deepgram";
+            SetStatus($"Connected - {label}", Green);
+            ConnectButton.Content = "Disconnect";
             ConnectButton.Background = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
             SaveSettings();
-            Log.Information("Deepgram verbunden (Sprache: {Language})", language);
+            Log.Information("{Provider} connected (Language: {Language})", label, language);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Deepgram-Verbindung fehlgeschlagen");
-            SetStatus("Verbindung fehlgeschlagen", Red);
-            MessageBox.Show($"Deepgram-Fehler:\n{ex.Message}", "Verbindungsfehler",
+            Log.Error(ex, "Connection failed");
+            SetStatus("Connection failed", Red);
+            MessageBox.Show($"Error:\n{ex.Message}", "Connection Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
@@ -472,20 +742,21 @@ public partial class MainWindow : Window
 
     private async Task DisconnectAsync()
     {
+        if (!_connected) return;
+        _connected = false;
+
         StopRecording();
         _keyboardHook.Uninstall();
 
-        if (_deepgram is not null)
+        if (_provider is not null)
         {
-            await _deepgram.DisposeAsync();
-            _deepgram = null;
+            await _provider.DisposeAsync();
+            _provider = null;
         }
-
-        _connected = false;
-        SetStatus("Nicht verbunden", Red);
-        ConnectButton.Content    = "Verbinden";
+        SetStatus("Not connected", Red);
+        ConnectButton.Content    = "Connect";
         ConnectButton.Background = Blue;
-        Log.Information("Deepgram getrennt");
+        Log.Information("Provider disconnected");
     }
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
@@ -497,15 +768,23 @@ public partial class MainWindow : Window
         _keyboardHook.Install();
     }
 
-    // ── Toggle-Modus ──────────────────────────────────────────────────────
+    // ── Toggle Mode ───────────────────────────────────────────────────────
 
     private void OnToggleHotkey()
     {
-        if (_isPttMode) return;
         Dispatcher.Invoke(() =>
         {
-            if (_recording) StopRecording();
-            else            StartRecording();
+            if (_recording)
+            {
+                if (_recordingSource != RecordingSource.Toggle) return;
+                _recordingSource = RecordingSource.None;
+                StopRecording();
+            }
+            else
+            {
+                _recordingSource = RecordingSource.Toggle;
+                StartRecording();
+            }
         });
     }
 
@@ -513,17 +792,25 @@ public partial class MainWindow : Window
 
     private void OnPttKeyDown()
     {
-        if (!_isPttMode || !_connected) return;
-        Dispatcher.Invoke(StartRecording);
+        if (!_connected || _recording) return;
+        Dispatcher.Invoke(() =>
+        {
+            _recordingSource = RecordingSource.Ptt;
+            StartRecording();
+        });
     }
 
     private void OnPttKeyUp()
     {
-        if (!_isPttMode) return;
-        Dispatcher.Invoke(StopRecording);
+        if (_recordingSource != RecordingSource.Ptt) return;
+        Dispatcher.Invoke(() =>
+        {
+            _recordingSource = RecordingSource.None;
+            StopRecording();
+        });
     }
 
-    // ── Aufnahme starten/stoppen ──────────────────────────────────────────
+    // ── Start/Stop Recording ───────────────────────────────────────────────
 
     private void StartRecording()
     {
@@ -531,7 +818,19 @@ public partial class MainWindow : Window
         _recording = true;
         SoundFeedback.PlayStart();
         _audio.Start();
-        SetStatus("● Aufnahme läuft", Red);
+        SetStatus("● Recording", Red);
+
+        // Add separator between recording sessions in transcript
+        var current = TranscriptText.Text;
+        if (!string.IsNullOrEmpty(current) && current != "Transcript will appear here …")
+            TranscriptText.Text = current + "\n────────────────────\n";
+
+        if (VadCheck.IsChecked == true)
+        {
+            _vad = new VadService();
+            _vad.SilenceDetected += () => Dispatcher.Invoke(StopRecording);
+            _vad.Reset();
+        }
     }
 
     private async void StopRecording()
@@ -539,40 +838,56 @@ public partial class MainWindow : Window
         if (!_recording) return;
         _audio.Stop();
         _recording = false;
+        _vad = null;
 
-        // Deepgram-Puffer flushen, damit letztes Transkript sofort kommt
-        if (_deepgram is not null)
-            await _deepgram.SendFinalizeAsync();
+        _interimText = "";
+        InterimText.Text = "";
+        VuMeterBar.Width = 0;
+
+        // Flush provider buffer so the last transcript arrives immediately
+        if (_provider is not null)
+            await _provider.SendFinalizeAsync();
 
         SoundFeedback.PlayStop();
 
         if (_connected)
-            SetStatus("Verbunden – bereit", Green);
+            SetStatus("Connected – ready", Green);
     }
 
-    // ── Audio → Deepgram ──────────────────────────────────────────────────
+    // ── Audio → Provider ───────────────────────────────────────────────────
 
     private async void OnAudioData(byte[] chunk)
     {
-        if (_deepgram is null || !_recording) return;
-        await _deepgram.SendAudioAsync(chunk);
+        if (_provider is null || !_recording) return;
+        await _provider.SendAudioAsync(chunk);
+        _vad?.ProcessAudio(chunk);
     }
 
-    // ── Transkript erhalten ───────────────────────────────────────────────
+    // ── Transcript Received ────────────────────────────────────────────────
 
-    private void OnTranscriptReceived(string text)
+    private void OnTranscriptReceived(string text, bool isFinal)
     {
         Dispatcher.BeginInvoke(async () =>
         {
-            // Show transcript FIRST so it always appears, even if injection fails
-            AppendTranscript(text);
-            try
+            if (isFinal)
             {
-                await KeyboardInjector.TypeTextAsync(text);
+                _interimText = "";
+                InterimText.Text = "";
+                AppendTranscript(text);
+                try
+                {
+                    await KeyboardInjector.TypeTextAsync(text);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Text injection error");
+                }
             }
-            catch (Exception ex)
+            else
             {
-                Log.Error(ex, "Fehler bei Textinjektion");
+                _interimText = text;
+                InterimText.Text = text;
+                TranscriptScroll.ScrollToBottom();
             }
         });
     }
@@ -580,11 +895,11 @@ public partial class MainWindow : Window
     private void AppendTranscript(string text)
     {
         var current = TranscriptText.Text;
-        if (current == "Hier erscheint das erkannte Transkript …")
+        if (current == "Transcript will appear here …")
             current = "";
 
-        // Letzte ~500 Zeichen behalten
-        var newText = (current + text + " ").TrimStart();
+        // Keep last ~500 characters
+        var newText = (current + text).TrimStart();
         if (newText.Length > 500)
             newText = newText[^500..];
 
@@ -592,15 +907,15 @@ public partial class MainWindow : Window
         TranscriptScroll.ScrollToBottom();
     }
 
-    // ── Fehler / Disconnect ───────────────────────────────────────────────
+    // ── Error / Disconnect ─────────────────────────────────────────────────
 
     private void OnError(string message) =>
-        Dispatcher.Invoke(() => SetStatus($"Fehler: {message}", Red));
+        Dispatcher.Invoke(() => SetStatus($"Error: {message}", Red));
 
     private void OnDisconnected() =>
         Dispatcher.Invoke(async () =>
         {
-            if (_connected) // unerwartet getrennt
+            if (_connected) // unexpectedly disconnected
                 await DisconnectAsync();
         });
 
@@ -621,8 +936,8 @@ public partial class MainWindow : Window
         _trayIcon.Click += (_, _) => ShowFromTray();
 
         var menu = new System.Windows.Forms.ContextMenuStrip();
-        menu.Items.Add("Öffnen", null, (_, _) => ShowFromTray());
-        menu.Items.Add("Beenden", null, (_, _) =>
+        menu.Items.Add("Open", null, (_, _) => ShowFromTray());
+        menu.Items.Add("Exit", null, (_, _) =>
         {
             _trayIcon.Visible = false;
             _keyboardHook.Dispose();
@@ -650,7 +965,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // ── Hilfsfunktionen ───────────────────────────────────────────────────
+    // ── Helper Functions ──────────────────────────────────────────────────
 
     private void SetStatus(string text, SolidColorBrush color)
     {

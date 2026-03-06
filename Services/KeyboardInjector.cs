@@ -5,8 +5,8 @@ using Serilog;
 namespace VoiceDictation.Services;
 
 /// <summary>
-/// Injiziert Text als simulierte Tastatureingaben ins aktive Fenster
-/// via Windows SendInput API (Unicode-Unterstützung).
+/// Injects text as simulated keyboard input into the active window
+/// via the Windows SendInput API (Unicode support).
 /// </summary>
 public static class KeyboardInjector
 {
@@ -37,7 +37,7 @@ public static class KeyboardInjector
     private struct INPUTUNION
     {
         [FieldOffset(0)] public KEYBDINPUT ki;
-        // Padding für Mouse/Hardware Input (gleiche Größe)
+        // Padding for Mouse/Hardware Input (same size)
         [FieldOffset(0)] public MOUSEINPUT mi;
     }
 
@@ -67,8 +67,8 @@ public static class KeyboardInjector
     #endregion
 
     /// <summary>
-    /// Tippt den übergebenen Text zeichenweise in das aktuell fokussierte Fenster.
-    /// Unterstützt Unicode (Umlaute, Sonderzeichen etc.).
+    /// Types the given text character by character into the currently focused window.
+    /// Supports Unicode (umlauts, special characters, etc.).
     /// </summary>
     public static void TypeText(string text)
     {
@@ -118,12 +118,12 @@ public static class KeyboardInjector
             var inputs = BuildCtrlV();
             SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
 
-            // Warten bis Ziel-App den Paste verarbeitet hat
+            // Wait for target app to process paste
             await Task.Delay(200);
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "Clipboard-Paste fehlgeschlagen");
+            Log.Warning(ex, "Clipboard paste failed");
         }
         finally
         {
@@ -215,7 +215,7 @@ public static class KeyboardInjector
 
         if (TerminalWindowClasses.Contains(cls))
         {
-            Log.Debug("Terminal erkannt via WindowClass: {ClassName}", cls);
+            Log.Debug("Terminal detected via WindowClass: {ClassName}", cls);
             return true;
         }
 
@@ -227,11 +227,11 @@ public static class KeyboardInjector
 
             if (TerminalProcessNames.Contains(name))
             {
-                Log.Debug("Terminal erkannt via Prozess: {ProcessName} (Class: {ClassName})", name, cls);
+                Log.Debug("Terminal detected via process: {ProcessName} (Class: {ClassName})", name, cls);
                 return true;
             }
 
-            Log.Debug("Kein Terminal: Class={ClassName}, Process={ProcessName}", cls, name);
+            Log.Debug("Not a terminal: Class={ClassName}, Process={ProcessName}", cls, name);
             return false;
         }
         catch

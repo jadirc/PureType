@@ -25,7 +25,7 @@ public partial class LogWindow : Window
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        // Verstecken statt schließen, damit es wiederverwendet werden kann
+        // Hide instead of close so it can be reused
         e.Cancel = true;
         Hide();
     }

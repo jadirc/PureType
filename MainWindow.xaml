@@ -100,45 +100,65 @@
 
     <Grid Margin="16">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>  <!-- Status -->
+            <RowDefinition Height="Auto"/>  <!-- Row 0: Status -->
             <RowDefinition Height="8"/>
-            <RowDefinition Height="Auto"/>  <!-- Button -->
+            <RowDefinition Height="Auto"/>  <!-- Row 2: Button -->
             <RowDefinition Height="8"/>
-            <RowDefinition Height="*"/>     <!-- Transkript -->
+            <RowDefinition Height="*"/>     <!-- Row 4: Transkript -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- API Key -->
+            <RowDefinition Height="Auto"/>  <!-- Row 6: Provider -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Sprache -->
+            <RowDefinition Height="Auto"/>  <!-- Row 8: Whisper Model -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Modus -->
+            <RowDefinition Height="Auto"/>  <!-- Row 10: API Key -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Toggle Shortcut -->
+            <RowDefinition Height="Auto"/>  <!-- Row 12: Microphone -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- PTT Shortcut -->
+            <RowDefinition Height="Auto"/>  <!-- Row 14: Keywords -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Signalton -->
+            <RowDefinition Height="Auto"/>  <!-- Row 16: Language -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Hotkey Info -->
+            <RowDefinition Height="Auto"/>  <!-- Row 18: Modus -->
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 20: Toggle Shortcut -->
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 22: PTT Shortcut -->
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 24: Signal Tone -->
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 26: Hotkey Info -->
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 28: Autostart -->
+            <RowDefinition Height="4"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 30: Start minimized -->
+            <RowDefinition Height="4"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 32: VAD -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
         <Border Grid.Row="0" Background="#313244" CornerRadius="8" Padding="12,10">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <Ellipse x:Name="StatusDot" Width="12" Height="12"
-                         Fill="#F38BA8" VerticalAlignment="Center" Margin="0,0,10,0">
-                    <Ellipse.Effect>
-                        <DropShadowEffect Color="#F38BA8" BlurRadius="8" ShadowDepth="0" Opacity="0.8"/>
-                    </Ellipse.Effect>
-                </Ellipse>
-                <TextBlock x:Name="StatusText" Text="Nicht verbunden"
-                           Foreground="#CDD6F4" FontSize="14" FontWeight="SemiBold"
-                           VerticalAlignment="Center"/>
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Ellipse x:Name="StatusDot" Width="12" Height="12"
+                             Fill="#F38BA8" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <Ellipse.Effect>
+                            <DropShadowEffect Color="#F38BA8" BlurRadius="8" ShadowDepth="0" Opacity="0.8"/>
+                        </Ellipse.Effect>
+                    </Ellipse>
+                    <TextBlock x:Name="StatusText" Text="Not connected"
+                               Foreground="#CDD6F4" FontSize="14" FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <Border Background="#181825" CornerRadius="3" Height="4" Margin="0,8,0,0">
+                    <Border x:Name="VuMeterBar" Background="#A6E3A1" CornerRadius="3" Height="4"
+                            HorizontalAlignment="Left" Width="0"/>
+                </Border>
             </StackPanel>
         </Border>
 
         <!-- Button -->
         <Button Grid.Row="2" x:Name="ConnectButton"
-                Content="Verbinden"
+                Content="Connect"
                 Click="ConnectButton_Click"
                 Background="#89B4FA" Foreground="#1E1E2E"
                 FontWeight="SemiBold" FontSize="14"
@@ -153,7 +173,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0" Margin="10,6,6,0">
-                    <TextBlock Text="TRANSKRIPT" Foreground="#BAC2DE"
+                    <TextBlock Text="TRANSCRIPT" Foreground="#BAC2DE"
                                FontSize="11" FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
                     <Button Content="Log" Click="LogButton_Click"
@@ -165,16 +185,54 @@
                 <ScrollViewer Grid.Row="1" x:Name="TranscriptScroll"
                               VerticalScrollBarVisibility="Auto"
                               Padding="10,4,10,10">
-                    <TextBlock x:Name="TranscriptText"
-                               Foreground="#A6E3A1" FontSize="13"
-                               TextWrapping="Wrap" LineHeight="20"
-                               Text="Hier erscheint das erkannte Transkript …"/>
+                    <StackPanel>
+                        <TextBlock x:Name="TranscriptText"
+                                   Foreground="#A6E3A1" FontSize="13"
+                                   TextWrapping="Wrap" LineHeight="20"
+                                   Text="Transcript will appear here …"/>
+                        <TextBlock x:Name="InterimText"
+                                   Foreground="#6C7086" FontStyle="Italic" FontSize="13"
+                                   TextWrapping="Wrap" LineHeight="20"/>
+                    </StackPanel>
                 </ScrollViewer>
             </Grid>
         </Border>
 
-        <!-- API Key -->
+        <!-- Provider -->
         <StackPanel Grid.Row="6">
+            <TextBlock Text="PROVIDER" Foreground="#BAC2DE"
+                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <ComboBox x:Name="ProviderCombo" Padding="10,7" FontSize="13"
+                      SelectionChanged="ProviderCombo_SelectionChanged">
+                <ComboBoxItem Content="Deepgram (Cloud)" Tag="deepgram" IsSelected="True"/>
+                <ComboBoxItem Content="Whisper (Local)" Tag="whisper"/>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- Whisper Modell -->
+        <StackPanel Grid.Row="8" x:Name="WhisperModelPanel" Visibility="Collapsed">
+            <TextBlock Text="WHISPER MODEL" Foreground="#BAC2DE"
+                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <ComboBox x:Name="WhisperModelCombo" Grid.Column="0" Padding="10,7" FontSize="13"/>
+                <Button x:Name="DownloadModelButton" Grid.Column="1" Content="DL"
+                        Click="DownloadModelButton_Click"
+                        Background="#89B4FA" Foreground="#1E1E2E"
+                        FontWeight="SemiBold" FontSize="12"
+                        BorderThickness="0" Padding="10,7" Margin="6,0,0,0"
+                        Cursor="Hand" ToolTip="Download model"/>
+            </Grid>
+            <ProgressBar x:Name="DownloadProgress" Height="4" Margin="0,6,0,0"
+                         Visibility="Collapsed" Minimum="0" Maximum="100"
+                         Background="#181825" Foreground="#A6E3A1"/>
+        </StackPanel>
+
+        <!-- API Key -->
+        <StackPanel Grid.Row="10">
             <TextBlock Text="DEEPGRAM API KEY" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <PasswordBox x:Name="ApiKeyBox"
@@ -185,31 +243,42 @@
                          PasswordChanged="ApiKeyBox_PasswordChanged"/>
         </StackPanel>
 
+        <!-- Mikrofon -->
+        <StackPanel Grid.Row="12">
+            <TextBlock Text="MICROPHONE" Foreground="#BAC2DE"
+                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <ComboBox x:Name="MicrophoneCombo" Padding="10,7" FontSize="13"
+                      SelectionChanged="MicrophoneCombo_SelectionChanged"/>
+        </StackPanel>
+
+        <!-- Keywords (Boost) -->
+        <StackPanel Grid.Row="14">
+            <TextBlock Text="KEYWORDS (Boost)" Foreground="#BAC2DE"
+                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <TextBox x:Name="KeywordsBox"
+                     Background="#313244" Foreground="#CDD6F4"
+                     BorderBrush="#45475A" BorderThickness="1"
+                     Padding="10,8" FontFamily="Consolas" FontSize="13"
+                     LostFocus="KeywordsBox_LostFocus"
+                     ToolTip="Comma-separated terms for improved recognition (e.g. technical terms, names)"/>
+        </StackPanel>
+
         <!-- Sprache -->
-        <StackPanel Grid.Row="8">
-            <TextBlock Text="SPRACHE" Foreground="#BAC2DE"
+        <StackPanel Grid.Row="16">
+            <TextBlock Text="LANGUAGE" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="LanguageCombo" Padding="10,7" FontSize="13"
                       SelectionChanged="LanguageCombo_SelectionChanged">
-                <ComboBoxItem Content="Deutsch (de)" Tag="de" IsSelected="True"/>
-                <ComboBoxItem Content="Englisch (en)" Tag="en"/>
-                <ComboBoxItem Content="Automatisch" Tag=""/>
+                <ComboBoxItem Content="German (de)" Tag="de" IsSelected="True"/>
+                <ComboBoxItem Content="English (en)" Tag="en"/>
+                <ComboBoxItem Content="Automatic" Tag=""/>
             </ComboBox>
         </StackPanel>
 
-        <!-- Modus -->
-        <StackPanel Grid.Row="10">
-            <TextBlock Text="MODUS" Foreground="#BAC2DE"
-                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <ComboBox x:Name="ModeCombo" Padding="10,7" FontSize="13"
-                      SelectionChanged="ModeCombo_SelectionChanged">
-                <ComboBoxItem Content="Toggle" Tag="toggle" IsSelected="True"/>
-                <ComboBoxItem Content="Push-to-Talk" Tag="ptt"/>
-            </ComboBox>
-        </StackPanel>
+        <!-- (Mode dropdown removed — both Toggle and PTT are always active) -->
 
         <!-- Toggle Shortcut -->
-        <StackPanel Grid.Row="12">
+        <StackPanel Grid.Row="20">
             <TextBlock Text="TOGGLE SHORTCUT" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <TextBox x:Name="ToggleShortcutBox"
@@ -224,7 +293,7 @@
         </StackPanel>
 
         <!-- PTT Shortcut -->
-        <StackPanel Grid.Row="14">
+        <StackPanel Grid.Row="22">
             <TextBlock Text="PTT SHORTCUT" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <TextBox x:Name="PttShortcutBox"
@@ -232,33 +301,49 @@
                      BorderBrush="#45475A" BorderThickness="1"
                      Padding="10,8" FontSize="13"
                      IsReadOnly="True" Cursor="Hand"
-                     Text="Rechte Strg"
+                     Text="Right Ctrl"
                      GotFocus="ShortcutBox_GotFocus"
                      LostFocus="ShortcutBox_LostFocus"
                      PreviewKeyDown="ShortcutBox_PreviewKeyDown"/>
         </StackPanel>
 
         <!-- Signalton -->
-        <StackPanel Grid.Row="16">
-            <TextBlock Text="SIGNALTON" Foreground="#BAC2DE"
+        <StackPanel Grid.Row="24">
+            <TextBlock Text="SIGNAL TONE" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="ToneCombo" Padding="10,7" FontSize="13"
                       SelectionChanged="ToneCombo_SelectionChanged">
-                <ComboBoxItem Content="Kein (Aus)" Tag="Kein"/>
-                <ComboBoxItem Content="Sanft (Gentle)" Tag="Sanft" IsSelected="True"/>
-                <ComboBoxItem Content="Klick (Click)" Tag="Klick"/>
-                <ComboBoxItem Content="Glocke (Bell)" Tag="Glocke"/>
-                <ComboBoxItem Content="Tief (Deep)" Tag="Tief"/>
-                <ComboBoxItem Content="Doppel-Pip" Tag="Doppel-Pip"/>
+                <ComboBoxItem Content="None (Off)" Tag="Kein"/>
+                <ComboBoxItem Content="Gentle" Tag="Sanft" IsSelected="True"/>
+                <ComboBoxItem Content="Click" Tag="Klick"/>
+                <ComboBoxItem Content="Bell" Tag="Glocke"/>
+                <ComboBoxItem Content="Deep" Tag="Tief"/>
+                <ComboBoxItem Content="Double Pip" Tag="Doppel-Pip"/>
             </ComboBox>
         </StackPanel>
 
-        <!-- Hotkey Info -->
-        <Border Grid.Row="18" Background="#181825" CornerRadius="6" Padding="10,7">
-            <TextBlock x:Name="HotkeyInfoText"
-                       Text="F9 drücken um Aufnahme zu starten/stoppen"
-                       Foreground="#89B4FA" FontSize="12" TextWrapping="Wrap"
-                       TextAlignment="Center"/>
-        </Border>
+
+        <!-- Autostart -->
+        <CheckBox Grid.Row="28" x:Name="AutostartCheck"
+                  Content="  Start with Windows"
+                  Foreground="#CDD6F4" FontSize="12"
+                  Checked="AutostartCheck_Changed"
+                  Unchecked="AutostartCheck_Changed"/>
+
+        <!-- Start minimiert -->
+        <CheckBox Grid.Row="30" x:Name="StartMinimizedCheck"
+                  Content="  Start minimized"
+                  Foreground="#CDD6F4" FontSize="12"
+                  Margin="0,4,0,0"
+                  Checked="StartMinimizedCheck_Changed"
+                  Unchecked="StartMinimizedCheck_Changed"/>
+
+        <!-- VAD Auto-Stop -->
+        <CheckBox Grid.Row="32" x:Name="VadCheck"
+                  Content="  Auto-stop on silence (3s)"
+                  Foreground="#CDD6F4" FontSize="12"
+                  Margin="0,4,0,0"
+                  Checked="VadCheck_Changed"
+                  Unchecked="VadCheck_Changed"/>
     </Grid>
 </Window>

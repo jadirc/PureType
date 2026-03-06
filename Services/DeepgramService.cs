@@ -5,27 +5,29 @@ using System.Text.Json;
 namespace VoiceDictation.Services;
 
 /// <summary>
-/// Verbindet sich mit der Deepgram Streaming-API via WebSocket
-/// und liefert erkannte Transkripte per Event.
+/// Connects to the Deepgram Streaming API via WebSocket
+/// and delivers recognized transcripts via events.
 /// </summary>
-public class DeepgramService : IAsyncDisposable
+public class DeepgramService : ITranscriptionProvider
 {
     private ClientWebSocket? _ws;
     private CancellationTokenSource? _cts;
     private System.Timers.Timer? _keepAliveTimer;
     private readonly string _apiKey;
     private readonly string _language;
+    private readonly string[] _keywords;
 
-    public event Action<string>? TranscriptReceived;
+    public event Action<string, bool>? TranscriptReceived;
     public event Action<string>? ErrorOccurred;
     public event Action? Disconnected;
 
     public bool IsConnected => _ws?.State == WebSocketState.Open;
 
-    public DeepgramService(string apiKey, string language = "de")
+    public DeepgramService(string apiKey, string language = "de", string[]? keywords = null)
     {
         _apiKey = apiKey;
         _language = language;
+        _keywords = keywords ?? Array.Empty<string>();
     }
 
     public async Task ConnectAsync()
@@ -34,30 +36,38 @@ public class DeepgramService : IAsyncDisposable
         _ws = new ClientWebSocket();
         _ws.Options.SetRequestHeader("Authorization", $"Token {_apiKey}");
 
-        var uri = new Uri(
+        var uriBuilder =
             $"wss://api.deepgram.com/v1/listen" +
             $"?encoding=linear16" +
             $"&sample_rate=16000" +
             $"&channels=1" +
-            $"&model=nova-2" +
+            $"&model=nova-3" +
             $"&language={_language}" +
             $"&smart_format=true" +
-            $"&interim_results=false" +
-            $"&punctuate=true");
+            $"&interim_results=true" +
+            $"&punctuate=true";
+
+        foreach (var kw in _keywords)
+        {
+            if (!string.IsNullOrWhiteSpace(kw))
+                uriBuilder += $"&keywords={Uri.EscapeDataString(kw.Trim())}";
+        }
+
+        var uri = new Uri(uriBuilder);
 
         await _ws.ConnectAsync(uri, _cts.Token);
 
-        // KeepAlive alle 8 Sekunden senden (Deepgram Idle-Timeout verhindern)
+        // Send KeepAlive every 8 seconds (prevent Deepgram idle timeout)
         _keepAliveTimer = new System.Timers.Timer(8000);
         _keepAliveTimer.Elapsed += async (_, _) => await SendKeepAliveAsync();
         _keepAliveTimer.Start();
 
-        // Empfangs-Loop im Hintergrund starten
+        // Start receive loop in background
         _ = Task.Run(ReceiveLoopAsync);
     }
 
     /// <summary>
-    /// Sendet rohe PCM-16 Audiodaten (16kHz, Mono) an Deepgram.
+    /// Sends raw PCM-16 audio data (16kHz, Mono) to Deepgram.
     /// </summary>
     public async Task SendAudioAsync(byte[] audioData)
     {
@@ -72,7 +82,7 @@ public class DeepgramService : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            ErrorOccurred?.Invoke($"Sende-Fehler: {ex.Message}");
+            ErrorOccurred?.Invoke($"Send error: {ex.Message}");
         }
     }
 
@@ -83,8 +93,8 @@ public class DeepgramService : IAsyncDisposable
         Encoding.UTF8.GetBytes("{\"type\":\"Finalize\"}");
 
     /// <summary>
-    /// Signalisiert Deepgram, gepufferte Audiodaten sofort zu transkribieren.
-    /// Wichtig für Push-to-Talk: beim Loslassen aufrufen.
+    /// Signals Deepgram to immediately transcribe buffered audio data.
+    /// Important for Push-to-Talk: call on key release.
     /// </summary>
     public async Task SendFinalizeAsync()
     {
@@ -97,7 +107,7 @@ public class DeepgramService : IAsyncDisposable
                 endOfMessage: true,
                 _cts?.Token ?? CancellationToken.None);
         }
-        catch { /* ignorieren */ }
+        catch { /* ignore */ }
     }
 
     private async Task SendKeepAliveAsync()
@@ -111,7 +121,7 @@ public class DeepgramService : IAsyncDisposable
                 endOfMessage: true,
                 _cts?.Token ?? CancellationToken.None);
         }
-        catch { /* ignorieren – ReceiveLoop erkennt Disconnect */ }
+        catch { /* ignore — ReceiveLoop detects disconnect */ }
     }
 
     private async Task ReceiveLoopAsync()
@@ -139,7 +149,7 @@ public class DeepgramService : IAsyncDisposable
                 }
             }
         }
-        catch (OperationCanceledException) { /* normal beim Stoppen */ }
+        catch (OperationCanceledException) { /* normal when stopping */ }
         catch (Exception ex)
         {
             ErrorOccurred?.Invoke(ex.Message);
@@ -157,16 +167,17 @@ public class DeepgramService : IAsyncDisposable
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            // Deepgram Antwortformat: channel.alternatives[0].transcript
+            // Deepgram response format: channel.alternatives[0].transcript
             if (!root.TryGetProperty("channel", out var channel)) return;
             if (!channel.TryGetProperty("alternatives", out var alts)) return;
             if (alts.GetArrayLength() == 0) return;
 
             var transcript = alts[0].GetProperty("transcript").GetString();
+            var isFinal = root.TryGetProperty("is_final", out var isFinalProp) && isFinalProp.GetBoolean();
             if (!string.IsNullOrWhiteSpace(transcript))
-                TranscriptReceived?.Invoke(transcript.Trim());
+                TranscriptReceived?.Invoke(transcript.Trim(), isFinal);
         }
-        catch { /* ungültiges JSON ignorieren */ }
+        catch { /* ignore invalid JSON */ }
     }
 
     public async ValueTask DisposeAsync()
@@ -183,7 +194,7 @@ public class DeepgramService : IAsyncDisposable
                     "Closing",
                     CancellationToken.None);
             }
-            catch { /* ignorieren beim Dispose */ }
+            catch { /* ignore during Dispose */ }
         }
         _ws?.Dispose();
         _cts?.Dispose();

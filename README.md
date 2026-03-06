@@ -2,7 +2,7 @@
 
 A lightweight Windows desktop app that turns your voice into keystrokes — in real time. Speak into your microphone and the recognized text is typed directly into whichever window has focus.
 
-Built with WPF (.NET 8), powered by [Deepgram](https://deepgram.com/)'s Nova-2 speech recognition model via WebSocket streaming.
+Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://deepgram.com/) Nova-2 (cloud, via WebSocket) and [Whisper.net](https://github.com/sandrohanea/whisper.net) (local, offline, with optional CUDA GPU acceleration).
 
 ![Windows](https://img.shields.io/badge/platform-Windows-blue)
 ![.NET 8](https://img.shields.io/badge/.NET-8.0-purple)
@@ -16,24 +16,38 @@ Built with WPF (.NET 8), powered by [Deepgram](https://deepgram.com/)'s Nova-2 s
 
 ## Features
 
-- **Real-time transcription** — Audio is streamed to Deepgram and transcribed on the fly with the Nova-2 model
+- **Dual transcription engines**
+  - **Deepgram** (cloud) — Real-time streaming via WebSocket with Nova-2 model, interim results with live preview
+  - **Whisper** (local) — Offline transcription using [Whisper.net](https://github.com/sandrohanea/whisper.net) with GGML models, optional CUDA GPU acceleration
 - **Types into any window** — Recognized text is injected as simulated keystrokes (Unicode `SendInput`), working in editors, browsers, chat apps, and terminals
 - **Terminal-aware** — Automatically detects terminal windows (Windows Terminal, PowerShell, cmd, Warp, Alacritty, etc.) and uses clipboard paste instead of `SendInput`
 - **Two input modes**
   - **Toggle** — Press a hotkey to start/stop recording
   - **Push-to-Talk** — Hold a key to record, release to stop
+- **Voice activity detection (VAD)** — Automatically stops recording after a configurable silence duration
 - **Configurable shortcuts** — Assign any key or key combination (including Win+key chords) for toggle and PTT
+- **Microphone selection** — Choose from available input devices with a live VU meter
+- **Keyword boosting** — Improve recognition accuracy for domain-specific terms (Deepgram)
 - **Multi-language** — Supports German, English, and automatic language detection
 - **Audio feedback** — Choose from 5 signal tone presets (or silence) for recording start/stop
 - **System tray** — Minimizes to tray, runs unobtrusively in the background
+- **Start minimized** — Optional launch directly to system tray
 - **Auto-connect** — Reconnects automatically on startup if an API key is saved
 - **Dark UI** — Catppuccin Mocha-inspired dark theme
+
+## Important Notes
+
+> **Local Whisper mode currently requires an NVIDIA GPU with CUDA support.** CPU-only inference is not yet supported. Make sure you have up-to-date [NVIDIA drivers](https://www.nvidia.com/drivers) with CUDA installed.
+
+> **Deepgram (cloud mode)** requires a [Deepgram account](https://console.deepgram.com/). A free tier is available, but usage beyond the free quota will incur costs. See [Deepgram pricing](https://deepgram.com/pricing) for details.
 
 ## Prerequisites
 
 - **Windows 10/11**
 - [**.NET 8 SDK**](https://dotnet.microsoft.com/download/dotnet/8.0) or later
-- A [**Deepgram API key**](https://console.deepgram.com/) (free tier available)
+- **For Whisper (local):** NVIDIA GPU with CUDA drivers (required)
+- **For Deepgram (cloud):** A [Deepgram API key](https://console.deepgram.com/) (free tier available, pay-as-you-go beyond that)
+- Whisper GGML models are downloaded automatically on first use (~150 MB–1.5 GB depending on model size)
 
 ## Download
 
@@ -74,8 +88,12 @@ Settings (API key, language, mode, shortcuts, tone, window position) are persist
 VoiceDictation/
 ├── MainWindow.xaml(.cs)          # UI & orchestration
 ├── Services/
+│   ├── ITranscriptionProvider.cs # Common interface for transcription engines
 │   ├── DeepgramService.cs        # WebSocket streaming to Deepgram Nova-2
+│   ├── WhisperService.cs         # Local offline transcription via Whisper.net
+│   ├── WhisperModelManager.cs    # GGML model downloading & caching
 │   ├── AudioCaptureService.cs    # Microphone capture (NAudio, 16kHz/16bit/mono)
+│   ├── VadService.cs             # Voice activity detection (auto-stop on silence)
 │   ├── KeyboardInjector.cs       # Win32 SendInput / clipboard paste
 │   ├── SoundFeedback.cs          # Synthesized WAV tone presets
 │   └── LogWindowSink.cs          # Serilog sink for the log viewer
@@ -91,9 +109,10 @@ The app follows a simple code-behind architecture — no DI container or MVVM fr
 ### Data Flow
 
 ```
-Microphone → AudioCaptureService → DeepgramService (WebSocket) → transcript text
-                                                                       ↓
-                                                          KeyboardInjector → active window
+                                  ┌─ DeepgramService (WebSocket, cloud)
+Microphone → AudioCaptureService ─┤                                      → transcript text
+                                  └─ WhisperService (local, offline)            ↓
+                                                                   KeyboardInjector → active window
 ```
 
 ## Dependencies
@@ -101,6 +120,9 @@ Microphone → AudioCaptureService → DeepgramService (WebSocket) → transcrip
 | Package | Purpose |
 |---|---|
 | [NAudio](https://github.com/naudio/NAudio) 2.2.1 | Audio capture |
+| [Whisper.net](https://github.com/sandrohanea/whisper.net) 1.9.0 | Local Whisper transcription |
+| Whisper.net.Runtime 1.9.0 | Whisper native runtime (CPU) |
+| Whisper.net.Runtime.Cuda.Windows 1.9.0 | Whisper CUDA GPU acceleration |
 | [Serilog](https://serilog.net/) 4.2.0 | Structured logging |
 | Serilog.Sinks.File 6.0.0 | File log output |
 
@@ -131,6 +153,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ## Acknowledgments
 
-- [Deepgram](https://deepgram.com/) for the real-time speech recognition API
+- [Deepgram](https://deepgram.com/) for the real-time cloud speech recognition API
+- [Whisper.net](https://github.com/sandrohanea/whisper.net) for local offline transcription
 - [NAudio](https://github.com/naudio/NAudio) for .NET audio capture
 - UI theme inspired by [Catppuccin Mocha](https://github.com/catppuccin/catppuccin)

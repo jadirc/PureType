@@ -123,16 +123,14 @@ public class KeyboardHookService : IDisposable
             bool isDown = wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN;
             bool isUp   = wParam == WM_KEYUP   || wParam == WM_SYSKEYUP;
 
-            // ── Win key tracking & suppression ──
+            // ── Win key tracking ──
             if (vkCode is VK_LWIN or VK_RWIN)
             {
                 if (isDown) IsWinDown = true;
                 else if (isUp) { IsWinDown = false; _toggleFired = false; }
 
-                bool shouldSuppress = SuppressWinKey
-                    || _toggleModifiers.HasFlag(ModifierKeys.Windows)
-                    || _pttModifiers.HasFlag(ModifierKeys.Windows);
-                if (shouldSuppress)
+                // Only suppress during shortcut recording
+                if (SuppressWinKey)
                     return (IntPtr)1;
             }
 
@@ -167,6 +165,7 @@ public class KeyboardHookService : IDisposable
                     PttKeyUp?.Invoke();
                 }
             }
+
         }
 
         return CallNextHookEx(_hookId, nCode, wParam, lParam);

@@ -13,9 +13,9 @@ No solution file exists; build the single `.csproj` directly. No test project ex
 
 ## What This Is
 
-A Windows-only WPF desktop app (.NET 8) that captures microphone audio, streams it to the **Deepgram** real-time transcription API via WebSocket, and types the recognized text into the currently focused window using simulated keyboard input (Win32 `SendInput`).
+A Windows-only WPF desktop app (.NET 8) for real-time voice dictation. Supports two transcription engines: Deepgram (cloud, WebSocket) and Whisper.net (local, NVIDIA CUDA required). Recognized text is typed into the focused window via simulated keyboard input (Win32 `SendInput`).
 
-The UI language is German.
+All code and UI are in English.
 
 ## Architecture
 
@@ -23,25 +23,30 @@ The UI language is German.
 
 ### Services
 
+- **ITranscriptionProvider** — Common interface for transcription engines.
 - **DeepgramService** — Opens a `ClientWebSocket` to `wss://api.deepgram.com/v1/listen` (nova-2 model, PCM 16kHz mono). Receives JSON responses and parses `channel.alternatives[0].transcript`. Exposes `TranscriptReceived`, `ErrorOccurred`, `Disconnected` events.
+- **WhisperService** — Local offline transcription via Whisper.net with GGML models and optional CUDA GPU acceleration.
+- **WhisperModelManager** — Downloads and caches GGML models.
 - **AudioCaptureService** — Uses NAudio `WaveInEvent` to capture microphone at 16kHz/16bit/mono. Fires `AudioDataAvailable` with raw PCM chunks.
+- **VadService** — Voice activity detection, auto-stops recording after silence.
 - **KeyboardInjector** (static) — Converts text to Unicode `SendInput` calls, injecting keystrokes into the active window.
 
 ### Helpers (Win32 interop)
 
-- **GlobalHotkey** — Registers a system-wide hotkey via `RegisterHotKey`/WndProc. Used for F9 toggle.
-- **LowLevelKeyboardHook** — Installs a `WH_KEYBOARD_LL` hook for key-down/key-up detection without stealing focus. Used for Right Ctrl push-to-talk.
+- **KeyboardHookService** — Unified low-level keyboard hook (`WH_KEYBOARD_LL`) for toggle shortcut detection, push-to-talk key tracking, and Win key handling.
 
 ### Input Modes
 
-1. **Toggle mode** (default) — F9 starts/stops recording.
-2. **Push-to-Talk mode** — Hold Right Ctrl to record, release to stop.
+Both modes are always active simultaneously:
+1. **Toggle** — Press shortcut to start/stop recording.
+2. **Push-to-Talk** — Hold shortcut to record, release to stop.
 
 ### Settings
 
-API key is persisted to `%LOCALAPPDATA%\VoiceDictation\settings.txt`.
+All settings are persisted to `%LOCALAPPDATA%\VoiceDictation\settings.txt`.
 
 ## Key Dependencies
 
 - **NAudio 2.2.1** — Audio capture
+- **Whisper.net 1.9.0** — Local transcription (+ CUDA runtime)
 - `AllowUnsafeBlocks` is enabled in the csproj (required by Win32 interop structs)
