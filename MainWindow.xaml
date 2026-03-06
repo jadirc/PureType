@@ -129,6 +129,8 @@
             <RowDefinition Height="Auto"/>  <!-- Row 26: Hotkey Info -->
             <RowDefinition Height="12"/>
             <RowDefinition Height="Auto"/>  <!-- Row 28: Autostart -->
+            <RowDefinition Height="4"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 30: VAD -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
@@ -341,5 +343,13 @@
                   Foreground="#CDD6F4" FontSize="12"
                   Checked="AutostartCheck_Changed"
                   Unchecked="AutostartCheck_Changed"/>
+
+        <!-- VAD Auto-Stop -->
+        <CheckBox Grid.Row="30" x:Name="VadCheck"
+                  Content="  Auto-Stop bei Stille (3s)"
+                  Foreground="#CDD6F4" FontSize="12"
+                  Margin="0,4,0,0"
+                  Checked="VadCheck_Changed"
+                  Unchecked="VadCheck_Changed"/>
     </Grid>
 </Window>

@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private bool _connected;
     private bool _recording;
     private bool _isPttMode;
+    private VadService? _vad;
     private string _interimText = "";
     private bool _isLoading = true;
     private string? _savedMicrophoneDevice;
@@ -156,6 +157,9 @@ public partial class MainWindow : Window
                 case "whisper_model":
                     _savedWhisperModel = value;
                     break;
+                case "vad":
+                    VadCheck.IsChecked = value.Equals("True", StringComparison.OrdinalIgnoreCase);
+                    break;
                 case "left":
                     if (double.TryParse(value, out var left)) { Left = left; hasPosition = true; }
                     break;
@@ -253,6 +257,7 @@ public partial class MainWindow : Window
             $"keywords={KeywordsBox.Text.Trim()}",
             $"provider={(string)(providerItem?.Tag ?? "deepgram")}",
             $"whisper_model={(string)(whisperModelItem?.Tag ?? "tiny")}",
+            $"vad={VadCheck.IsChecked == true}",
             $"left={Left}",
             $"top={Top}",
             $"width={Width}",
@@ -470,6 +475,12 @@ public partial class MainWindow : Window
     }
 
     // ── Autostart ────────────────────────────────────────────────────────
+
+    private void VadCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoading)
+            SaveSettings();
+    }
 
     private void AutostartCheck_Changed(object sender, RoutedEventArgs e)
     {
@@ -775,6 +786,13 @@ public partial class MainWindow : Window
         SoundFeedback.PlayStart();
         _audio.Start();
         SetStatus("● Aufnahme läuft", Red);
+
+        if (VadCheck.IsChecked == true)
+        {
+            _vad = new VadService();
+            _vad.SilenceDetected += () => Dispatcher.Invoke(StopRecording);
+            _vad.Reset();
+        }
     }
 
     private async void StopRecording()
@@ -782,6 +800,7 @@ public partial class MainWindow : Window
         if (!_recording) return;
         _audio.Stop();
         _recording = false;
+        _vad = null;
 
         _interimText = "";
         InterimText.Text = "";
@@ -803,6 +822,7 @@ public partial class MainWindow : Window
     {
         if (_provider is null || !_recording) return;
         await _provider.SendAudioAsync(chunk);
+        _vad?.ProcessAudio(chunk);
     }
 
     // ── Transkript erhalten ───────────────────────────────────────────────
