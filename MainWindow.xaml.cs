@@ -274,16 +274,17 @@ public partial class MainWindow : Window
         File.WriteAllLines(SettingsPath, lines);
     }
 
-    private static void SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag)
+    private static bool SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag)
     {
         foreach (System.Windows.Controls.ComboBoxItem item in combo.Items)
         {
             if ((string)item.Tag == tag)
             {
                 combo.SelectedItem = item;
-                return;
+                return true;
             }
         }
+        return false;
     }
 
     private static string FormatShortcut(ModifierKeys mod, Key key)
@@ -420,19 +421,39 @@ public partial class MainWindow : Window
 
     private void PopulateWhisperModels()
     {
+        // Remember current selection
+        var previousTag = (WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+
         WhisperModelCombo.Items.Clear();
         foreach (var (name, displayName, _) in WhisperModelManager.AvailableModels)
         {
-            var suffix = WhisperModelManager.IsModelDownloaded(name) ? " [OK]" : "";
+            var isDownloaded = WhisperModelManager.IsModelDownloaded(name);
+            var suffix = isDownloaded ? " \u2713" : "";
             var item = new System.Windows.Controls.ComboBoxItem
             {
                 Content = displayName + suffix,
-                Tag = name
+                Tag = name,
+                FontWeight = isDownloaded ? FontWeights.SemiBold : FontWeights.Normal
             };
             WhisperModelCombo.Items.Add(item);
         }
-        if (WhisperModelCombo.Items.Count > 0)
-            WhisperModelCombo.SelectedIndex = 0;
+
+        // Restore previous selection, or fall back to first downloaded, or first item
+        if (previousTag != null && SelectComboByTag(WhisperModelCombo, previousTag)) { }
+        else
+        {
+            // Select first downloaded model
+            foreach (System.Windows.Controls.ComboBoxItem item in WhisperModelCombo.Items)
+            {
+                if (WhisperModelManager.IsModelDownloaded((string)item.Tag))
+                {
+                    WhisperModelCombo.SelectedItem = item;
+                    break;
+                }
+            }
+            if (WhisperModelCombo.SelectedItem == null && WhisperModelCombo.Items.Count > 0)
+                WhisperModelCombo.SelectedIndex = 0;
+        }
     }
 
     private void ProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
