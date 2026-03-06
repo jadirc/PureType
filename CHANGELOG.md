@@ -11,6 +11,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 * correct GitHub username in README URLs ([df762f5](https://github.com/jadirc/VoiceDictation/commit/df762f5541c8297a2e2802d5c0901656c02cc1cb))
 * integrate release build into Release Please workflow ([8417e8b](https://github.com/jadirc/VoiceDictation/commit/8417e8bed2b71372f0ec93084918fbd6c7dbc830))
+* remove PublishTrimmed from self-contained build ([01345db](https://github.com/jadirc/VoiceDictation/commit/01345dbd13706f4faf2bf58f4f09d831065fe317))
+
+## 1.0.0 (2026-03-06)
+
+
+### Bug Fixes
+
+* correct GitHub username in README URLs ([df762f5](https://github.com/jadirc/VoiceDictation/commit/df762f5541c8297a2e2802d5c0901656c02cc1cb))
+* integrate release build into Release Please workflow ([8417e8b](https://github.com/jadirc/VoiceDictation/commit/8417e8bed2b71372f0ec93084918fbd6c7dbc830))
 
 ## 1.0.0 (2026-03-06)
 
