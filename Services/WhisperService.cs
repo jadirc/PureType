@@ -1,6 +1,7 @@
 using System.IO;
 using Serilog;
 using Whisper.net;
+using Whisper.net.LibraryLoader;
 
 namespace VoiceDictation.Services;
 
@@ -35,6 +36,13 @@ public class WhisperService : ITranscriptionProvider
         if (!File.Exists(modelPath))
             throw new FileNotFoundException($"Whisper model not found: {modelPath}. Please download it first.");
 
+        // Prefer CUDA GPU acceleration, fall back to CPU
+        RuntimeOptions.RuntimeLibraryOrder =
+        [
+            RuntimeLibrary.Cuda,
+            RuntimeLibrary.Cpu
+        ];
+
         await Task.Run(() =>
         {
             _factory = WhisperFactory.FromPath(modelPath);
@@ -46,7 +54,10 @@ public class WhisperService : ITranscriptionProvider
         });
 
         _connected = true;
-        Log.Information("Whisper engine loaded: Model={Model}, Language={Language}", _modelName, _language);
+        var runtimeInfo = WhisperFactory.GetRuntimeInfo();
+        var loadedLib = RuntimeOptions.LoadedLibrary;
+        Log.Information("Whisper engine loaded: Model={Model}, Language={Language}, LoadedLibrary={Lib}, Runtime={Runtime}",
+            _modelName, _language, loadedLib, runtimeInfo);
     }
 
     public Task SendAudioAsync(byte[] audioData)
@@ -73,29 +84,46 @@ public class WhisperService : ITranscriptionProvider
         if (pcmData.Length < 3200) // less than 100ms of audio at 16kHz/16bit
             return;
 
+        Log.Debug("Whisper: processing {Bytes} bytes ({Seconds:F1}s) of audio",
+            pcmData.Length, pcmData.Length / 2.0 / 16000);
+
         try
         {
-            // Convert PCM-16 (16kHz, mono, 16-bit signed) to float32 samples
+            // Convert PCM-16 (16-bit signed LE) to float32 samples.
+            // Use float[] overload instead of WAV stream — Whisper.net 1.9.0 has a bug
+            // where ProcessAsync(Stream) produces empty results in CUDA mode.
             int sampleCount = pcmData.Length / 2;
-            var floatSamples = new float[sampleCount];
+            var samples = new float[sampleCount];
             for (int i = 0; i < sampleCount; i++)
             {
-                short sample = (short)(pcmData[i * 2] | (pcmData[i * 2 + 1] << 8));
-                floatSamples[i] = sample / 32768f;
+                short s = (short)(pcmData[i * 2] | (pcmData[i * 2 + 1] << 8));
+                samples[i] = s / 32768f;
             }
 
-            // Whisper.net ProcessAsync expects a WAV-formatted stream.
-            // Build a minimal WAV in memory from our float32 PCM samples,
-            // encoded as 32-bit IEEE float, 16 kHz, mono.
-            using var wavStream = BuildWavStream(floatSamples, sampleRate: 16000, channels: 1);
+            // Log audio statistics to verify signal is present
+            float maxAmp = 0, sumSq = 0;
+            for (int j = 0; j < sampleCount; j++)
+            {
+                float abs = Math.Abs(samples[j]);
+                if (abs > maxAmp) maxAmp = abs;
+                sumSq += samples[j] * samples[j];
+            }
+            float rms = (float)Math.Sqrt(sumSq / sampleCount);
+            Log.Debug("Whisper audio stats: peak={Peak:F4}, rms={Rms:F4}, samples={Samples}",
+                maxAmp, rms, sampleCount);
 
             var result = new System.Text.StringBuilder();
-            await foreach (var segment in _processor.ProcessAsync(wavStream))
+            int segCount = 0;
+            await foreach (var segment in _processor.ProcessAsync(samples))
             {
+                segCount++;
+                Log.Debug("Whisper segment {N}: Start={Start}, End={End}, Text=\"{Text}\", Prob={Prob:F3}",
+                    segCount, segment.Start, segment.End, segment.Text, segment.Probability);
                 result.Append(segment.Text);
             }
 
             var text = result.ToString().Trim();
+            Log.Debug("Whisper result ({Segments} segments): \"{Text}\"", segCount, text);
             if (!string.IsNullOrWhiteSpace(text))
                 TranscriptReceived?.Invoke(text, true); // always final in batch mode
         }
@@ -106,52 +134,30 @@ public class WhisperService : ITranscriptionProvider
         }
     }
 
-    /// <summary>
-    /// Builds a WAV-formatted MemoryStream from float32 samples (IEEE float PCM).
-    /// </summary>
-    private static MemoryStream BuildWavStream(float[] samples, int sampleRate, int channels)
-    {
-        int bitsPerSample = 32;
-        int byteRate = sampleRate * channels * (bitsPerSample / 8);
-        int blockAlign = channels * (bitsPerSample / 8);
-        int dataSize = samples.Length * sizeof(float);
-
-        var ms = new MemoryStream();
-        using var writer = new BinaryWriter(ms, System.Text.Encoding.UTF8, leaveOpen: true);
-
-        // RIFF header
-        writer.Write("RIFF"u8);
-        writer.Write(36 + dataSize);        // file size - 8
-        writer.Write("WAVE"u8);
-
-        // fmt  sub-chunk (IEEE float = format tag 3)
-        writer.Write("fmt "u8);
-        writer.Write(16);                   // sub-chunk size
-        writer.Write((short)3);             // audio format: IEEE float
-        writer.Write((short)channels);
-        writer.Write(sampleRate);
-        writer.Write(byteRate);
-        writer.Write((short)blockAlign);
-        writer.Write((short)bitsPerSample);
-
-        // data sub-chunk
-        writer.Write("data"u8);
-        writer.Write(dataSize);
-
-        var floatBytes = new byte[dataSize];
-        Buffer.BlockCopy(samples, 0, floatBytes, 0, dataSize);
-        writer.Write(floatBytes);
-
-        writer.Flush();
-        ms.Position = 0;
-        return ms;
-    }
-
     public async ValueTask DisposeAsync()
     {
         _connected = false;
-        _processor?.Dispose();
-        _factory?.Dispose();
+
+        // Do NOT call Dispose on processor/factory when CUDA is active.
+        // Native CUDA cleanup can trigger AccessViolationException (uncatchable in .NET 8)
+        // if the GPU context is in a bad state (e.g. OOM with large models).
+        // The OS will free all GPU resources when the process exits.
+        var isCuda = RuntimeOptions.LoadedLibrary == RuntimeLibrary.Cuda;
+        if (!isCuda)
+        {
+            _processor?.Dispose();
+            _factory?.Dispose();
+        }
+        else
+        {
+            // Suppress GC finalizers to prevent native CUDA cleanup crash
+            if (_processor != null) GC.SuppressFinalize(_processor);
+            if (_factory != null) GC.SuppressFinalize(_factory);
+            Log.Debug("Skipping Whisper dispose (CUDA) — resources freed on process exit");
+        }
+
+        _processor = null;
+        _factory = null;
         _audioBuffer.Dispose();
         Disconnected?.Invoke();
         await Task.CompletedTask;

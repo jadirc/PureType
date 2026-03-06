@@ -79,7 +79,6 @@ public partial class MainWindow : Window
         // Init sound after LoadSettings so selected tone is applied
         var toneItem = ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         SoundFeedback.Init((string?)toneItem?.Tag);
-        _isLoading = false;
 
         _audio.AudioDataAvailable += OnAudioData;
         _audio.AudioLevelChanged += OnAudioLevel;
@@ -91,6 +90,9 @@ public partial class MainWindow : Window
         var provItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         WhisperModelPanel.Visibility = (string?)provItem?.Tag == "whisper"
             ? Visibility.Visible : Visibility.Collapsed;
+
+        // Enable settings persistence only after all controls are populated
+        _isLoading = false;
 
         Loaded += (_, _) => ConnectButton.Focus();
 
@@ -761,6 +763,9 @@ public partial class MainWindow : Window
 
     private async Task DisconnectAsync()
     {
+        if (!_connected) return;
+        _connected = false;
+
         StopRecording();
         _keyboardHook.Uninstall();
 
@@ -769,8 +774,6 @@ public partial class MainWindow : Window
             await _provider.DisposeAsync();
             _provider = null;
         }
-
-        _connected = false;
         SetStatus("Nicht verbunden", Red);
         ConnectButton.Content    = "Verbinden";
         ConnectButton.Background = Blue;
