@@ -452,6 +452,8 @@ public partial class MainWindow : Window
         if (_isLoading || ProviderCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
         var isWhisper = (string)item.Tag == "whisper";
         WhisperModelPanel.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
+        ApiKeyPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
+        KeywordsPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
         if (!_isLoading)
             SaveSettings();
     }
