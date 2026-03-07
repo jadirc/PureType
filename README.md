@@ -1,4 +1,4 @@
-# Voice Dictation
+# PureType
 
 A lightweight Windows desktop app that turns your voice into keystrokes — in real time. Speak into your microphone and the recognized text is typed directly into whichever window has focus.
 
@@ -11,7 +11,7 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 ---
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="Voice Dictation screenshot" width="350">
+  <img src="docs/screenshot.png" alt="PureType screenshot" width="350">
 </p>
 
 ## Features
@@ -64,18 +64,18 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 
 ## Download
 
-Grab the latest release from the [Releases page](https://github.com/jadirc/VoiceDictation/releases):
+Grab the latest release from the [Releases page](https://github.com/jadirc/PureType/releases):
 
 | Asset | Description |
 |---|---|
-| `VoiceDictation-vX.Y.Z-win-x64.zip` | Requires [.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) installed |
-| `VoiceDictation-vX.Y.Z-win-x64-portable.zip` | Standalone, no runtime needed (~70 MB) |
+| `PureType-vX.Y.Z-win-x64.zip` | Requires [.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) installed |
+| `PureType-vX.Y.Z-win-x64-portable.zip` | Standalone, no runtime needed (~70 MB) |
 
 ## Getting Started
 
 ```bash
-git clone https://github.com/jadirc/VoiceDictation.git
-cd VoiceDictation
+git clone https://github.com/jadirc/PureType.git
+cd PureType
 dotnet run
 ```
 
@@ -95,12 +95,12 @@ Both input modes are always active simultaneously.
 3. **Customize shortcuts** — Open Settings and click the shortcut field to record a new key combination
 4. **Export transcript** — Click *Export* in the transcript panel or use the tray menu to save the session as a timestamped `.txt` file
 
-Settings are persisted automatically to `%LOCALAPPDATA%\VoiceDictation\settings.json`.
+Settings are persisted automatically to `%LOCALAPPDATA%\PureType\settings.json`.
 
 ## Architecture
 
 ```
-VoiceDictation/
+PureType/
 ├── MainWindow.xaml(.cs)              # UI & orchestration
 ├── SettingsWindow.xaml(.cs)          # Settings dialog
 ├── AboutWindow.xaml(.cs)             # About dialog with OSS credits
@@ -167,7 +167,7 @@ The project targets `net8.0-windows` and requires `UseWPF` and `UseWindowsForms`
 
 ## Logging
 
-Logs are written to `%LOCALAPPDATA%\VoiceDictation\log.txt` (rolling daily, 7-day retention). A built-in log viewer is accessible via the **Log** button in the transcript panel.
+Logs are written to `%LOCALAPPDATA%\PureType\log.txt` (rolling daily, 7-day retention). A built-in log viewer is accessible via the **Log** button in the transcript panel.
 
 ## Contributing
 

@@ -35,7 +35,7 @@ jobs:
 
       - name: Publish framework-dependent
         run: >
-          dotnet publish src/VoiceDictation/VoiceDictation.csproj
+          dotnet publish src/PureType/PureType.csproj
           -c Release
           -r win-x64
           --self-contained false
@@ -46,7 +46,7 @@ jobs:
 
       - name: Publish self-contained portable
         run: >
-          dotnet publish src/VoiceDictation/VoiceDictation.csproj
+          dotnet publish src/PureType/PureType.csproj
           -c Release
           -r win-x64
           --self-contained true
@@ -61,12 +61,12 @@ jobs:
         shell: pwsh
         run: |
           $tag = "${{ needs.release-please.outputs.tag_name }}"
-          Compress-Archive -Path publish/framework-dependent/* -DestinationPath "VoiceDictation-${tag}-win-x64.zip"
-          Compress-Archive -Path publish/self-contained/* -DestinationPath "VoiceDictation-${tag}-win-x64-portable.zip"
+          Compress-Archive -Path publish/framework-dependent/* -DestinationPath "PureType-${tag}-win-x64.zip"
+          Compress-Archive -Path publish/self-contained/* -DestinationPath "PureType-${tag}-win-x64-portable.zip"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: |
-            VoiceDictation-*.zip
+            PureType-*.zip

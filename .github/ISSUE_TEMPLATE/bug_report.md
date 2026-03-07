@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug to help improve VoiceDictation
+about: Report a bug to help improve PureType
 labels: bug
 ---
 
@@ -26,5 +26,5 @@ What actually happened.
 
 - Windows version:
 - .NET version:
-- VoiceDictation version:
+- PureType version:
 - Microphone:

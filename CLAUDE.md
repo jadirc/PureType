@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 dotnet build
 dotnet test
-dotnet run --project src/VoiceDictation
+dotnet run --project src/PureType
 ```
 
 A `.slnx` file exists at the repo root. `dotnet build` and `dotnet test` operate on it automatically.
@@ -44,7 +44,7 @@ Both modes are always active simultaneously:
 
 ### Settings
 
-All settings are persisted as JSON to `%LOCALAPPDATA%\VoiceDictation\settings.json`. The `SettingsService` handles load/save and auto-migrates from the legacy `settings.txt` format on first run.
+All settings are persisted as JSON to `%LOCALAPPDATA%\PureType\settings.json`. The `SettingsService` handles load/save and auto-migrates from the legacy `settings.txt` format on first run.
 
 ## Key Dependencies
 

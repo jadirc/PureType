@@ -1,0 +1,24 @@
+<Window x:Class="PureType.ToastWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Focusable="False"
+        IsHitTestVisible="False"
+        SizeToContent="WidthAndHeight"
+        Background="Transparent">
+    <Border Background="{DynamicResource ToastBackgroundBrush}" CornerRadius="12" Padding="20,14"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect Color="Black" BlurRadius="20" ShadowDepth="4" Opacity="0.5"/>
+        </Border.Effect>
+        <StackPanel Orientation="Horizontal">
+            <Ellipse x:Name="Dot" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <TextBlock x:Name="MessageText" Foreground="{DynamicResource TextBrush}" FontSize="16" FontWeight="SemiBold"
+                       FontFamily="Segoe UI" VerticalAlignment="Center"/>
+        </StackPanel>
+    </Border>
+</Window>

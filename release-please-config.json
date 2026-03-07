@@ -3,13 +3,13 @@
   "release-type": "simple",
   "packages": {
     ".": {
-      "package-name": "VoiceDictation",
+      "package-name": "PureType",
       "include-component-in-tag": false,
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
           "type": "xml",
-          "path": "src/VoiceDictation/VoiceDictation.csproj",
+          "path": "src/PureType/PureType.csproj",
           "xpath": "//Project/PropertyGroup/Version"
         }
       ]

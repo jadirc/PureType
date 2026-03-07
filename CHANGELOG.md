@@ -4,36 +4,36 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.0.1](https://github.com/jadirc/VoiceDictation/compare/v1.0.0...v1.0.1) (2026-03-06)
+## [1.0.1](https://github.com/jadirc/PureType/compare/v1.0.0...v1.0.1) (2026-03-06)
 
 
 ### Bug Fixes
 
-* allow Win+modifier shortcut recording regardless of key press order ([ce8a842](https://github.com/jadirc/VoiceDictation/commit/ce8a84275eec2d1cb780b025e50574b1cb4750b9))
+* allow Win+modifier shortcut recording regardless of key press order ([ce8a842](https://github.com/jadirc/PureType/commit/ce8a84275eec2d1cb780b025e50574b1cb4750b9))
 
 ## 1.0.0 (2026-03-06)
 
 
 ### Bug Fixes
 
-* correct GitHub username in README URLs ([df762f5](https://github.com/jadirc/VoiceDictation/commit/df762f5541c8297a2e2802d5c0901656c02cc1cb))
-* integrate release build into Release Please workflow ([8417e8b](https://github.com/jadirc/VoiceDictation/commit/8417e8bed2b71372f0ec93084918fbd6c7dbc830))
-* remove PublishTrimmed from self-contained build ([01345db](https://github.com/jadirc/VoiceDictation/commit/01345dbd13706f4faf2bf58f4f09d831065fe317))
+* correct GitHub username in README URLs ([df762f5](https://github.com/jadirc/PureType/commit/df762f5541c8297a2e2802d5c0901656c02cc1cb))
+* integrate release build into Release Please workflow ([8417e8b](https://github.com/jadirc/PureType/commit/8417e8bed2b71372f0ec93084918fbd6c7dbc830))
+* remove PublishTrimmed from self-contained build ([01345db](https://github.com/jadirc/PureType/commit/01345dbd13706f4faf2bf58f4f09d831065fe317))
 
 ## 1.0.0 (2026-03-06)
 
 
 ### Bug Fixes
 
-* correct GitHub username in README URLs ([df762f5](https://github.com/jadirc/VoiceDictation/commit/df762f5541c8297a2e2802d5c0901656c02cc1cb))
-* integrate release build into Release Please workflow ([8417e8b](https://github.com/jadirc/VoiceDictation/commit/8417e8bed2b71372f0ec93084918fbd6c7dbc830))
+* correct GitHub username in README URLs ([df762f5](https://github.com/jadirc/PureType/commit/df762f5541c8297a2e2802d5c0901656c02cc1cb))
+* integrate release build into Release Please workflow ([8417e8b](https://github.com/jadirc/PureType/commit/8417e8bed2b71372f0ec93084918fbd6c7dbc830))
 
 ## 1.0.0 (2026-03-06)
 
 
 ### Bug Fixes
 
-* correct GitHub username in README URLs ([df762f5](https://github.com/jadirc/VoiceDictation/commit/df762f5541c8297a2e2802d5c0901656c02cc1cb))
+* correct GitHub username in README URLs ([df762f5](https://github.com/jadirc/PureType/commit/df762f5541c8297a2e2802d5c0901656c02cc1cb))
 
 ## [0.1.0] - 2026-03-05
 
@@ -51,4 +51,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Auto-connect on startup when API key is saved
 - Dark UI theme inspired by Catppuccin Mocha
 - Built-in log viewer for debugging
-- Settings persistence to %LOCALAPPDATA%\VoiceDictation\settings.txt
+- Settings persistence to %LOCALAPPDATA%\PureType\settings.txt

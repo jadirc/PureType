@@ -136,16 +136,16 @@ function Find-TrayIcon([string]$tooltip, [int]$timeoutMs = 5000) {
 }
 
 $settingsDir = [System.IO.Path]::Combine(
-    [Environment]::GetFolderPath('LocalApplicationData'), 'VoiceDictation')
+    [Environment]::GetFolderPath('LocalApplicationData'), 'PureType')
 $settingsPath = [System.IO.Path]::Combine($settingsDir, 'settings.json')
-$exePath = "$PSScriptRoot\..\src\VoiceDictation\bin\Debug\net8.0-windows\VoiceDictation.exe"
+$exePath = "$PSScriptRoot\..\src\PureType\bin\Debug\net8.0-windows\PureType.exe"
 
 # ═════════════════════════════════════════════════════════════════════════════
 Write-Host "`n=== UI Polish Round 3 Tests ===" -ForegroundColor Cyan
 
 # Build first
 Write-Host "`nBuilding app..." -ForegroundColor Yellow
-$buildOutput = & dotnet build "$PSScriptRoot\..\src\VoiceDictation" --no-restore 2>&1
+$buildOutput = & dotnet build "$PSScriptRoot\..\src\PureType" --no-restore 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!" -ForegroundColor Red
     $buildOutput | Write-Host
@@ -171,7 +171,7 @@ Start-Sleep -Seconds 3
 
 try {
     # WelcomeWindow should appear
-    $welcomeWindow = Find-Window "Welcome to Voice Dictation" 8000
+    $welcomeWindow = Find-Window "Welcome to PureType" 8000
     Assert-NotNull $welcomeWindow "WelcomeWindow appears on first run"
 
     if ($null -ne $welcomeWindow) {
@@ -203,12 +203,12 @@ try {
         }
 
         # Welcome should close, main window should appear
-        $welcomeGone = Find-Window "Welcome to Voice Dictation" 2000
+        $welcomeGone = Find-Window "Welcome to PureType" 2000
         Assert-True ($null -eq $welcomeGone) "WelcomeWindow closed after Get Started"
     }
 
     # Main window should now be visible
-    $mainWindow = Find-Window "Voice Dictation" 5000
+    $mainWindow = Find-Window "PureType" 5000
     Assert-NotNull $mainWindow "Main window appears after wizard"
 
 } finally {
@@ -246,7 +246,7 @@ $proc2 = Start-Process -FilePath $exePath -PassThru
 Start-Sleep -Seconds 3
 
 try {
-    $mainWindow = Find-Window "Voice Dictation" 10000
+    $mainWindow = Find-Window "PureType" 10000
     Assert-NotNull $mainWindow "Main window found (normal startup)"
 
     if ($null -eq $mainWindow) {
@@ -299,7 +299,7 @@ try {
                     Assert-True $true "Switched to Light theme (dissolve transition)"
 
                     # Verify windows survived the transition
-                    $mainStill = Find-Window "Voice Dictation" 2000
+                    $mainStill = Find-Window "PureType" 2000
                     Assert-NotNull $mainStill "Main window survived theme transition"
 
                     # Settings may need re-find after theme change
@@ -389,7 +389,7 @@ try {
         }
     }
 
-    $trayIcon = Find-TrayIcon "Voice Dictation" 5000
+    $trayIcon = Find-TrayIcon "PureType" 5000
     if ($null -ne $trayIcon) {
         Assert-True $true "Tray icon found"
 
@@ -414,7 +414,7 @@ try {
             $exitItem = Find-Element $win -name "Exit"
             $exportItem = Find-Element $win -name "Export Transcript"
             if ($null -ne $exitItem -and $null -ne $exportItem) {
-                if ($win.Current.Name -ne "Voice Dictation" -and $win.Current.Name -ne "Settings") {
+                if ($win.Current.Name -ne "PureType" -and $win.Current.Name -ne "Settings") {
                     $trayMenu = $win
                     break
                 }
@@ -481,7 +481,7 @@ try {
             foreach ($win in $allWindows2) {
                 $s2 = Find-Element $win -name "Exit"
                 $e2 = Find-Element $win -name "Export Transcript"
-                if ($null -ne $s2 -and $null -ne $e2 -and $win.Current.Name -ne "Voice Dictation") {
+                if ($null -ne $s2 -and $null -ne $e2 -and $win.Current.Name -ne "PureType") {
                     $menuGone = $win
                     break
                 }
@@ -501,7 +501,7 @@ try {
     # Tooltips are hard to test via UI Automation since they're transient.
     # We verify the Settings button has a tooltip configured and that hovering
     # triggers a tooltip window.
-    $mainWindow2 = Find-Window "Voice Dictation" 3000
+    $mainWindow2 = Find-Window "PureType" 3000
     if ($null -ne $mainWindow2) {
         $settingsBtn2 = Find-Element $mainWindow2 -automationId "SettingsButton"
         if ($null -ne $settingsBtn2) {

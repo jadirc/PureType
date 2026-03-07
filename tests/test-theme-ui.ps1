@@ -85,12 +85,12 @@ function Get-ExpandCollapsePattern($element) {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-Write-Host "`n=== Voice Dictation Theme UI Tests ===" -ForegroundColor Cyan
+Write-Host "`n=== PureType Theme UI Tests ===" -ForegroundColor Cyan
 Write-Host ""
 
 # Build the app first
 Write-Host "Building app..." -ForegroundColor Yellow
-$buildOutput = & dotnet build "$PSScriptRoot\..\src\VoiceDictation" --no-restore 2>&1
+$buildOutput = & dotnet build "$PSScriptRoot\..\src\PureType" --no-restore 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!" -ForegroundColor Red
     $buildOutput | Write-Host
@@ -100,7 +100,7 @@ Write-Host "Build OK" -ForegroundColor Green
 
 # Start the app
 Write-Host "Starting app..." -ForegroundColor Yellow
-$exePath = "$PSScriptRoot\..\src\VoiceDictation\bin\Debug\net8.0-windows\VoiceDictation.exe"
+$exePath = "$PSScriptRoot\..\src\PureType\bin\Debug\net8.0-windows\PureType.exe"
 $proc = Start-Process -FilePath $exePath -PassThru
 Start-Sleep -Seconds 3
 
@@ -108,7 +108,7 @@ try {
     # ── Test 1: Main window exists ──────────────────────────────────────
     Write-Host "`n--- Test Group: Main Window ---" -ForegroundColor Cyan
 
-    $mainWindow = Find-Window "Voice Dictation" 10000
+    $mainWindow = Find-Window "PureType" 10000
     Assert-NotNull $mainWindow "Main window found"
 
     if ($null -eq $mainWindow) {
@@ -239,7 +239,7 @@ try {
                     Assert-True $true "Switched to Light theme"
 
                     # Verify theme applied by checking main window is still responsive
-                    $mainStillExists = Find-Window "Voice Dictation" 2000
+                    $mainStillExists = Find-Window "PureType" 2000
                     Assert-NotNull $mainStillExists "Main window still exists after Light theme"
 
                     # Switch back to Dark
@@ -284,7 +284,7 @@ try {
 
     # Re-find settings button and open settings to access About via tray
     # Instead, let's verify the main window is still healthy
-    $mainAfter = Find-Window "Voice Dictation" 2000
+    $mainAfter = Find-Window "PureType" 2000
     Assert-NotNull $mainAfter "Main window accessible after Settings close"
 
     # ── Test 9: Provider combo items ────────────────────────────────────
