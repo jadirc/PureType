@@ -40,6 +40,15 @@
                         HorizontalAlignment="Left"
                         Margin="0,8,0,0"/>
 
+                <!-- Open Settings File -->
+                <Button Content="Open Settings File &#x2026;"
+                        Click="OpenSettingsFileButton_Click"
+                        Background="Transparent" Foreground="#89B4FA"
+                        FontSize="12" BorderThickness="0"
+                        Padding="0,4" Cursor="Hand"
+                        HorizontalAlignment="Left"
+                        Margin="0,4,0,0"/>
+
                 <!-- ── TRANSCRIPTION ── -->
                 <TextBlock Text="TRANSCRIPTION" Foreground="#89B4FA"
                            FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>

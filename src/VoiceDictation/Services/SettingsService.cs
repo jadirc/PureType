@@ -68,7 +68,7 @@ public class SettingsService
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                      "VoiceDictation");
 
-    private static readonly string DefaultJsonPath = Path.Combine(SettingsDir, "settings.json");
+    public static readonly string DefaultJsonPath = Path.Combine(SettingsDir, "settings.json");
     private static readonly string TxtPath = Path.Combine(SettingsDir, "settings.txt");
 
     private static readonly JsonSerializerOptions JsonOptions = new()

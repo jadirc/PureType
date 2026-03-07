@@ -424,6 +424,17 @@ public partial class SettingsWindow : Window
         _replacementsWindow.Show();
     }
 
+    private void OpenSettingsFileButton_Click(object sender, RoutedEventArgs e)
+    {
+        var path = SettingsService.DefaultJsonPath;
+        if (!System.IO.File.Exists(path))
+        {
+            MessageBox.Show("Settings file not found.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+    }
+
     // ── Autostart ─────────────────────────────────────────────────────────
 
     private const string AutostartRegistryKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
