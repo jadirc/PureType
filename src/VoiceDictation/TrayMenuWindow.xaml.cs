@@ -29,18 +29,26 @@ public partial class TrayMenuWindow : Window
 
     private bool _connected;
     private bool _muted;
+    private bool _isClosing;
 
     public TrayMenuWindow()
     {
         InitializeComponent();
         BuildMenu();
 
-        Deactivated += (_, _) => Close();
+        Deactivated += (_, _) => SafeClose();
         KeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape)
-                Close();
+                SafeClose();
         };
+    }
+
+    private void SafeClose()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+        Close();
     }
 
     private void BuildMenu()
@@ -151,7 +159,7 @@ public partial class TrayMenuWindow : Window
         border.MouseLeftButtonUp += (_, _) =>
         {
             onClick();
-            Close();
+            SafeClose();
         };
 
         MenuPanel.Children.Add(border);
