@@ -39,7 +39,14 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 - **Auto-connect** — Connects automatically on startup if an API key is saved
 - **Auto-reconnect** — Deepgram connections are automatically restored with exponential backoff (up to 10 attempts) and toast notifications
 - **Settings dialog** — All configuration in one place, including provider selection, shortcuts, audio, and AI settings
-- **Dark UI** — Catppuccin Mocha-inspired dark theme
+- **Themes** — Dark (Catppuccin Mocha) and Light (Catppuccin Latte) color palettes with Auto mode that follows the Windows system setting
+- **Mute function** — Mute/unmute the microphone with a configurable shortcut; muted state shown in status bar and tray menu
+- **Clipboard mode** — Optionally copy transcribed text to the clipboard instead of typing it
+- **First-run wizard** — On first launch, a guided setup wizard helps select a transcription provider and enter API credentials
+- **Audio device hot-swap** — Detects when microphones are connected or disconnected and refreshes the device list automatically
+- **Transcript search** — Search through saved transcript sessions by keyword with real-time filtering and text highlighting
+- **Auto-update check** — Silently checks GitHub Releases on startup and offers a manual check in the About dialog
+- **Configurable log level** — Set log verbosity (Debug / Information / Warning) from Settings, applied at runtime
 
 ## Important Notes
 
@@ -72,7 +79,7 @@ cd VoiceDictation
 dotnet run
 ```
 
-On first launch, open Settings (gear icon), enter your Deepgram API key and click **Connect**.
+On first launch, a setup wizard guides you through selecting a transcription provider and entering your credentials. You can also configure everything later via the Settings dialog (gear icon).
 
 ## Usage
 
@@ -94,30 +101,38 @@ Settings are persisted automatically to `%LOCALAPPDATA%\VoiceDictation\settings.
 
 ```
 VoiceDictation/
-├── MainWindow.xaml(.cs)          # UI & orchestration
-├── SettingsWindow.xaml(.cs)      # Settings dialog
-├── AboutWindow.xaml(.cs)         # About dialog with OSS credits
-├── ToastWindow.xaml(.cs)         # Non-intrusive status notifications
-├── LogWindow.xaml(.cs)           # Debug log viewer
+├── MainWindow.xaml(.cs)              # UI & orchestration
+├── SettingsWindow.xaml(.cs)          # Settings dialog
+├── AboutWindow.xaml(.cs)             # About dialog with OSS credits
+├── ToastWindow.xaml(.cs)             # Non-intrusive status notifications
+├── LogWindow.xaml(.cs)               # Debug log viewer
+├── TrayMenuWindow.xaml(.cs)          # Themed tray context menu
+├── WelcomeWindow.xaml(.cs)           # First-run setup wizard
+├── TranscriptHistoryWindow.xaml(.cs) # Transcript history with search
 ├── Services/
-│   ├── ITranscriptionProvider.cs # Common interface for transcription engines
-│   ├── DeepgramService.cs        # WebSocket streaming to Deepgram Nova-3 (auto-reconnect)
-│   ├── WhisperService.cs         # Local offline transcription via Whisper.net
-│   ├── WhisperModelManager.cs    # GGML model downloading & caching
-│   ├── AudioCaptureService.cs    # Microphone capture (NAudio, 16kHz/16bit/mono)
-│   ├── RecordingController.cs    # Recording lifecycle, audio routing, VAD, transcript collection
-│   ├── VadService.cs             # Voice activity detection (auto-stop on silence)
-│   ├── KeyboardInjector.cs       # Win32 SendInput / clipboard paste (configurable delay)
-│   ├── ReplacementService.cs     # User-defined text substitutions
-│   ├── SettingsService.cs        # JSON settings persistence & migration
-│   ├── SoundFeedback.cs          # Synthesized WAV tone presets
-│   └── LogWindowSink.cs          # Serilog sink for the log viewer
+│   ├── ITranscriptionProvider.cs     # Common interface for transcription engines
+│   ├── DeepgramService.cs            # WebSocket streaming to Deepgram Nova-3 (auto-reconnect)
+│   ├── WhisperService.cs             # Local offline transcription via Whisper.net
+│   ├── WhisperModelManager.cs        # GGML model downloading & caching
+│   ├── AudioCaptureService.cs        # Microphone capture (NAudio, 16kHz/16bit/mono)
+│   ├── RecordingController.cs        # Recording lifecycle, audio routing, VAD, transcript collection
+│   ├── VadService.cs                 # Voice activity detection (auto-stop on silence)
+│   ├── KeyboardInjector.cs           # Win32 SendInput / clipboard paste (configurable delay)
+│   ├── ReplacementService.cs         # User-defined text substitutions
+│   ├── SettingsService.cs            # JSON settings persistence & migration
+│   ├── SoundFeedback.cs              # Synthesized WAV tone presets
+│   ├── UpdateChecker.cs              # GitHub release update checking
+│   └── LogWindowSink.cs              # Serilog sink for the log viewer
 ├── Helpers/
-│   ├── KeyboardHookService.cs    # Low-level keyboard hook (WH_KEYBOARD_LL)
-│   ├── TrayIconManager.cs        # System tray icon with dynamic status dot
-│   └── UiHelper.cs               # Shared UI helper methods
+│   ├── KeyboardHookService.cs        # Low-level keyboard hook (WH_KEYBOARD_LL)
+│   ├── TrayIconManager.cs            # System tray icon with dynamic status dot
+│   ├── ThemeManager.cs               # Theme switching with dissolve animation
+│   └── UiHelper.cs                   # Shared UI helper methods
+├── Themes/
+│   ├── Dark.xaml                     # Catppuccin Mocha color palette
+│   └── Light.xaml                    # Catppuccin Latte color palette
 └── Resources/
-    └── mic.ico                   # Application icon
+    └── mic.ico                       # Application icon
 ```
 
 The app follows a simple code-behind architecture — no DI container or MVVM framework. `MainWindow` is the central orchestrator that wires together the services and manages state. `RecordingController` and `TrayIconManager` are extracted from MainWindow to keep it focused on UI orchestration.
@@ -172,4 +187,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 - [Deepgram](https://deepgram.com/) for the real-time cloud speech recognition API
 - [Whisper.net](https://github.com/sandrohanea/whisper.net) for local offline transcription
 - [NAudio](https://github.com/naudio/NAudio) for .NET audio capture
-- UI theme inspired by [Catppuccin Mocha](https://github.com/catppuccin/catppuccin)
+- UI themes inspired by [Catppuccin](https://github.com/catppuccin/catppuccin) (Mocha & Latte palettes)
