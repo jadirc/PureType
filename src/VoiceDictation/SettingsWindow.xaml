@@ -53,6 +53,17 @@
                 <TextBlock Text="TRANSCRIPTION" Foreground="#89B4FA"
                            FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>
 
+                <!-- Provider -->
+                <StackPanel Margin="0,0,0,12">
+                    <TextBlock Text="PROVIDER" Foreground="#BAC2DE"
+                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="ProviderCombo" Padding="10,7" FontSize="13"
+                              SelectionChanged="ProviderCombo_SelectionChanged">
+                        <ComboBoxItem Content="Deepgram (Cloud)" Tag="deepgram" IsSelected="True"/>
+                        <ComboBoxItem Content="Whisper (Local)" Tag="whisper"/>
+                    </ComboBox>
+                </StackPanel>
+
                 <!-- API Key (Deepgram only) -->
                 <StackPanel x:Name="ApiKeyPanel" Margin="0,0,0,12">
                     <TextBlock Text="DEEPGRAM API KEY" Foreground="#BAC2DE"

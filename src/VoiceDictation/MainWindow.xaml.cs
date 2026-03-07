@@ -287,13 +287,12 @@ public partial class MainWindow : Window
 
         if (dialog.ShowDialog() == true)
         {
-            // Preserve fields that MainWindow owns (provider, microphone, window position)
+            var oldProvider = _settings.Transcription.Provider;
+            var newProvider = dialog.ResultSettings.Transcription.Provider;
+
+            // Preserve fields that MainWindow owns (microphone, window position)
             _settings = dialog.ResultSettings with
             {
-                Transcription = dialog.ResultSettings.Transcription with
-                {
-                    Provider = _settings.Transcription.Provider,
-                },
                 Audio = dialog.ResultSettings.Audio with
                 {
                     Microphone = _settings.Audio.Microphone,
@@ -305,8 +304,26 @@ public partial class MainWindow : Window
                     SettingsHeight = dialog.ResultSettings.Window.SettingsHeight,
                 },
             };
+
+            // Sync MainWindow provider combo
+            if (oldProvider != newProvider)
+                UiHelper.SelectComboByTag(ProviderCombo, newProvider);
+
             ApplySettings();
             _settingsService.Save(_settings);
+
+            // Reconnect if provider changed while connected
+            if (oldProvider != newProvider && _connected)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await Dispatcher.InvokeAsync(async () =>
+                    {
+                        await DisconnectAsync();
+                        await ConnectAsync();
+                    });
+                });
+            }
         }
     }
 

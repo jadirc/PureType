@@ -48,6 +48,7 @@ public partial class SettingsWindow : Window
     private void PopulateFromSettings(AppSettings settings)
     {
         // Transcription
+        UiHelper.SelectComboByTag(ProviderCombo, settings.Transcription.Provider);
         ApiKeyBox.Password = settings.Transcription.ApiKey;
         KeywordsBox.Text = settings.Transcription.Keywords;
         UiHelper.SelectComboByTag(LanguageCombo, settings.Transcription.Language);
@@ -85,6 +86,12 @@ public partial class SettingsWindow : Window
         KeywordsPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
     }
 
+    private void ProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (ProviderCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
+        SetProviderVisibility((string)(item.Tag ?? "deepgram"));
+    }
+
     private void PopulateWhisperModels(string selectedModel)
     {
         WhisperModelCombo.Items.Clear();
@@ -120,6 +127,7 @@ public partial class SettingsWindow : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
+        var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var langItem = LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var whisperModelItem = WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var toneItem = ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
@@ -131,7 +139,7 @@ public partial class SettingsWindow : Window
             {
                 ApiKey = ApiKeyBox.Password.Trim(),
                 Language = (string)(langItem?.Tag ?? "de"),
-                Provider = _providerTag,
+                Provider = (string)(providerItem?.Tag ?? _providerTag),
                 WhisperModel = (string)(whisperModelItem?.Tag ?? "tiny"),
                 Keywords = KeywordsBox.Text.Trim(),
             },
