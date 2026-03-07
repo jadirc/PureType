@@ -17,9 +17,15 @@ public class DeepgramService : ITranscriptionProvider
     private readonly string _language;
     private readonly string[] _keywords;
 
+    private const int MaxReconnectAttempts = 10;
+    private const int MaxBackoffSeconds = 30;
+    private int _reconnecting; // 0 = false, 1 = true
+    private Task? _reconnectTask;
+
     public event Action<string, bool>? TranscriptReceived;
     public event Action<string>? ErrorOccurred;
     public event Action? Disconnected;
+    public event Action<int, int>? Reconnecting; // (attempt, maxAttempts)
 
     public bool IsConnected => _ws?.State == WebSocketState.Open;
 
@@ -36,26 +42,7 @@ public class DeepgramService : ITranscriptionProvider
         _ws = new ClientWebSocket();
         _ws.Options.SetRequestHeader("Authorization", $"Token {_apiKey}");
 
-        var uriBuilder =
-            $"wss://api.deepgram.com/v1/listen" +
-            $"?encoding=linear16" +
-            $"&sample_rate=16000" +
-            $"&channels=1" +
-            $"&model=nova-3" +
-            $"&language={_language}" +
-            $"&smart_format=true" +
-            $"&interim_results=true" +
-            $"&punctuate=true";
-
-        foreach (var kw in _keywords)
-        {
-            if (!string.IsNullOrWhiteSpace(kw))
-                uriBuilder += $"&keywords={Uri.EscapeDataString(kw.Trim())}";
-        }
-
-        var uri = new Uri(uriBuilder);
-
-        await _ws.ConnectAsync(uri, _cts.Token);
+        await _ws.ConnectAsync(BuildUri(), _cts.Token);
 
         // Send KeepAlive every 8 seconds (prevent Deepgram idle timeout)
         _keepAliveTimer = new System.Timers.Timer(8000);
@@ -156,8 +143,85 @@ public class DeepgramService : ITranscriptionProvider
         }
         finally
         {
+            if (_cts?.IsCancellationRequested ?? true)
+            {
+                Disconnected?.Invoke();
+            }
+            else
+            {
+                // Fire-and-forget reconnect; we cannot await in finally
+                _reconnectTask = TryReconnectAsync();
+            }
+        }
+    }
+
+    private async Task TryReconnectAsync()
+    {
+        if (Interlocked.CompareExchange(ref _reconnecting, 1, 0) != 0) return;
+
+        try
+        {
+            _keepAliveTimer?.Stop();
+
+            for (int attempt = 1; attempt <= MaxReconnectAttempts; attempt++)
+            {
+                if (_cts?.IsCancellationRequested ?? true) break;
+
+                Reconnecting?.Invoke(attempt, MaxReconnectAttempts);
+
+                var delaySec = Math.Min(1 << (attempt - 1), MaxBackoffSeconds);
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(delaySec), _cts?.Token ?? CancellationToken.None);
+                }
+                catch (OperationCanceledException) { break; }
+
+                try
+                {
+                    _ws?.Dispose();
+                    _ws = new ClientWebSocket();
+                    _ws.Options.SetRequestHeader("Authorization", $"Token {_apiKey}");
+                    await _ws.ConnectAsync(BuildUri(), _cts?.Token ?? CancellationToken.None);
+
+                    _ = Task.Run(ReceiveLoopAsync);
+                    _keepAliveTimer?.Start();
+                    return;
+                }
+                catch (OperationCanceledException) { break; }
+                catch (Exception ex)
+                {
+                    ErrorOccurred?.Invoke($"Reconnect attempt {attempt} failed: {ex.Message}");
+                }
+            }
+
             Disconnected?.Invoke();
         }
+        finally
+        {
+            Interlocked.Exchange(ref _reconnecting, 0);
+        }
+    }
+
+    private Uri BuildUri()
+    {
+        var uriBuilder =
+            $"wss://api.deepgram.com/v1/listen" +
+            $"?encoding=linear16" +
+            $"&sample_rate=16000" +
+            $"&channels=1" +
+            $"&model=nova-3" +
+            $"&language={_language}" +
+            $"&smart_format=true" +
+            $"&interim_results=true" +
+            $"&punctuate=true";
+
+        foreach (var kw in _keywords)
+        {
+            if (!string.IsNullOrWhiteSpace(kw))
+                uriBuilder += $"&keywords={Uri.EscapeDataString(kw.Trim())}";
+        }
+
+        return new Uri(uriBuilder);
     }
 
     private void ParseAndEmitTranscript(string json)
@@ -185,6 +249,11 @@ public class DeepgramService : ITranscriptionProvider
         _keepAliveTimer?.Stop();
         _keepAliveTimer?.Dispose();
         _cts?.Cancel();
+        if (_reconnectTask != null)
+        {
+            try { await _reconnectTask; }
+            catch { /* reconnect was cancelled, that's fine */ }
+        }
         if (_ws?.State == WebSocketState.Open)
         {
             try
