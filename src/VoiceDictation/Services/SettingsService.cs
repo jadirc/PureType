@@ -47,6 +47,8 @@ public record WindowSettings
     public double? Width { get; init; }
     public double? Height { get; init; }
     public bool StartMinimized { get; init; }
+    public double? SettingsWidth { get; init; }
+    public double? SettingsHeight { get; init; }
 }
 
 public record AppSettings

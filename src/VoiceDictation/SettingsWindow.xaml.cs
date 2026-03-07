@@ -32,6 +32,12 @@ public partial class SettingsWindow : Window
         _replacements = replacements;
         _providerTag = providerTag;
 
+        // Restore dialog size
+        if (settings.Window.SettingsWidth.HasValue && settings.Window.SettingsWidth.Value >= MinWidth)
+            Width = settings.Window.SettingsWidth.Value;
+        if (settings.Window.SettingsHeight.HasValue && settings.Window.SettingsHeight.Value >= MinHeight)
+            Height = settings.Window.SettingsHeight.Value;
+
         PopulateFromSettings(settings);
         SetProviderVisibility(providerTag);
         PopulateWhisperModels(settings.Transcription.WhisperModel);
@@ -150,6 +156,8 @@ public partial class SettingsWindow : Window
             Window = new WindowSettings
             {
                 StartMinimized = StartMinimizedCheck.IsChecked == true,
+                SettingsWidth = Width,
+                SettingsHeight = Height,
             },
         };
 

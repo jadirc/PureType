@@ -249,6 +249,8 @@ public partial class MainWindow : Window
                 Window = _settings.Window with
                 {
                     StartMinimized = dialog.ResultSettings.Window.StartMinimized,
+                    SettingsWidth = dialog.ResultSettings.Window.SettingsWidth,
+                    SettingsHeight = dialog.ResultSettings.Window.SettingsHeight,
                 },
             };
             ApplySettings();

@@ -18,9 +18,31 @@
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="0">
             <StackPanel>
 
+                <!-- ── GENERAL ── -->
+                <TextBlock Text="GENERAL" Foreground="#89B4FA"
+                           FontSize="12" FontWeight="Bold" Margin="0,4,0,8"/>
+
+                <CheckBox x:Name="AutostartCheck"
+                          Content="  Start with Windows"
+                          Foreground="#CDD6F4" FontSize="12"/>
+
+                <CheckBox x:Name="StartMinimizedCheck"
+                          Content="  Start minimized"
+                          Foreground="#CDD6F4" FontSize="12"
+                          Margin="0,4,0,0"/>
+
+                <!-- Text Replacements -->
+                <Button Content="Text Replacements &#x2026;"
+                        Click="ReplacementsButton_Click"
+                        Background="Transparent" Foreground="#89B4FA"
+                        FontSize="12" BorderThickness="0"
+                        Padding="0,4" Cursor="Hand"
+                        HorizontalAlignment="Left"
+                        Margin="0,8,0,0"/>
+
                 <!-- ── TRANSCRIPTION ── -->
-                <TextBlock Text="── TRANSCRIPTION ──" Foreground="#6C7086"
-                           FontSize="11" FontWeight="SemiBold" Margin="0,4,0,8"/>
+                <TextBlock Text="TRANSCRIPTION" Foreground="#89B4FA"
+                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>
 
                 <!-- API Key (Deepgram only) -->
                 <StackPanel x:Name="ApiKeyPanel" Margin="0,0,0,12">
@@ -78,8 +100,8 @@
                 </StackPanel>
 
                 <!-- ── SHORTCUTS ── -->
-                <TextBlock Text="── SHORTCUTS ──" Foreground="#6C7086"
-                           FontSize="11" FontWeight="SemiBold" Margin="0,4,0,8"/>
+                <TextBlock Text="SHORTCUTS" Foreground="#89B4FA"
+                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>
 
                 <!-- Toggle Shortcut -->
                 <StackPanel Margin="0,0,0,12">
@@ -112,8 +134,8 @@
                 </StackPanel>
 
                 <!-- ── AUDIO ── -->
-                <TextBlock Text="── AUDIO ──" Foreground="#6C7086"
-                           FontSize="11" FontWeight="SemiBold" Margin="0,4,0,8"/>
+                <TextBlock Text="AUDIO" Foreground="#89B4FA"
+                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>
 
                 <!-- Signal Tone -->
                 <StackPanel Margin="0,0,0,12">
@@ -136,8 +158,8 @@
                           Margin="0,0,0,4"/>
 
                 <!-- ── AI POST-PROCESSING ── -->
-                <TextBlock Text="── AI POST-PROCESSING ──" Foreground="#6C7086"
-                           FontSize="11" FontWeight="SemiBold" Margin="0,12,0,8"/>
+                <TextBlock Text="AI POST-PROCESSING" Foreground="#89B4FA"
+                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>
 
                 <CheckBox x:Name="LlmEnabledCheck"
                           Content="  AI Post-Processing"
@@ -205,28 +227,6 @@
                              TextWrapping="Wrap" AcceptsReturn="True"
                              Height="80" VerticalScrollBarVisibility="Auto"/>
                 </StackPanel>
-
-                <!-- ── GENERAL ── -->
-                <TextBlock Text="── GENERAL ──" Foreground="#6C7086"
-                           FontSize="11" FontWeight="SemiBold" Margin="0,12,0,8"/>
-
-                <CheckBox x:Name="AutostartCheck"
-                          Content="  Start with Windows"
-                          Foreground="#CDD6F4" FontSize="12"/>
-
-                <CheckBox x:Name="StartMinimizedCheck"
-                          Content="  Start minimized"
-                          Foreground="#CDD6F4" FontSize="12"
-                          Margin="0,4,0,0"/>
-
-                <!-- Text Replacements -->
-                <Button Content="Text Replacements &#x2026;"
-                        Click="ReplacementsButton_Click"
-                        Background="Transparent" Foreground="#89B4FA"
-                        FontSize="12" BorderThickness="0"
-                        Padding="0,4" Cursor="Hand"
-                        HorizontalAlignment="Left"
-                        Margin="0,8,0,0"/>
 
             </StackPanel>
         </ScrollViewer>
