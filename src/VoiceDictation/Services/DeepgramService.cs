@@ -26,6 +26,7 @@ public class DeepgramService : ITranscriptionProvider
     public event Action<string>? ErrorOccurred;
     public event Action? Disconnected;
     public event Action<int, int>? Reconnecting; // (attempt, maxAttempts)
+    public event Action? Reconnected;
 
     public bool IsConnected => _ws?.State == WebSocketState.Open;
 
@@ -185,6 +186,7 @@ public class DeepgramService : ITranscriptionProvider
 
                     _ = Task.Run(ReceiveLoopAsync);
                     _keepAliveTimer?.Start();
+                    Reconnected?.Invoke();
                     return;
                 }
                 catch (OperationCanceledException) { break; }

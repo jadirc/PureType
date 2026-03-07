@@ -425,7 +425,10 @@ public partial class MainWindow : Window
             _provider.Disconnected += OnDisconnected;
 
             if (_provider is DeepgramService deepgram)
+            {
                 deepgram.Reconnecting += OnReconnecting;
+                deepgram.Reconnected += OnReconnected;
+            }
 
             await _provider.ConnectAsync();
 
@@ -520,6 +523,17 @@ public partial class MainWindow : Window
         {
             SetStatus($"Reconnecting ({attempt}/{maxAttempts})\u2026", Yellow);
             _tray.Update(_connected, _controller.IsRecording, _muted);
+            if (attempt == 1)
+                ToastWindow.ShowToast("Connection lost \u2013 reconnecting\u2026",
+                    Yellow.Color, autoClose: false);
+        });
+
+    private void OnReconnected() =>
+        Dispatcher.Invoke(() =>
+        {
+            SetStatus("Connected \u2013 ready", Green);
+            _tray.Update(_connected, _controller.IsRecording, _muted);
+            ToastWindow.ShowToast("Reconnected", Green.Color, autoClose: true);
         });
 
     private void ToggleMute()
