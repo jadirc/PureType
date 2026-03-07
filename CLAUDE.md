@@ -44,7 +44,7 @@ Both modes are always active simultaneously:
 
 ### Settings
 
-All settings are persisted to `%LOCALAPPDATA%\VoiceDictation\settings.txt`.
+All settings are persisted as JSON to `%LOCALAPPDATA%\VoiceDictation\settings.json`. The `SettingsService` handles load/save and auto-migrates from the legacy `settings.txt` format on first run.
 
 ## Key Dependencies
 
