@@ -46,6 +46,18 @@
                     </ComboBox>
                 </StackPanel>
 
+                <!-- Log Level -->
+                <StackPanel Margin="0,8,0,0"
+                            ToolTip="Controls the verbosity of log output. Debug shows everything, Warning shows only important messages.">
+                    <TextBlock Text="LOG LEVEL" Foreground="{DynamicResource LabelBrush}"
+                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="LogLevelCombo" Padding="10,7" FontSize="13">
+                        <ComboBoxItem Content="Debug" Tag="Debug"/>
+                        <ComboBoxItem Content="Information" Tag="Information" IsSelected="True"/>
+                        <ComboBoxItem Content="Warning" Tag="Warning"/>
+                    </ComboBox>
+                </StackPanel>
+
                 <!-- Text Replacements -->
                 <Button Content="Text Replacements &#x2026;"
                         Click="ReplacementsButton_Click"

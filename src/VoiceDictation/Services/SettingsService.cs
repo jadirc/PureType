@@ -53,6 +53,7 @@ public record WindowSettings
     public double? SettingsWidth { get; init; }
     public double? SettingsHeight { get; init; }
     public string Theme { get; init; } = "Auto";
+    public string LogLevel { get; init; } = "Information";
 }
 
 public record AppSettings

@@ -61,16 +61,6 @@ public partial class MainWindow : Window
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "VoiceDictation", "log.txt");
 
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .WriteTo.Sink(UiSink)
-            .WriteTo.File(logPath, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
-            .CreateLogger();
-
-        UiSink.SetCallback(_logWindow.AppendLog);
-
-        Log.Information("VoiceDictation started");
-
         var iconStream = Application.GetResourceStream(
             new Uri("pack://application:,,,/Resources/mic.ico"))?.Stream;
         var baseIcon = iconStream != null ? new System.Drawing.Icon(iconStream) : System.Drawing.SystemIcons.Application;
@@ -94,6 +84,20 @@ public partial class MainWindow : Window
 
         var isFirstRun = _settingsService.IsFirstRun;
         LoadSettings();
+
+        LevelSwitch.MinimumLevel = Enum.TryParse<LogEventLevel>(_settings.Window.LogLevel, out var lvl)
+            ? lvl : LogEventLevel.Information;
+
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.ControlledBy(LevelSwitch)
+            .WriteTo.Sink(UiSink)
+            .WriteTo.File(logPath, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
+            .CreateLogger();
+
+        UiSink.SetCallback(_logWindow.AppendLog);
+
+        Log.Information("VoiceDictation started");
+
         ThemeManager.Apply(_settings.Window.Theme);
 
         if (isFirstRun)
@@ -190,6 +194,8 @@ public partial class MainWindow : Window
         // Show window if "Start minimized" is not checked
         if (!_settings.Window.StartMinimized)
             Dispatcher.BeginInvoke(() => ShowFromTray());
+
+        _ = CheckForUpdatesAsync();
     }
 
     private void LoadSettings()
@@ -291,6 +297,7 @@ public partial class MainWindow : Window
                 Height = Height,
                 StartMinimized = _settings.Window.StartMinimized,
                 Theme = _settings.Window.Theme,
+                LogLevel = _settings.Window.LogLevel,
             },
         };
 
@@ -377,6 +384,7 @@ public partial class MainWindow : Window
                     SettingsWidth = dialog.ResultSettings.Window.SettingsWidth,
                     SettingsHeight = dialog.ResultSettings.Window.SettingsHeight,
                     Theme = dialog.ResultSettings.Window.Theme,
+                    LogLevel = dialog.ResultSettings.Window.LogLevel,
                 },
             };
 
@@ -720,12 +728,29 @@ public partial class MainWindow : Window
         }
     }
 
+    // ── Update Check ──────────────────────────────────────────────────────
+
+    private async Task CheckForUpdatesAsync()
+    {
+        var result = await UpdateChecker.CheckAsync();
+        if (result != null)
+        {
+            ToastWindow.ShowToast($"Update available: {result.TagName}", Colors.Blue, autoClose: true);
+        }
+    }
+
     // ── Helper Functions ──────────────────────────────────────────────────
 
     private void SetStatus(string text, SolidColorBrush color)
     {
         StatusText.Text = text;
         StatusDot.Fill  = color;
+    }
+
+    internal static void SetLogLevel(string level)
+    {
+        if (Enum.TryParse<LogEventLevel>(level, out var lvl))
+            LevelSwitch.MinimumLevel = lvl;
     }
 
 }

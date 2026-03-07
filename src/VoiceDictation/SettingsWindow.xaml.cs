@@ -85,6 +85,7 @@ public partial class SettingsWindow : Window
         AutostartCheck.IsChecked = IsAutostartEnabled();
         StartMinimizedCheck.IsChecked = settings.Window.StartMinimized;
         UiHelper.SelectComboByTag(ThemeCombo, settings.Window.Theme);
+        UiHelper.SelectComboByTag(LogLevelCombo, settings.Window.LogLevel);
     }
 
     private void SetProviderVisibility(string providerTag)
@@ -181,11 +182,13 @@ public partial class SettingsWindow : Window
                 SettingsWidth = Width,
                 SettingsHeight = Height,
                 Theme = (ThemeCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string ?? "Dark",
+                LogLevel = (LogLevelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string ?? "Information",
             },
         };
 
         SetAutostart(AutostartCheck.IsChecked == true);
         DialogResult = true;
+        MainWindow.SetLogLevel(ResultSettings.Window.LogLevel);
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
