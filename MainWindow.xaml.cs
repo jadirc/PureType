@@ -632,11 +632,11 @@ public partial class MainWindow : Window
         var tag = (string)(item?.Tag ?? "shift");
         var (vk1, vk2) = tag switch
         {
-            "shift" => (0xA0, 0xA1), // VK_LSHIFT, VK_RSHIFT
-            "ctrl"  => (0xA2, 0xA3), // VK_LCONTROL, VK_RCONTROL
-            "alt"   => (0xA4, 0xA5), // VK_LMENU, VK_RMENU
-            "caps"  => (0x14, 0),    // VK_CAPITAL
-            _       => (0xA0, 0xA1)
+            "shift" => (KeyboardHookService.VK_LSHIFT, KeyboardHookService.VK_RSHIFT),
+            "ctrl"  => (KeyboardHookService.VK_LCONTROL, KeyboardHookService.VK_RCONTROL),
+            "alt"   => (KeyboardHookService.VK_LMENU, KeyboardHookService.VK_RMENU),
+            "caps"  => (KeyboardHookService.VK_CAPITAL, 0),
+            _       => (KeyboardHookService.VK_LSHIFT, KeyboardHookService.VK_RSHIFT)
         };
         _keyboardHook.SetAiTriggerKey(vk1, vk2);
     }
@@ -1052,7 +1052,7 @@ public partial class MainWindow : Window
         {
             // Also check AI key at stop time (user may press it after PTT started)
             if (!_aiPostProcessRequested && LlmEnabledCheck.IsChecked == true)
-                _aiPostProcessRequested = _keyboardHook.IsAiKeyCurrentlyHeld();
+                _aiPostProcessRequested = _keyboardHook.IsAiKeyHeld();
             _recordingSource = RecordingSource.None;
             StopRecording();
         });
@@ -1070,7 +1070,7 @@ public partial class MainWindow : Window
         var aiLabel = _aiPostProcessRequested ? " + AI" : "";
         SetStatus($"● Recording{aiLabel}", Red);
         ToastWindow.ShowToast(_aiPostProcessRequested ? "Recording + AI" : "Recording",
-            Color.FromRgb(0xF3, 0x8B, 0xA8), autoClose: false);
+            Red.Color, autoClose: false);
 
         // Add separator between recording sessions in transcript
         var current = TranscriptText.Text;
@@ -1348,7 +1348,7 @@ public partial class MainWindow : Window
 
             Log.Information("Sending {Length} chars to LLM ({BaseUrl}/{Model})", text.Length, baseUrl, model);
             ToastWindow.ShowToast("Waiting for AI response …",
-                Color.FromRgb(0xF9, 0xE2, 0xAF), autoClose: false);
+                Yellow.Color, autoClose: false);
 
             var result = await client.ProcessAsync(prompt, text);
             var processed = _replacements.Apply(result);

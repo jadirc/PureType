@@ -12,7 +12,6 @@ public partial class ToastWindow : Window
 
     private static readonly Color Red = Color.FromRgb(0xF3, 0x8B, 0xA8);
     private static readonly Color Green = Color.FromRgb(0xA6, 0xE3, 0xA1);
-    private static readonly Color Yellow = Color.FromRgb(0xF9, 0xE2, 0xAF);
 
     private ToastWindow(string message, Color dotColor)
     {
@@ -59,12 +58,4 @@ public partial class ToastWindow : Window
         });
     }
 
-    public static void DismissToast()
-    {
-        Application.Current.Dispatcher.Invoke(() =>
-        {
-            _current?.Close();
-            _current = null;
-        });
-    }
 }

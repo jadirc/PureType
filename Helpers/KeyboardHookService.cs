@@ -38,12 +38,13 @@ public class KeyboardHookService : IDisposable
     private const int WM_SYSKEYUP   = 0x0105;
     private const int VK_LWIN       = 0x5B;
     private const int VK_RWIN       = 0x5C;
-    private const int VK_LCONTROL   = 0xA2;
-    private const int VK_RCONTROL   = 0xA3;
-    private const int VK_LMENU      = 0xA4;
-    private const int VK_RMENU      = 0xA5;
-    private const int VK_LSHIFT     = 0xA0;
-    private const int VK_RSHIFT     = 0xA1;
+    internal const int VK_LCONTROL  = 0xA2;
+    internal const int VK_RCONTROL  = 0xA3;
+    internal const int VK_LMENU     = 0xA4;
+    internal const int VK_RMENU     = 0xA5;
+    internal const int VK_LSHIFT    = 0xA0;
+    internal const int VK_RSHIFT    = 0xA1;
+    internal const int VK_CAPITAL   = 0x14;
 
     #endregion
 
@@ -106,14 +107,13 @@ public class KeyboardHookService : IDisposable
         _aiVk2 = vk2;
     }
 
-    /// <summary>Check if the AI trigger key is currently held. Can be called from outside the hook.</summary>
-    public bool IsAiKeyCurrentlyHeld() => IsAiKeyHeld();
+    private const long AiKeyGracePeriodMs = 500;
 
-    private bool IsAiKeyHeld()
+    /// <summary>Check if the AI trigger key is currently held (includes a brief grace period after release).</summary>
+    public bool IsAiKeyHeld()
     {
         if (_aiKeyDown) return true;
-        // Grace period: count as held if released within last 500ms
-        if (_aiKeyReleasedTick > 0 && Environment.TickCount64 - _aiKeyReleasedTick < 500)
+        if (_aiKeyReleasedTick > 0 && Environment.TickCount64 - _aiKeyReleasedTick < AiKeyGracePeriodMs)
             return true;
         return false;
     }
