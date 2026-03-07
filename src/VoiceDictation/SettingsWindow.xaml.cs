@@ -88,6 +88,7 @@ public partial class SettingsWindow : Window
 
     private void ProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
+        if (!IsLoaded) return;
         if (ProviderCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
         SetProviderVisibility((string)(item.Tag ?? "deepgram"));
     }
