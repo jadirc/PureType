@@ -85,6 +85,8 @@ public class SettingsService
     private readonly string _jsonPath;
     private readonly bool _useDefaultPath;
 
+    public bool IsFirstRun => !File.Exists(_jsonPath) && !(_useDefaultPath && File.Exists(TxtPath));
+
     public SettingsService() : this(DefaultJsonPath, useDefaultPath: true) { }
 
     public SettingsService(string jsonPath) : this(jsonPath, useDefaultPath: false) { }

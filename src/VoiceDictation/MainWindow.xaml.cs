@@ -88,8 +88,29 @@ public partial class MainWindow : Window
             Application.Current.Shutdown();
         };
 
+        var isFirstRun = _settingsService.IsFirstRun;
         LoadSettings();
         ThemeManager.Apply(_settings.Window.Theme);
+
+        if (isFirstRun)
+        {
+            var welcome = new WelcomeWindow();
+            welcome.ShowDialog();
+            if (welcome.Completed)
+            {
+                _settings = _settings with
+                {
+                    Transcription = _settings.Transcription with
+                    {
+                        Provider = welcome.SelectedProvider,
+                        ApiKey = welcome.EnteredApiKey,
+                    }
+                };
+                _settingsService.Save(_settings);
+                UiHelper.SelectComboByTag(ProviderCombo, welcome.SelectedProvider);
+            }
+        }
+
         SoundFeedback.Init(_settings.Audio.Tone);
         KeyboardInjector.InputDelayMs = _settings.Audio.InputDelayMs;
 
