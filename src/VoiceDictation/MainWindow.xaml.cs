@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private readonly LogWindow _logWindow = new();
     private static readonly LogWindowSink UiSink = new();
     private readonly TrayIconManager _tray;
+    private readonly RecordingController _controller;
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
     private readonly KeyboardHookService _keyboardHook = new();
@@ -32,15 +33,8 @@ public partial class MainWindow : Window
 
     // ── State ────────────────────────────────────────────────────────────
     private bool _connected;
-    private bool _recording;
-    private enum RecordingSource { None, Toggle, Ptt }
-    private RecordingSource _recordingSource = RecordingSource.None;
-    private VadService? _vad;
     private bool _muted;
-    private string _interimText = "";
     private bool _isLoading = true;
-    private readonly List<string> _sessionChunks = new();
-    private bool _aiPostProcessRequested;
 
     // Settings
     private readonly SettingsService _settingsService = new();
@@ -92,8 +86,36 @@ public partial class MainWindow : Window
         LoadSettings();
         SoundFeedback.Init(_settings.Audio.Tone);
 
-        _audio.AudioDataAvailable += OnAudioData;
-        _audio.AudioLevelChanged += OnAudioLevel;
+        _controller = new RecordingController(_audio, _keyboardHook, _replacements);
+        _controller.StatusChanged += (text, color) => Dispatcher.Invoke(() => SetStatus(text, new SolidColorBrush(color)));
+        _controller.TranscriptUpdated += text => Dispatcher.Invoke(() =>
+        {
+            if (text == "\0separator")
+            {
+                var current = TranscriptText.Text;
+                if (!string.IsNullOrEmpty(current) && current != "Transcript will appear here \u2026")
+                    TranscriptText.Text = current + "\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n";
+                return;
+            }
+            AppendTranscript(text);
+        });
+        _controller.InterimTextUpdated += text => Dispatcher.Invoke(() =>
+        {
+            InterimText.Text = text;
+            if (!string.IsNullOrEmpty(text)) TranscriptScroll.ScrollToBottom();
+        });
+        _controller.RecordingStateChanged += () => Dispatcher.Invoke(() =>
+            _tray.Update(_connected, _controller.IsRecording, _muted));
+        _controller.AudioLevelChanged += level => Dispatcher.BeginInvoke(() =>
+        {
+            var parent = (System.Windows.Controls.Border)VuMeterBar.Parent;
+            VuMeterBar.Width = level * parent.ActualWidth;
+        });
+        _controller.RecordingStopped += () => Dispatcher.Invoke(() => VuMeterBar.Width = 0);
+        _controller.LlmProcessingRequested += text => Dispatcher.Invoke(() => _ = ProcessWithLlmAsync(text));
+        _controller.ToastRequested += (message, color, autoClose) =>
+            ToastWindow.ShowToast(message, color, autoClose);
+
         PopulateMicrophones();
         SelectMicrophoneByName(_settings.Audio.Microphone);
 
@@ -105,9 +127,9 @@ public partial class MainWindow : Window
         _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
         _keyboardHook.SetPttShortcut(_pttModifiers, _pttKey);
         ApplyAiTriggerKey();
-        _keyboardHook.TogglePressed += OnToggleHotkey;
-        _keyboardHook.PttKeyDown += OnPttKeyDown;
-        _keyboardHook.PttKeyUp += OnPttKeyUp;
+        _keyboardHook.TogglePressed += aiKeyHeld => Dispatcher.Invoke(() => _controller.HandleToggle(aiKeyHeld));
+        _keyboardHook.PttKeyDown += aiKeyHeld => Dispatcher.Invoke(() => _controller.HandlePttDown(aiKeyHeld));
+        _keyboardHook.PttKeyUp += () => Dispatcher.Invoke(() => _controller.HandlePttUp());
 
         // Auto-connect on startup
         var providerTag = (_settings.Transcription.Provider);
@@ -165,6 +187,8 @@ public partial class MainWindow : Window
 
         // Sound
         SoundFeedback.Init(_settings.Audio.Tone);
+
+        _controller.Configure(_settings);
     }
 
     private void ApplyAiTriggerKey()
@@ -299,17 +323,6 @@ public partial class MainWindow : Window
         }
     }
 
-    // ── VU Meter ─────────────────────────────────────────────────────────
-
-    private void OnAudioLevel(double level)
-    {
-        Dispatcher.BeginInvoke(() =>
-        {
-            var parent = (System.Windows.Controls.Border)VuMeterBar.Parent;
-            VuMeterBar.Width = level * parent.ActualWidth;
-        });
-    }
-
     // ── Provider ─────────────────────────────────────────────────────────
 
     private void ProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -380,7 +393,6 @@ public partial class MainWindow : Window
                 _provider = new DeepgramService(apiKey, language, keywords.Length > 0 ? keywords : null);
             }
 
-            _provider.TranscriptReceived += OnTranscriptReceived;
             _provider.ErrorOccurred += OnError;
             _provider.Disconnected += OnDisconnected;
 
@@ -390,6 +402,8 @@ public partial class MainWindow : Window
             await _provider.ConnectAsync();
 
             _connected = true;
+            _controller.SetProvider(_provider, true);
+            _controller.Configure(_settings);
             _audio.Initialize();
             RegisterHotkeys();
 
@@ -399,7 +413,7 @@ public partial class MainWindow : Window
             ConnectButton.Background = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
             SaveSettings();
             Log.Information("{Provider} connected (Language: {Language})", label, language);
-            _tray.Update(_connected, _recording, _muted);
+            _tray.Update(_connected, _controller.IsRecording, _muted);
         }
         catch (Exception ex)
         {
@@ -419,11 +433,12 @@ public partial class MainWindow : Window
         if (!_connected) return;
         _connected = false;
 
-        StopRecording();
+        _controller.StopRecording();
         _keyboardHook.Uninstall();
 
         if (_provider is not null)
         {
+            _controller.SetProvider(null, false);
             await _provider.DisposeAsync();
             _provider = null;
         }
@@ -431,7 +446,7 @@ public partial class MainWindow : Window
         ConnectButton.Content    = "Connect";
         ConnectButton.Background = Blue;
         Log.Information("Provider disconnected");
-        _tray.Update(_connected, _recording, _muted);
+        _tray.Update(_connected, _controller.IsRecording, _muted);
     }
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
@@ -443,161 +458,7 @@ public partial class MainWindow : Window
         _keyboardHook.Install();
     }
 
-    // ── Toggle Mode ───────────────────────────────────────────────────────
-
-    private void OnToggleHotkey(bool aiKeyHeld)
-    {
-        Dispatcher.Invoke(() =>
-        {
-            if (_recording)
-            {
-                if (_recordingSource != RecordingSource.Toggle) return;
-                if (!_aiPostProcessRequested && _settings.Llm.Enabled)
-                    _aiPostProcessRequested = aiKeyHeld;
-                _recordingSource = RecordingSource.None;
-                StopRecording();
-            }
-            else
-            {
-                _aiPostProcessRequested = aiKeyHeld && _settings.Llm.Enabled;
-                _recordingSource = RecordingSource.Toggle;
-                StartRecording();
-            }
-        });
-    }
-
-    // ── Push-to-Talk ──────────────────────────────────────────────────────
-
-    private void OnPttKeyDown(bool aiKeyHeld)
-    {
-        if (!_connected || _recording) return;
-        Dispatcher.Invoke(() =>
-        {
-            _aiPostProcessRequested = aiKeyHeld && _settings.Llm.Enabled;
-            _recordingSource = RecordingSource.Ptt;
-            StartRecording();
-        });
-    }
-
-    private void OnPttKeyUp()
-    {
-        if (_recordingSource != RecordingSource.Ptt) return;
-        Dispatcher.Invoke(() =>
-        {
-            if (!_aiPostProcessRequested && _settings.Llm.Enabled)
-                _aiPostProcessRequested = _keyboardHook.IsAiKeyHeld();
-            _recordingSource = RecordingSource.None;
-            StopRecording();
-        });
-    }
-
-    // ── Start/Stop Recording ───────────────────────────────────────────────
-
-    private void StartRecording()
-    {
-        if (_recording || !_connected) return;
-        _sessionChunks.Clear();
-        _recording = true;
-        SoundFeedback.PlayStart();
-        _audio.Start();
-        var aiLabel = _aiPostProcessRequested ? " + AI" : "";
-        SetStatus($"\u25CF Recording{aiLabel}", Red);
-        ToastWindow.ShowToast(_aiPostProcessRequested ? "Recording + AI" : "Recording",
-            Red.Color, autoClose: false);
-
-        // Add separator between recording sessions in transcript
-        var current = TranscriptText.Text;
-        if (!string.IsNullOrEmpty(current) && current != "Transcript will appear here \u2026")
-            TranscriptText.Text = current + "\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n";
-
-        if (_settings.Audio.Vad && _recordingSource == RecordingSource.Toggle)
-        {
-            _vad = new VadService();
-            _vad.SilenceDetected += () => Dispatcher.Invoke(StopRecording);
-            _vad.Reset();
-        }
-        _tray.Update(_connected, _recording, _muted);
-    }
-
-    private async void StopRecording()
-    {
-        if (!_recording) return;
-        _audio.Stop();
-        _recording = false;
-        _vad = null;
-
-        _interimText = "";
-        InterimText.Text = "";
-        VuMeterBar.Width = 0;
-
-        // Flush provider buffer so the last transcript arrives immediately
-        if (_provider is not null)
-            await _provider.SendFinalizeAsync();
-
-        // Yield to Dispatcher so pending TranscriptReceived callbacks populate _sessionChunks
-        await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
-
-        SoundFeedback.PlayStop();
-        if (!_aiPostProcessRequested)
-            ToastWindow.ShowToast("Recording stopped", false);
-
-        if (_aiPostProcessRequested && _sessionChunks.Count > 0)
-        {
-            _aiPostProcessRequested = false;
-            var fullText = string.Join("", _sessionChunks);
-            _ = ProcessWithLlmAsync(fullText);
-        }
-
-        if (_connected)
-            SetStatus("Connected \u2013 ready", Green);
-        _tray.Update(_connected, _recording, _muted);
-    }
-
-    // ── Audio → Provider ───────────────────────────────────────────────────
-
-    private async void OnAudioData(byte[] chunk)
-    {
-        if (_provider is null || !_recording) return;
-        if (!_muted)
-            await _provider.SendAudioAsync(chunk);
-        _vad?.ProcessAudio(chunk);
-    }
-
-    // ── Transcript Received ────────────────────────────────────────────────
-
-    private void OnTranscriptReceived(string text, bool isFinal)
-    {
-        Dispatcher.BeginInvoke(async () =>
-        {
-            if (isFinal)
-            {
-                _interimText = "";
-                InterimText.Text = "";
-                var processed = _replacements.Apply(text);
-                AppendTranscript(processed);
-                _sessionChunks.Add(processed);
-
-                // When AI post-processing is pending, don't type yet — LLM will type the result
-                if (!_aiPostProcessRequested)
-                {
-                    try
-                    {
-                        await KeyboardInjector.TypeTextAsync(processed);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Text injection error");
-                    }
-                }
-            }
-            else
-            {
-                _interimText = text;
-                InterimText.Text = text;
-                TranscriptScroll.ScrollToBottom();
-            }
-        });
-    }
+    // ── Transcript Display ────────────────────────────────────────────────
 
     private void AppendTranscript(string text)
     {
@@ -630,16 +491,17 @@ public partial class MainWindow : Window
         Dispatcher.Invoke(() =>
         {
             SetStatus($"Reconnecting ({attempt}/{maxAttempts})\u2026", Yellow);
-            _tray.Update(_connected, _recording, _muted);
+            _tray.Update(_connected, _controller.IsRecording, _muted);
         });
 
     private void ToggleMute()
     {
         _muted = !_muted;
+        _controller.IsMuted = _muted;
 
         if (_muted)
             SetStatus("Muted", Yellow);
-        else if (_recording)
+        else if (_controller.IsRecording)
             SetStatus("\u25CF Recording", Red);
         else if (_connected)
             SetStatus("Connected \u2013 ready", Green);
@@ -647,7 +509,7 @@ public partial class MainWindow : Window
             SetStatus("Not connected", Red);
 
         Log.Information("Mute {State}", _muted ? "enabled" : "disabled");
-        _tray.Update(_connected, _recording, _muted);
+        _tray.Update(_connected, _controller.IsRecording, _muted);
     }
 
     private void ShowFromTray()
