@@ -207,4 +207,30 @@ public class SettingsServiceTests
         Assert.Equal("de", result.Transcription.Language);
         Assert.False(result.Llm.Enabled);
     }
+
+    [Fact]
+    public void IsFirstRun_true_when_no_files_exist()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"VoiceDictation_Test_{Guid.NewGuid():N}");
+        var jsonPath = Path.Combine(tempDir, "settings.json");
+        var svc = new SettingsService(jsonPath);
+
+        Assert.True(svc.IsFirstRun);
+    }
+
+    [Fact]
+    public void IsFirstRun_false_when_json_exists()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"VoiceDictation_Test_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var jsonPath = Path.Combine(tempDir, "settings.json");
+            File.WriteAllText(jsonPath, "{}");
+            var svc = new SettingsService(jsonPath);
+
+            Assert.False(svc.IsFirstRun);
+        }
+        finally { Directory.Delete(tempDir, true); }
+    }
 }
