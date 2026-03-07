@@ -6,10 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 dotnet build
-dotnet run
+dotnet test
+dotnet run --project src/VoiceDictation
 ```
 
-No solution file exists; build the single `.csproj` directly. No test project exists.
+A `.slnx` file exists at the repo root. `dotnet build` and `dotnet test` operate on it automatically.
 
 ## What This Is
 
