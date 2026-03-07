@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using VoiceDictation.Helpers;
 using VoiceDictation.Services;
 
@@ -16,6 +18,7 @@ public partial class MainWindow : Window
     private readonly AudioCaptureService _audio = new();
     private readonly LogWindow _logWindow = new();
     private static readonly LogWindowSink UiSink = new();
+    private static readonly LoggingLevelSwitch LevelSwitch = new(LogEventLevel.Information);
     private readonly TrayIconManager _tray;
     private readonly RecordingController _controller;
 
@@ -83,6 +86,7 @@ public partial class MainWindow : Window
         _tray.ShowRequested += () => Dispatcher.Invoke(ShowFromTray);
         _tray.ExitRequested += () =>
         {
+            _audio.StopDevicePolling();
             _tray.Dispose();
             _keyboardHook.Dispose();
             Application.Current.Shutdown();
@@ -148,7 +152,21 @@ public partial class MainWindow : Window
         _controller.ToastRequested += (message, color, autoClose) =>
             ToastWindow.ShowToast(message, color, autoClose);
 
+        _audio.DevicesChanged += devices => Dispatcher.Invoke(() =>
+        {
+            Log.Information("Audio devices changed, {Count} devices found", devices.Count);
+            PopulateMicrophones();
+            ToastWindow.ShowToast("Microphone list updated", Colors.Blue, true);
+        });
+
+        _audio.DeviceError += msg => Dispatcher.Invoke(() =>
+        {
+            Log.Warning("Audio device error: {Error}", msg);
+            ToastWindow.ShowToast("Microphone disconnected", Colors.Red, true);
+        });
+
         PopulateMicrophones();
+        _audio.StartDevicePolling();
         SelectMicrophoneByName(_settings.Audio.Microphone);
 
         // Enable settings persistence only after all controls are populated
@@ -440,6 +458,7 @@ public partial class MainWindow : Window
         SaveSettings();
         TranscriptHistoryWindow.SaveSession(_controller.TranscriptLog);
         Log.Information("Application shutting down");
+        _audio.StopDevicePolling();
         _tray.Dispose();
         _ = DisconnectAsync();
         _keyboardHook.Dispose();
