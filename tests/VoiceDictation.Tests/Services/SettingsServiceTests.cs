@@ -136,4 +136,75 @@ public class SettingsServiceTests
         Assert.Null(settings.Window.Height);
         Assert.False(settings.Window.StartMinimized);
     }
+
+    [Fact]
+    public void Save_and_Load_roundtrip()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"VoiceDictation_Test_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var jsonPath = Path.Combine(tempDir, "settings.json");
+            var svc = new SettingsService(jsonPath);
+
+            var settings = new AppSettings
+            {
+                Shortcuts = new ShortcutSettings { Toggle = "Ctrl+Shift+Z", Ptt = "Win+R-Alt" },
+                Transcription = new TranscriptionSettings
+                {
+                    Language = "en",
+                    Provider = "whisper",
+                    ApiKey = "test-key",
+                    Keywords = "hello,world",
+                    WhisperModel = "base"
+                },
+                Audio = new AudioSettings { Microphone = "USB Mic", Tone = "Classic", Vad = true },
+                Llm = new LlmSettings
+                {
+                    Enabled = true,
+                    ApiKey = "sk-test",
+                    BaseUrl = "https://api.example.com/v1",
+                    Model = "gpt-4",
+                    Prompt = "Fix grammar."
+                },
+                Window = new WindowSettings { Left = 100, Top = 200, Width = 800, Height = 600, StartMinimized = true },
+            };
+
+            svc.Save(settings);
+            var loaded = svc.Load();
+
+            Assert.Equal(settings.Shortcuts.Toggle, loaded.Shortcuts.Toggle);
+            Assert.Equal(settings.Shortcuts.Ptt, loaded.Shortcuts.Ptt);
+            Assert.Equal(settings.Transcription.Language, loaded.Transcription.Language);
+            Assert.Equal(settings.Transcription.Provider, loaded.Transcription.Provider);
+            Assert.Equal(settings.Transcription.ApiKey, loaded.Transcription.ApiKey);
+            Assert.Equal(settings.Audio.Microphone, loaded.Audio.Microphone);
+            Assert.Equal(settings.Audio.Tone, loaded.Audio.Tone);
+            Assert.True(loaded.Audio.Vad);
+            Assert.True(loaded.Llm.Enabled);
+            Assert.Equal(settings.Llm.ApiKey, loaded.Llm.ApiKey);
+            Assert.Equal(settings.Window.Left, loaded.Window.Left);
+            Assert.Equal(settings.Window.Top, loaded.Window.Top);
+            Assert.True(loaded.Window.StartMinimized);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Load_returns_defaults_when_no_file_exists()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"VoiceDictation_Test_{Guid.NewGuid():N}");
+        var jsonPath = Path.Combine(tempDir, "settings.json");
+        var svc = new SettingsService(jsonPath);
+
+        var result = svc.Load();
+
+        Assert.Equal("Ctrl+Alt+X", result.Shortcuts.Toggle);
+        Assert.Equal("deepgram", result.Transcription.Provider);
+        Assert.Equal("de", result.Transcription.Language);
+        Assert.False(result.Llm.Enabled);
+    }
 }

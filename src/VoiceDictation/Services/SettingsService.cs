@@ -68,7 +68,7 @@ public class SettingsService
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                      "VoiceDictation");
 
-    private static readonly string JsonPath = Path.Combine(SettingsDir, "settings.json");
+    private static readonly string DefaultJsonPath = Path.Combine(SettingsDir, "settings.json");
     private static readonly string TxtPath = Path.Combine(SettingsDir, "settings.txt");
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -78,17 +78,30 @@ public class SettingsService
         DefaultIgnoreCondition = JsonIgnoreCondition.Never,
     };
 
+    private readonly string _jsonPath;
+    private readonly bool _useDefaultPath;
+
+    public SettingsService() : this(DefaultJsonPath, useDefaultPath: true) { }
+
+    public SettingsService(string jsonPath) : this(jsonPath, useDefaultPath: false) { }
+
+    private SettingsService(string jsonPath, bool useDefaultPath)
+    {
+        _jsonPath = jsonPath;
+        _useDefaultPath = useDefaultPath;
+    }
+
     /// <summary>
     /// Loads settings from JSON, migrating from legacy TXT if needed, or returning defaults.
     /// </summary>
     public AppSettings Load()
     {
         // 1. Try JSON
-        if (File.Exists(JsonPath))
+        if (File.Exists(_jsonPath))
         {
             try
             {
-                var json = File.ReadAllText(JsonPath);
+                var json = File.ReadAllText(_jsonPath);
                 return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
             }
             catch (Exception ex)
@@ -98,8 +111,8 @@ public class SettingsService
             }
         }
 
-        // 2. Try migrating from legacy TXT
-        if (File.Exists(TxtPath))
+        // 2. Try migrating from legacy TXT (only for default path)
+        if (_useDefaultPath && File.Exists(TxtPath))
         {
             try
             {
@@ -125,9 +138,10 @@ public class SettingsService
     /// </summary>
     public void Save(AppSettings settings)
     {
-        Directory.CreateDirectory(SettingsDir);
+        var dir = Path.GetDirectoryName(_jsonPath);
+        if (dir != null) Directory.CreateDirectory(dir);
         var json = JsonSerializer.Serialize(settings, JsonOptions);
-        File.WriteAllText(JsonPath, json);
+        File.WriteAllText(_jsonPath, json);
     }
 
     /// <summary>
