@@ -23,3 +23,6 @@ jobs:
 
       - name: Build
         run: dotnet build --no-restore --configuration Release /p:TreatWarningsAsErrors=true
+
+      - name: Test
+        run: dotnet test --no-restore --configuration Release
