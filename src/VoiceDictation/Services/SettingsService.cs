@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Serilog;
 
 namespace VoiceDictation.Services;
 
@@ -88,8 +89,9 @@ public class SettingsService
                 var json = File.ReadAllText(JsonPath);
                 return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Warning(ex, "Failed to load settings.json, using defaults");
                 return new AppSettings();
             }
         }
@@ -105,8 +107,9 @@ public class SettingsService
                 File.Delete(TxtPath);
                 return settings;
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Warning(ex, "Failed to migrate settings.txt, using defaults");
                 return new AppSettings();
             }
         }
