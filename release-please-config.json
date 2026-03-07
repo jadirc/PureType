@@ -9,7 +9,7 @@
       "extra-files": [
         {
           "type": "xml",
-          "path": "VoiceDictation.csproj",
+          "path": "src/VoiceDictation/VoiceDictation.csproj",
           "xpath": "//Project/PropertyGroup/Version"
         }
       ]
