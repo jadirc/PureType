@@ -17,11 +17,13 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>  <!-- Row 0: Status -->
             <RowDefinition Height="8"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 2: Button -->
+            <RowDefinition Height="Auto"/>  <!-- Row 2: Connect + Gear -->
             <RowDefinition Height="8"/>
-            <RowDefinition Height="3*"/>    <!-- Row 4: Transkript -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="2*"/>    <!-- Row 6: Settings (scrollable) -->
+            <RowDefinition Height="Auto"/>  <!-- Row 4: Provider -->
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="Auto"/>  <!-- Row 6: Microphone -->
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="*"/>     <!-- Row 8: Transcript -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
@@ -45,31 +47,55 @@
             </StackPanel>
         </Border>
 
-        <!-- Button -->
-        <Button Grid.Row="2" x:Name="ConnectButton"
-                Content="Connect"
-                Click="ConnectButton_Click"
-                Background="#89B4FA" Foreground="#1E1E2E"
-                FontWeight="SemiBold" FontSize="14"
-                BorderThickness="0" Padding="0,11"
-                Cursor="Hand"/>
+        <!-- Connect + Gear -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" x:Name="ConnectButton" Content="Connect"
+                    Click="ConnectButton_Click"
+                    Background="#89B4FA" Foreground="#1E1E2E"
+                    FontWeight="SemiBold" FontSize="14"
+                    BorderThickness="0" Padding="0,11" Cursor="Hand"/>
+            <Button Grid.Column="1" x:Name="SettingsButton" Content="&#xE713;"
+                    Click="SettingsButton_Click"
+                    FontFamily="Segoe MDL2 Assets" FontSize="16"
+                    Background="#313244" Foreground="#CDD6F4"
+                    BorderThickness="0" Padding="12,11" Margin="8,0,0,0"
+                    Cursor="Hand" ToolTip="Settings"/>
+        </Grid>
 
-        <!-- Transkript Vorschau -->
-        <Border Grid.Row="4" x:Name="TranscriptBorder" Background="#181825" CornerRadius="6">
+        <!-- Provider -->
+        <StackPanel Grid.Row="4">
+            <TextBlock Text="PROVIDER" Foreground="#BAC2DE"
+                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <ComboBox x:Name="ProviderCombo" Padding="10,7" FontSize="13"
+                      SelectionChanged="ProviderCombo_SelectionChanged">
+                <ComboBoxItem Content="Deepgram (Cloud)" Tag="deepgram" IsSelected="True"/>
+                <ComboBoxItem Content="Whisper (Local)" Tag="whisper"/>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- Microphone -->
+        <StackPanel Grid.Row="6">
+            <TextBlock Text="MICROPHONE" Foreground="#BAC2DE"
+                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <ComboBox x:Name="MicrophoneCombo" Padding="10,7" FontSize="13"
+                      SelectionChanged="MicrophoneCombo_SelectionChanged"/>
+        </StackPanel>
+
+        <!-- Transcript -->
+        <Border Grid.Row="8" Background="#181825" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <Grid Grid.Row="0" Margin="10,6,6,0" Cursor="Hand"
-                      MouseLeftButtonDown="TranscriptHeader_Click">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock x:Name="TranscriptArrow" Text="▾" Foreground="#6C7086"
-                                   FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="TRANSCRIPT" Foreground="#BAC2DE"
-                                   FontSize="11" FontWeight="SemiBold"
-                                   VerticalAlignment="Center"/>
-                    </StackPanel>
+                <Grid Grid.Row="0" Margin="10,6,6,0">
+                    <TextBlock Text="TRANSCRIPT" Foreground="#BAC2DE"
+                               FontSize="11" FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
                     <Button Content="Log" Click="LogButton_Click"
                             HorizontalAlignment="Right"
                             Background="Transparent" Foreground="#6C7086"
@@ -83,7 +109,7 @@
                         <TextBox x:Name="TranscriptText"
                                  Foreground="#A6E3A1" FontSize="13"
                                  TextWrapping="Wrap"
-                                 Text="Transcript will appear here …"
+                                 Text="Transcript will appear here &#x2026;"
                                  IsReadOnly="True" BorderThickness="0"
                                  Background="Transparent" Padding="0"
                                  IsTabStop="False"/>
@@ -94,238 +120,5 @@
                 </ScrollViewer>
             </Grid>
         </Border>
-
-        <ScrollViewer Grid.Row="6" VerticalScrollBarVisibility="Auto" Padding="0">
-        <StackPanel>
-
-        <!-- Provider -->
-        <StackPanel Margin="0,0,0,12">
-            <TextBlock Text="PROVIDER" Foreground="#BAC2DE"
-                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <ComboBox x:Name="ProviderCombo" Padding="10,7" FontSize="13"
-                      SelectionChanged="ProviderCombo_SelectionChanged">
-                <ComboBoxItem Content="Deepgram (Cloud)" Tag="deepgram" IsSelected="True"/>
-                <ComboBoxItem Content="Whisper (Local)" Tag="whisper"/>
-            </ComboBox>
-        </StackPanel>
-
-        <!-- Whisper Modell -->
-        <StackPanel x:Name="WhisperModelPanel" Visibility="Collapsed" Margin="0,0,0,12">
-            <TextBlock Text="WHISPER MODEL" Foreground="#BAC2DE"
-                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <ComboBox x:Name="WhisperModelCombo" Grid.Column="0" Padding="10,7" FontSize="13"/>
-                <Button x:Name="DownloadModelButton" Grid.Column="1" Content="&#xE118;"
-                        Click="DownloadModelButton_Click"
-                        Background="#89B4FA" Foreground="#1E1E2E"
-                        FontFamily="Segoe MDL2 Assets" FontSize="14"
-                        BorderThickness="0" Padding="10,7" Margin="6,0,0,0"
-                        Cursor="Hand" ToolTip="Download model"/>
-            </Grid>
-            <ProgressBar x:Name="DownloadProgress" Height="4" Margin="0,6,0,0"
-                         Visibility="Collapsed" Minimum="0" Maximum="100"
-                         Background="#181825" Foreground="#A6E3A1"/>
-        </StackPanel>
-
-        <!-- API Key -->
-        <StackPanel x:Name="ApiKeyPanel" Margin="0,0,0,12">
-            <TextBlock Text="DEEPGRAM API KEY" Foreground="#BAC2DE"
-                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <PasswordBox x:Name="ApiKeyBox"
-                         Background="#313244" Foreground="#CDD6F4"
-                         BorderBrush="#45475A" BorderThickness="1"
-                         Padding="10,8" FontFamily="Consolas" FontSize="13"
-                         PasswordChar="●"
-                         PasswordChanged="ApiKeyBox_PasswordChanged"/>
-        </StackPanel>
-
-        <!-- Mikrofon -->
-        <StackPanel Margin="0,0,0,12">
-            <TextBlock Text="MICROPHONE" Foreground="#BAC2DE"
-                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <ComboBox x:Name="MicrophoneCombo" Padding="10,7" FontSize="13"
-                      SelectionChanged="MicrophoneCombo_SelectionChanged"/>
-        </StackPanel>
-
-        <!-- Keywords (Boost) -->
-        <StackPanel x:Name="KeywordsPanel" Margin="0,0,0,12">
-            <TextBlock Text="KEYWORDS (Boost)" Foreground="#BAC2DE"
-                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <TextBox x:Name="KeywordsBox"
-                     Background="#313244" Foreground="#CDD6F4"
-                     BorderBrush="#45475A" BorderThickness="1"
-                     Padding="10,8" FontFamily="Consolas" FontSize="13"
-                     LostFocus="KeywordsBox_LostFocus"
-                     ToolTip="Comma-separated terms for improved recognition (e.g. technical terms, names)"/>
-        </StackPanel>
-
-        <!-- Sprache -->
-        <StackPanel Margin="0,0,0,12">
-            <TextBlock Text="LANGUAGE" Foreground="#BAC2DE"
-                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <ComboBox x:Name="LanguageCombo" Padding="10,7" FontSize="13"
-                      SelectionChanged="LanguageCombo_SelectionChanged">
-                <ComboBoxItem Content="German (de)" Tag="de" IsSelected="True"/>
-                <ComboBoxItem Content="English (en)" Tag="en"/>
-                <ComboBoxItem Content="Automatic" Tag=""/>
-            </ComboBox>
-        </StackPanel>
-
-        <!-- Toggle Shortcut -->
-        <StackPanel Margin="0,0,0,12">
-            <TextBlock Text="TOGGLE SHORTCUT" Foreground="#BAC2DE"
-                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <TextBox x:Name="ToggleShortcutBox"
-                     Background="#313244" Foreground="#CDD6F4"
-                     BorderBrush="#45475A" BorderThickness="1"
-                     Padding="10,8" FontSize="13"
-                     IsReadOnly="True" Cursor="Hand"
-                     Text="Ctrl+Alt+X"
-                     GotFocus="ShortcutBox_GotFocus"
-                     LostFocus="ShortcutBox_LostFocus"
-                     PreviewKeyDown="ShortcutBox_PreviewKeyDown"/>
-        </StackPanel>
-
-        <!-- PTT Shortcut -->
-        <StackPanel Margin="0,0,0,12">
-            <TextBlock Text="PTT SHORTCUT" Foreground="#BAC2DE"
-                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <TextBox x:Name="PttShortcutBox"
-                     Background="#313244" Foreground="#CDD6F4"
-                     BorderBrush="#45475A" BorderThickness="1"
-                     Padding="10,8" FontSize="13"
-                     IsReadOnly="True" Cursor="Hand"
-                     Text="Win+L-Ctrl"
-                     GotFocus="ShortcutBox_GotFocus"
-                     LostFocus="ShortcutBox_LostFocus"
-                     PreviewKeyDown="ShortcutBox_PreviewKeyDown"/>
-        </StackPanel>
-
-        <!-- Signalton -->
-        <StackPanel Margin="0,0,0,12">
-            <TextBlock Text="SIGNAL TONE" Foreground="#BAC2DE"
-                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <ComboBox x:Name="ToneCombo" Padding="10,7" FontSize="13"
-                      SelectionChanged="ToneCombo_SelectionChanged">
-                <ComboBoxItem Content="None (Off)" Tag="None"/>
-                <ComboBoxItem Content="Gentle" Tag="Gentle" IsSelected="True"/>
-                <ComboBoxItem Content="Click" Tag="Click"/>
-                <ComboBoxItem Content="Bell" Tag="Bell"/>
-                <ComboBoxItem Content="Deep" Tag="Deep"/>
-                <ComboBoxItem Content="Double Pip" Tag="Double-Pip"/>
-            </ComboBox>
-        </StackPanel>
-
-        <!-- Autostart -->
-        <CheckBox x:Name="AutostartCheck"
-                  Content="  Start with Windows"
-                  Foreground="#CDD6F4" FontSize="12"
-                  Checked="AutostartCheck_Changed"
-                  Unchecked="AutostartCheck_Changed"/>
-
-        <!-- Start minimiert -->
-        <CheckBox x:Name="StartMinimizedCheck"
-                  Content="  Start minimized"
-                  Foreground="#CDD6F4" FontSize="12"
-                  Margin="0,4,0,0"
-                  Checked="StartMinimizedCheck_Changed"
-                  Unchecked="StartMinimizedCheck_Changed"/>
-
-        <!-- VAD Auto-Stop -->
-        <CheckBox x:Name="VadCheck"
-                  Content="  Auto-stop on silence (3s)"
-                  Foreground="#CDD6F4" FontSize="12"
-                  Margin="0,4,0,0"
-                  Checked="VadCheck_Changed"
-                  Unchecked="VadCheck_Changed"/>
-
-        <!-- Replacements -->
-        <Button Content="Text Replacements …"
-                Click="ReplacementsButton_Click"
-                Background="Transparent" Foreground="#89B4FA"
-                FontSize="12" BorderThickness="0"
-                Padding="0,4" Cursor="Hand"
-                HorizontalAlignment="Left"/>
-
-        <!-- LLM Post-Processing -->
-        <StackPanel x:Name="LlmPanel">
-            <CheckBox x:Name="LlmEnabledCheck"
-                      Content="  AI Post-Processing"
-                      Foreground="#CDD6F4" FontSize="12"
-                      Checked="LlmEnabledCheck_Changed"
-                      Unchecked="LlmEnabledCheck_Changed"/>
-            <StackPanel x:Name="LlmSettingsPanel" Visibility="Collapsed" Margin="0,8,0,0">
-                <TextBlock Text="AI TRIGGER KEY" Foreground="#BAC2DE"
-                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
-                <TextBlock Text="Hold this key with your shortcut to activate AI"
-                           Foreground="#6C7086" FontSize="10" Margin="0,0,0,5"/>
-                <ComboBox x:Name="AiTriggerKeyCombo" Padding="10,7" FontSize="13"
-                          SelectionChanged="AiTriggerKeyCombo_SelectionChanged">
-                    <ComboBoxItem Content="Shift" Tag="shift" IsSelected="True"/>
-                    <ComboBoxItem Content="Ctrl" Tag="ctrl"/>
-                    <ComboBoxItem Content="Alt" Tag="alt"/>
-                    <ComboBoxItem Content="Caps Lock" Tag="caps"/>
-                </ComboBox>
-
-                <TextBlock Text="API ENDPOINT" Foreground="#BAC2DE"
-                           FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
-                <ComboBox x:Name="LlmBaseUrlCombo" IsEditable="True"
-                          Text="https://api.openai.com/v1"
-                          Padding="10,7" FontFamily="Consolas" FontSize="12"
-                          SelectionChanged="LlmBaseUrlCombo_SelectionChanged">
-                    <ComboBoxItem Content="https://api.openai.com/v1" ToolTip="OpenAI"/>
-                    <ComboBoxItem Content="https://api.anthropic.com/v1" ToolTip="Anthropic Claude"/>
-                    <ComboBoxItem Content="https://openrouter.ai/api/v1" ToolTip="OpenRouter"/>
-                    <ComboBoxItem Content="https://generativelanguage.googleapis.com/v1beta/openai" ToolTip="Google Gemini"/>
-                </ComboBox>
-
-                <TextBlock Text="API KEY" Foreground="#BAC2DE"
-                           FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
-                <PasswordBox x:Name="LlmApiKeyBox"
-                             Background="#313244" Foreground="#CDD6F4"
-                             BorderBrush="#45475A" BorderThickness="1"
-                             Padding="10,8" FontFamily="Consolas" FontSize="13"
-                             PasswordChar="●"
-                             PasswordChanged="LlmApiKeyBox_PasswordChanged"/>
-
-                <TextBlock Text="MODEL" Foreground="#BAC2DE"
-                           FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <ComboBox x:Name="LlmModelCombo"
-                              IsEditable="True" Text="gpt-4o-mini"
-                              Padding="10,7" FontFamily="Consolas" FontSize="13"
-                              LostFocus="LlmSettingChanged"/>
-                    <Button Grid.Column="1" Content="&#x21BB;"
-                            Click="FetchModelsButton_Click"
-                            Background="Transparent" Foreground="#89B4FA"
-                            FontSize="16" BorderThickness="0"
-                            Padding="8,4" Margin="4,0,0,0"
-                            ToolTip="Fetch models from API"
-                            Cursor="Hand"/>
-                </Grid>
-
-                <TextBlock Text="SYSTEM PROMPT" Foreground="#BAC2DE"
-                           FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
-                <TextBox x:Name="LlmPromptBox"
-                         Text="Clean up the following dictated text. Fix punctuation, grammar, and formatting. Keep the meaning unchanged. Reply with only the corrected text."
-                         Background="#313244" Foreground="#CDD6F4"
-                         BorderBrush="#45475A" BorderThickness="1"
-                         Padding="10,8" FontSize="12"
-                         TextWrapping="Wrap" AcceptsReturn="True"
-                         Height="80" VerticalScrollBarVisibility="Auto"
-                         LostFocus="LlmSettingChanged"/>
-            </StackPanel>
-        </StackPanel>
-
-        </StackPanel>
-        </ScrollViewer>
     </Grid>
 </Window>

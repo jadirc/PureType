@@ -3,7 +3,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using Microsoft.Win32;
 using Serilog;
 using VoiceDictation.Helpers;
 using VoiceDictation.Services;
@@ -28,7 +27,6 @@ public partial class MainWindow : Window
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                      "VoiceDictation", "replacements.txt"));
 
-
     // Shortcut settings (defaults)
     private Key _toggleKey = Key.X;
     private ModifierKeys _toggleModifiers = ModifierKeys.Control | ModifierKeys.Alt;
@@ -46,12 +44,6 @@ public partial class MainWindow : Window
     private bool _isLoading = true;
     private readonly List<string> _sessionChunks = new();
     private bool _aiPostProcessRequested;
-    private string? _savedMicrophoneDevice;
-    private string? _savedWhisperModel;
-
-    // ── Autostart ────────────────────────────────────────────────────────
-    private const string AutostartRegistryKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
-    private const string AutostartValueName = "VoiceDictation";
 
     // Settings
     private readonly SettingsService _settingsService = new();
@@ -85,22 +77,12 @@ public partial class MainWindow : Window
 
         SetupTrayIcon();
         LoadSettings();
-        // Init sound after LoadSettings so selected tone is applied
-        var toneItem = ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-        SoundFeedback.Init((string?)toneItem?.Tag);
+        SoundFeedback.Init(_settings.Audio.Tone);
 
         _audio.AudioDataAvailable += OnAudioData;
         _audio.AudioLevelChanged += OnAudioLevel;
         PopulateMicrophones();
-        PopulateWhisperModels();
-        if (_savedWhisperModel != null)
-            SelectComboByTag(WhisperModelCombo, _savedWhisperModel);
-
-        var provItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-        var isWhisper = (string?)provItem?.Tag == "whisper";
-        WhisperModelPanel.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
-        ApiKeyPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
-        KeywordsPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
+        SelectMicrophoneByName(_settings.Audio.Microphone);
 
         // Enable settings persistence only after all controls are populated
         _isLoading = false;
@@ -113,15 +95,14 @@ public partial class MainWindow : Window
         _keyboardHook.TogglePressed += OnToggleHotkey;
         _keyboardHook.PttKeyDown += OnPttKeyDown;
         _keyboardHook.PttKeyUp += OnPttKeyUp;
-        _keyboardHook.RecordingWinPlusModifier += OnRecordingWinPlusModifier;
 
-        // Auto-connect on startup (independent of window visibility)
-        var autoProvider = (ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
-        if (autoProvider == "whisper" || !string.IsNullOrWhiteSpace(ApiKeyBox.Password))
+        // Auto-connect on startup
+        var providerTag = (_settings.Transcription.Provider);
+        if (providerTag == "whisper" || !string.IsNullOrWhiteSpace(_settings.Transcription.ApiKey))
             Dispatcher.BeginInvoke(async () => await ConnectAsync());
 
         // Show window if "Start minimized" is not checked
-        if (StartMinimizedCheck.IsChecked != true)
+        if (!_settings.Window.StartMinimized)
             Dispatcher.BeginInvoke(() => ShowFromTray());
     }
 
@@ -129,39 +110,19 @@ public partial class MainWindow : Window
     {
         _settings = _settingsService.Load();
 
-        ApiKeyBox.Password = _settings.Transcription.ApiKey;
+        // Parse shortcuts
+        (_toggleModifiers, _toggleKey) = SettingsWindow.ParseShortcut(_settings.Shortcuts.Toggle, _toggleKey);
+        (_pttModifiers, _pttKey) = SettingsWindow.ParseShortcut(_settings.Shortcuts.Ptt, _pttKey);
 
-        ParseToggleShortcut(_settings.Shortcuts.Toggle);
-        ParsePttShortcut(_settings.Shortcuts.Ptt);
-        SelectComboByTag(AiTriggerKeyCombo, _settings.Shortcuts.AiTriggerKey);
-
-        SelectComboByTag(LanguageCombo, _settings.Transcription.Language);
+        // Provider combo
         SelectComboByTag(ProviderCombo, _settings.Transcription.Provider);
-        _savedWhisperModel = _settings.Transcription.WhisperModel;
-        KeywordsBox.Text = _settings.Transcription.Keywords;
 
-        _savedMicrophoneDevice = _settings.Audio.Microphone;
-        SelectMicrophoneByName(_settings.Audio.Microphone);
-        SelectComboByTag(ToneCombo, _settings.Audio.Tone);
-        VadCheck.IsChecked = _settings.Audio.Vad;
-
-        LlmEnabledCheck.IsChecked = _settings.Llm.Enabled;
-        LlmSettingsPanel.Visibility = _settings.Llm.Enabled ? Visibility.Visible : Visibility.Collapsed;
-        LlmApiKeyBox.Password = _settings.Llm.ApiKey;
-        LlmBaseUrlCombo.Text = _settings.Llm.BaseUrl;
-        LlmModelCombo.Text = _settings.Llm.Model;
-        LlmPromptBox.Text = _settings.Llm.Prompt;
-
+        // Window position
         bool hasPosition = false;
         if (_settings.Window.Left.HasValue) { Left = _settings.Window.Left.Value; hasPosition = true; }
         if (_settings.Window.Top.HasValue) { Top = _settings.Window.Top.Value; hasPosition = true; }
         if (_settings.Window.Width.HasValue && _settings.Window.Width.Value >= MinWidth) Width = _settings.Window.Width.Value;
         if (_settings.Window.Height.HasValue && _settings.Window.Height.Value >= MinHeight) Height = _settings.Window.Height.Value;
-        StartMinimizedCheck.IsChecked = _settings.Window.StartMinimized;
-
-        ToggleShortcutBox.Text = FormatShortcut(_toggleModifiers, _toggleKey);
-        PttShortcutBox.Text = FormatShortcut(_pttModifiers, _pttKey);
-        AutostartCheck.IsChecked = IsAutostartEnabled();
 
         if (!hasPosition)
             CenterOnScreen();
@@ -174,87 +135,53 @@ public partial class MainWindow : Window
         Top = (screen.Height - Height) / 2 + screen.Top;
     }
 
-    private void ParseToggleShortcut(string value)
+    private void ApplySettings()
     {
-        (_toggleModifiers, _toggleKey) = ParseShortcut(value, _toggleKey);
-    }
+        // Parse and register shortcuts
+        (_toggleModifiers, _toggleKey) = SettingsWindow.ParseShortcut(_settings.Shortcuts.Toggle, _toggleKey);
+        (_pttModifiers, _pttKey) = SettingsWindow.ParseShortcut(_settings.Shortcuts.Ptt, _pttKey);
 
-    private void ParsePttShortcut(string value)
-    {
-        (_pttModifiers, _pttKey) = ParseShortcut(value, _pttKey);
-    }
-
-    private static (ModifierKeys mods, Key key) ParseShortcut(string value, Key defaultKey)
-    {
-        var mods = ModifierKeys.None;
-        var key = defaultKey;
-        var parts = value.Split('+');
-        foreach (var part in parts)
+        if (_connected)
         {
-            var trimmed = part.Trim();
-            if (trimmed.Equals("Win", StringComparison.OrdinalIgnoreCase))
-                mods |= ModifierKeys.Windows;
-            else if (trimmed.Equals("Ctrl", StringComparison.OrdinalIgnoreCase))
-                mods |= ModifierKeys.Control;
-            else if (trimmed.Equals("Alt", StringComparison.OrdinalIgnoreCase))
-                mods |= ModifierKeys.Alt;
-            else if (trimmed.Equals("Shift", StringComparison.OrdinalIgnoreCase))
-                mods |= ModifierKeys.Shift;
-            else
-            {
-                var mappedKey = trimmed switch
-                {
-                    "L-Ctrl" => Key.LeftCtrl,
-                    "R-Ctrl" => Key.RightCtrl,
-                    "L-Alt" => Key.LeftAlt,
-                    "R-Alt" => Key.RightAlt,
-                    "L-Shift" => Key.LeftShift,
-                    "R-Shift" => Key.RightShift,
-                    _ => Enum.TryParse<Key>(trimmed, out var k) ? k : (Key?)null
-                };
-                if (mappedKey.HasValue)
-                    key = mappedKey.Value;
-            }
+            _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
+            _keyboardHook.SetPttShortcut(_pttModifiers, _pttKey);
         }
-        return (mods, key);
+
+        // AI trigger key
+        ApplyAiTriggerKey();
+
+        // Sound
+        SoundFeedback.Init(_settings.Audio.Tone);
+    }
+
+    private void ApplyAiTriggerKey()
+    {
+        var tag = _settings.Shortcuts.AiTriggerKey;
+        var (vk1, vk2) = tag switch
+        {
+            "shift" => (KeyboardHookService.VK_LSHIFT, KeyboardHookService.VK_RSHIFT),
+            "ctrl"  => (KeyboardHookService.VK_LCONTROL, KeyboardHookService.VK_RCONTROL),
+            "alt"   => (KeyboardHookService.VK_LMENU, KeyboardHookService.VK_RMENU),
+            "caps"  => (KeyboardHookService.VK_CAPITAL, 0),
+            _       => (KeyboardHookService.VK_LSHIFT, KeyboardHookService.VK_RSHIFT)
+        };
+        _keyboardHook.SetAiTriggerKey(vk1, vk2);
     }
 
     private void SaveSettings()
     {
-        var langItem = LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-        var micItem = MicrophoneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-        var whisperModelItem = WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var micItem = MicrophoneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
 
-        _settings = new AppSettings
+        _settings = _settings with
         {
-            Transcription = new TranscriptionSettings
+            Transcription = _settings.Transcription with
             {
-                ApiKey = ApiKeyBox.Password.Trim(),
-                Language = (string)(langItem?.Tag ?? "de"),
                 Provider = (string)(providerItem?.Tag ?? "deepgram"),
-                WhisperModel = (string)(whisperModelItem?.Tag ?? "tiny"),
-                Keywords = KeywordsBox.Text.Trim(),
             },
-            Shortcuts = new ShortcutSettings
-            {
-                Toggle = FormatShortcut(_toggleModifiers, _toggleKey),
-                Ptt = FormatShortcut(_pttModifiers, _pttKey),
-                AiTriggerKey = (string)((AiTriggerKeyCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "shift"),
-            },
-            Audio = new AudioSettings
+            Audio = _settings.Audio with
             {
                 Microphone = micItem?.Content?.ToString() ?? "",
-                Tone = (string)((ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Gentle"),
-                Vad = VadCheck.IsChecked == true,
-            },
-            Llm = new LlmSettings
-            {
-                Enabled = LlmEnabledCheck.IsChecked == true,
-                ApiKey = LlmApiKeyBox.Password.Trim(),
-                BaseUrl = LlmBaseUrlCombo.Text.Trim(),
-                Model = LlmModelCombo.Text.Trim(),
-                Prompt = LlmPromptBox.Text.Trim(),
             },
             Window = new WindowSettings
             {
@@ -262,7 +189,7 @@ public partial class MainWindow : Window
                 Top = Top,
                 Width = Width,
                 Height = Height,
-                StartMinimized = StartMinimizedCheck.IsChecked == true,
+                StartMinimized = _settings.Window.StartMinimized,
             },
         };
 
@@ -282,56 +209,12 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private static string FormatShortcut(ModifierKeys mod, Key key)
-    {
-        var parts = new List<string>();
-        if (mod.HasFlag(ModifierKeys.Windows)) parts.Add("Win");
-        if (mod.HasFlag(ModifierKeys.Control)) parts.Add("Ctrl");
-        if (mod.HasFlag(ModifierKeys.Alt)) parts.Add("Alt");
-        if (mod.HasFlag(ModifierKeys.Shift)) parts.Add("Shift");
-        // Friendly names for modifier keys used as main key
-        var keyName = key switch
-        {
-            Key.LeftCtrl => "L-Ctrl",
-            Key.RightCtrl => "R-Ctrl",
-            Key.LeftAlt => "L-Alt",
-            Key.RightAlt => "R-Alt",
-            Key.LeftShift => "L-Shift",
-            Key.RightShift => "R-Shift",
-            _ => key.ToString()
-        };
-        parts.Add(keyName);
-        return string.Join("+", parts);
-    }
-
     // ── UI Events ─────────────────────────────────────────────────────────
 
     private void LogButton_Click(object sender, RoutedEventArgs e)
     {
         _logWindow.Show();
         _logWindow.Activate();
-    }
-
-    private bool _transcriptCollapsed;
-
-    private void TranscriptHeader_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        _transcriptCollapsed = !_transcriptCollapsed;
-        TranscriptScroll.Visibility = _transcriptCollapsed ? Visibility.Collapsed : Visibility.Visible;
-        TranscriptArrow.Text = _transcriptCollapsed ? "▸" : "▾";
-
-        // When collapsed, transcript row becomes Auto (just header); settings get all space
-        var grid = (System.Windows.Controls.Grid)TranscriptBorder.Parent;
-        var rowDef = grid.RowDefinitions[4]; // Row 4 = Transcript
-        rowDef.Height = _transcriptCollapsed
-            ? GridLength.Auto
-            : new GridLength(3, GridUnitType.Star);
-    }
-
-    private void ApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
-    {
-        if (!_isLoading)
-            SaveSettings();
     }
 
     private async void ConnectButton_Click(object sender, RoutedEventArgs e)
@@ -342,21 +225,35 @@ public partial class MainWindow : Window
             await DisconnectAsync();
     }
 
-    private void LanguageCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!_isLoading)
-            SaveSettings();
-    }
+        var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var providerTag = (string)(providerItem?.Tag ?? "deepgram");
 
+        var dialog = new SettingsWindow(_settings, providerTag, _keyboardHook, _replacements);
+        dialog.Owner = this;
 
-    private void ToneCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        if (_isLoading) return;
-        var item = (System.Windows.Controls.ComboBoxItem)ToneCombo.SelectedItem;
-        var preset = (string)item.Tag;
-        SoundFeedback.Init(preset);
-        SoundFeedback.PlayStart(); // preview
-        SaveSettings();
+        if (dialog.ShowDialog() == true)
+        {
+            // Preserve fields that MainWindow owns (provider, microphone, window position)
+            _settings = dialog.ResultSettings with
+            {
+                Transcription = dialog.ResultSettings.Transcription with
+                {
+                    Provider = _settings.Transcription.Provider,
+                },
+                Audio = dialog.ResultSettings.Audio with
+                {
+                    Microphone = _settings.Audio.Microphone,
+                },
+                Window = _settings.Window with
+                {
+                    StartMinimized = dialog.ResultSettings.Window.StartMinimized,
+                },
+            };
+            ApplySettings();
+            _settingsService.Save(_settings);
+        }
     }
 
     // ── Microphone ────────────────────────────────────────────────────────
@@ -411,432 +308,15 @@ public partial class MainWindow : Window
         });
     }
 
-    // ── Keywords ─────────────────────────────────────────────────────────
-
-    private void KeywordsBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (!_isLoading)
-            SaveSettings();
-    }
-
-    // ── Provider / Whisper Model ────────────────────────────────────────
-
-    private void PopulateWhisperModels()
-    {
-        // Remember current selection
-        var previousTag = (WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
-
-        WhisperModelCombo.Items.Clear();
-        foreach (var (name, displayName, _) in WhisperModelManager.AvailableModels)
-        {
-            var isDownloaded = WhisperModelManager.IsModelDownloaded(name);
-            var suffix = isDownloaded ? " \u2713" : "";
-            var item = new System.Windows.Controls.ComboBoxItem
-            {
-                Content = displayName + suffix,
-                Tag = name,
-                FontWeight = isDownloaded ? FontWeights.SemiBold : FontWeights.Normal
-            };
-            WhisperModelCombo.Items.Add(item);
-        }
-
-        // Restore previous selection, or fall back to first downloaded, or first item
-        if (previousTag != null && SelectComboByTag(WhisperModelCombo, previousTag)) { }
-        else
-        {
-            // Select first downloaded model
-            foreach (System.Windows.Controls.ComboBoxItem item in WhisperModelCombo.Items)
-            {
-                if (WhisperModelManager.IsModelDownloaded((string)item.Tag))
-                {
-                    WhisperModelCombo.SelectedItem = item;
-                    break;
-                }
-            }
-            if (WhisperModelCombo.SelectedItem == null && WhisperModelCombo.Items.Count > 0)
-                WhisperModelCombo.SelectedIndex = 0;
-        }
-    }
+    // ── Provider ─────────────────────────────────────────────────────────
 
     private void ProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (_isLoading || ProviderCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
-        var isWhisper = (string)item.Tag == "whisper";
-        WhisperModelPanel.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
-        ApiKeyPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
-        KeywordsPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
         if (!_isLoading)
             SaveSettings();
     }
 
-    private async void DownloadModelButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (WhisperModelCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
-        var modelName = (string)item.Tag;
-
-        if (WhisperModelManager.IsModelDownloaded(modelName))
-        {
-            MessageBox.Show("Model is already downloaded.", "Info",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        DownloadModelButton.IsEnabled = false;
-        DownloadProgress.Visibility = Visibility.Visible;
-        DownloadProgress.Value = 0;
-
-        try
-        {
-            await WhisperModelManager.DownloadModelAsync(modelName,
-                progress => Dispatcher.Invoke(() => DownloadProgress.Value = progress * 100));
-
-            PopulateWhisperModels();
-            MessageBox.Show($"Model '{modelName}' downloaded successfully.", "Done",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Model download failed");
-            MessageBox.Show($"Download failed:\n{ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            DownloadModelButton.IsEnabled = true;
-            DownloadProgress.Visibility = Visibility.Collapsed;
-        }
-    }
-
-    // ── Autostart ────────────────────────────────────────────────────────
-
-    private ReplacementsWindow? _replacementsWindow;
-
-    private void ReplacementsButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_replacementsWindow is { IsLoaded: true })
-        {
-            _replacementsWindow.Activate();
-            return;
-        }
-        _replacementsWindow = new ReplacementsWindow(_replacements);
-        _replacementsWindow.Owner = this;
-        _replacementsWindow.Show();
-    }
-
-    private void VadCheck_Changed(object sender, RoutedEventArgs e)
-    {
-        if (!_isLoading)
-            SaveSettings();
-    }
-
-    private void AutostartCheck_Changed(object sender, RoutedEventArgs e)
-    {
-        if (!_isLoading)
-        {
-            SetAutostart(AutostartCheck.IsChecked == true);
-            SaveSettings();
-        }
-    }
-
-    private void StartMinimizedCheck_Changed(object sender, RoutedEventArgs e)
-    {
-        if (!_isLoading)
-            SaveSettings();
-    }
-
-    private void LlmEnabledCheck_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isLoading) return;
-        LlmSettingsPanel.Visibility = LlmEnabledCheck.IsChecked == true
-            ? Visibility.Visible : Visibility.Collapsed;
-        SaveSettings();
-    }
-
-    private void LlmBaseUrlCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        if (_isLoading) return;
-        SaveSettings();
-        // Auto-fetch models when endpoint changes (only if API key is set)
-        if (!string.IsNullOrWhiteSpace(LlmApiKeyBox.Password))
-            Dispatcher.BeginInvoke(() => FetchModelsButton_Click(sender, new RoutedEventArgs()));
-    }
-
-    private void LlmApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
-    {
-        if (!_isLoading) SaveSettings();
-    }
-
-    private void LlmSettingChanged(object sender, RoutedEventArgs e)
-    {
-        if (!_isLoading) SaveSettings();
-    }
-
-    private void AiTriggerKeyCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        if (_isLoading) return;
-        ApplyAiTriggerKey();
-        SaveSettings();
-    }
-
-    private void ApplyAiTriggerKey()
-    {
-        var item = AiTriggerKeyCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-        var tag = (string)(item?.Tag ?? "shift");
-        var (vk1, vk2) = tag switch
-        {
-            "shift" => (KeyboardHookService.VK_LSHIFT, KeyboardHookService.VK_RSHIFT),
-            "ctrl"  => (KeyboardHookService.VK_LCONTROL, KeyboardHookService.VK_RCONTROL),
-            "alt"   => (KeyboardHookService.VK_LMENU, KeyboardHookService.VK_RMENU),
-            "caps"  => (KeyboardHookService.VK_CAPITAL, 0),
-            _       => (KeyboardHookService.VK_LSHIFT, KeyboardHookService.VK_RSHIFT)
-        };
-        _keyboardHook.SetAiTriggerKey(vk1, vk2);
-    }
-
-    private async void FetchModelsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var apiKey = LlmApiKeyBox.Password.Trim();
-        if (string.IsNullOrEmpty(apiKey))
-        {
-            Log.Warning("Cannot fetch models: no API key");
-            return;
-        }
-
-        var baseUrl = LlmBaseUrlCombo.Text.Trim();
-        var previousModel = LlmModelCombo.Text;
-
-        try
-        {
-            var models = await FetchModelsAsync(baseUrl, apiKey);
-            LlmModelCombo.Items.Clear();
-            foreach (var model in models)
-                LlmModelCombo.Items.Add(model);
-
-            // Restore previous selection or pick first
-            LlmModelCombo.Text = models.Contains(previousModel) ? previousModel
-                : models.Count > 0 ? models[0] : previousModel;
-
-            Log.Information("Fetched {Count} models from {BaseUrl}", models.Count, baseUrl);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to fetch models");
-            MessageBox.Show($"Failed to fetch models:\n{ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
-
-    private static async Task<List<string>> FetchModelsAsync(string baseUrl, string apiKey)
-    {
-        using var http = new System.Net.Http.HttpClient();
-        var trimmedBase = string.IsNullOrWhiteSpace(baseUrl)
-            ? "https://api.openai.com/v1" : baseUrl.TrimEnd('/');
-        var url = $"{trimmedBase}/models";
-
-        if (trimmedBase.Contains("anthropic.com", StringComparison.OrdinalIgnoreCase))
-        {
-            http.DefaultRequestHeaders.Add("x-api-key", apiKey);
-            http.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-        }
-        else
-        {
-            http.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-        }
-
-        var response = await http.GetAsync(url);
-        response.EnsureSuccessStatusCode();
-
-        var json = await response.Content.ReadAsStringAsync();
-        using var doc = System.Text.Json.JsonDocument.Parse(json);
-        var models = new List<string>();
-
-        if (doc.RootElement.TryGetProperty("data", out var data))
-        {
-            foreach (var item in data.EnumerateArray())
-            {
-                if (item.TryGetProperty("id", out var id))
-                    models.Add(id.GetString()!);
-            }
-        }
-
-        models.Sort(StringComparer.OrdinalIgnoreCase);
-        return models;
-    }
-
-    private static void SetAutostart(bool enable)
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(AutostartRegistryKey, writable: true);
-            if (key == null) return;
-
-            if (enable)
-            {
-                var exePath = Environment.ProcessPath ?? System.Reflection.Assembly.GetExecutingAssembly().Location;
-                key.SetValue(AutostartValueName, $"\"{exePath}\"");
-            }
-            else
-            {
-                key.DeleteValue(AutostartValueName, throwOnMissingValue: false);
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Autostart registration failed");
-        }
-    }
-
-    private static bool IsAutostartEnabled()
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(AutostartRegistryKey);
-            return key?.GetValue(AutostartValueName) != null;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    // ── Shortcut Recorder ────────────────────────────────────────────────
-
-    private string? _shortcutBoxPreviousText;
-
-    private void ShortcutBox_GotFocus(object sender, RoutedEventArgs e)
-    {
-        var box = (System.Windows.Controls.TextBox)sender;
-        _shortcutBoxPreviousText = box.Text;
-        box.Text = "Press a key…";
-        box.Foreground = new SolidColorBrush(Color.FromRgb(0xF9, 0xE2, 0xAF));
-        _keyboardHook.SuppressWinKey = true;
-    }
-
-    private void ShortcutBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        var box = (System.Windows.Controls.TextBox)sender;
-        if (box.Text == "Press a key…")
-            box.Text = _shortcutBoxPreviousText ?? "";
-        box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
-        _keyboardHook.SuppressWinKey = false;
-    }
-
-    private void ShortcutBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-    {
-        e.Handled = true;
-        var box = (System.Windows.Controls.TextBox)sender;
-
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
-        bool winHeld = _keyboardHook.IsWinDown;
-
-        // Win key itself is always ignored (tracked by interceptor)
-        if (key is Key.LWin or Key.RWin)
-            return;
-
-        // Other modifier keys: allow as "main key" when Win is held, otherwise wait for a real key
-        bool isModifierKey = key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
-            or Key.LeftShift or Key.RightShift;
-        if (isModifierKey && !winHeld)
-            return;
-
-        var modifiers = Keyboard.Modifiers;
-        if (winHeld)
-            modifiers |= ModifierKeys.Windows;
-
-        // When a modifier key is used as the main key, remove it from modifiers to avoid duplication
-        // e.g. Win+Ctrl: modifiers should be Windows only, key is LeftCtrl
-        if (isModifierKey)
-        {
-            if (key is Key.LeftCtrl or Key.RightCtrl) modifiers &= ~ModifierKeys.Control;
-            else if (key is Key.LeftAlt or Key.RightAlt) modifiers &= ~ModifierKeys.Alt;
-            else if (key is Key.LeftShift or Key.RightShift) modifiers &= ~ModifierKeys.Shift;
-        }
-
-        var displayText = FormatShortcut(modifiers, key);
-
-        if (key == Key.Escape)
-        {
-            box.Text = _shortcutBoxPreviousText ?? "";
-            box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
-            Keyboard.ClearFocus();
-            return;
-        }
-
-        bool isToggleBox = box == ToggleShortcutBox;
-
-        var otherBox = isToggleBox ? PttShortcutBox : ToggleShortcutBox;
-        if (otherBox.Text == displayText)
-        {
-            box.Text = "Already assigned!";
-            box.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
-            return;
-        }
-
-        if (isToggleBox)
-        {
-            _toggleKey = key;
-            _toggleModifiers = modifiers;
-
-            if (_connected)
-                _keyboardHook.SetToggleShortcut(modifiers, key);
-        }
-        else
-        {
-            _pttKey = key;
-            _pttModifiers = modifiers;
-
-            if (_connected)
-                _keyboardHook.SetPttShortcut(modifiers, key);
-        }
-
-        box.Text = displayText;
-        box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
-        SaveSettings();
-        Keyboard.ClearFocus();
-    }
-
-
-    private void OnRecordingWinPlusModifier(int heldVk)
-    {
-        // Find the focused shortcut TextBox (if any)
-        var focused = Keyboard.FocusedElement as System.Windows.Controls.TextBox;
-        if (focused is not (var box and not null) || (box != ToggleShortcutBox && box != PttShortcutBox))
-            return;
-
-        var key = KeyInterop.KeyFromVirtualKey(heldVk);
-        var modifiers = ModifierKeys.Windows;
-
-        var displayText = FormatShortcut(modifiers, key);
-
-        bool isToggleBox = box == ToggleShortcutBox;
-        var otherBox = isToggleBox ? PttShortcutBox : ToggleShortcutBox;
-        if (otherBox.Text == displayText)
-        {
-            box.Text = "Already assigned!";
-            box.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
-            return;
-        }
-
-        if (isToggleBox)
-        {
-            _toggleKey = key;
-            _toggleModifiers = modifiers;
-            if (_connected)
-                _keyboardHook.SetToggleShortcut(modifiers, key);
-        }
-        else
-        {
-            _pttKey = key;
-            _pttModifiers = modifiers;
-            if (_connected)
-                _keyboardHook.SetPttShortcut(modifiers, key);
-        }
-
-        box.Text = displayText;
-        box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
-        SaveSettings();
-        Keyboard.ClearFocus();
-    }
+    // ── Window Closing ───────────────────────────────────────────────────
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
@@ -858,18 +338,16 @@ public partial class MainWindow : Window
         var providerItem = (System.Windows.Controls.ComboBoxItem)ProviderCombo.SelectedItem;
         var providerType = (string)providerItem.Tag;
 
-        SetStatus("Connecting …", Yellow);
+        SetStatus("Connecting \u2026", Yellow);
         ConnectButton.IsEnabled = false;
 
         try
         {
-            var langItem = (System.Windows.Controls.ComboBoxItem)LanguageCombo.SelectedItem;
-            var language = (string)langItem.Tag;
+            var language = _settings.Transcription.Language;
 
             if (providerType == "whisper")
             {
-                var modelItem = WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-                var modelName = (string)(modelItem?.Tag ?? "tiny");
+                var modelName = _settings.Transcription.WhisperModel;
 
                 if (!WhisperModelManager.IsModelDownloaded(modelName))
                 {
@@ -884,7 +362,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                var apiKey = ApiKeyBox.Password.Trim();
+                var apiKey = _settings.Transcription.ApiKey;
                 if (string.IsNullOrEmpty(apiKey))
                 {
                     MessageBox.Show("Please enter a Deepgram API key.", "Error",
@@ -893,7 +371,7 @@ public partial class MainWindow : Window
                     SetStatus("Not connected", Red);
                     return;
                 }
-                var keywords = KeywordsBox.Text
+                var keywords = _settings.Transcription.Keywords
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Where(k => !string.IsNullOrWhiteSpace(k))
                     .ToArray();
@@ -969,15 +447,14 @@ public partial class MainWindow : Window
             if (_recording)
             {
                 if (_recordingSource != RecordingSource.Toggle) return;
-                // Also check AI key at stop time
-                if (!_aiPostProcessRequested && LlmEnabledCheck.IsChecked == true)
+                if (!_aiPostProcessRequested && _settings.Llm.Enabled)
                     _aiPostProcessRequested = aiKeyHeld;
                 _recordingSource = RecordingSource.None;
                 StopRecording();
             }
             else
             {
-                _aiPostProcessRequested = aiKeyHeld && LlmEnabledCheck.IsChecked == true;
+                _aiPostProcessRequested = aiKeyHeld && _settings.Llm.Enabled;
                 _recordingSource = RecordingSource.Toggle;
                 StartRecording();
             }
@@ -991,7 +468,7 @@ public partial class MainWindow : Window
         if (!_connected || _recording) return;
         Dispatcher.Invoke(() =>
         {
-            _aiPostProcessRequested = aiKeyHeld && LlmEnabledCheck.IsChecked == true;
+            _aiPostProcessRequested = aiKeyHeld && _settings.Llm.Enabled;
             _recordingSource = RecordingSource.Ptt;
             StartRecording();
         });
@@ -1002,8 +479,7 @@ public partial class MainWindow : Window
         if (_recordingSource != RecordingSource.Ptt) return;
         Dispatcher.Invoke(() =>
         {
-            // Also check AI key at stop time (user may press it after PTT started)
-            if (!_aiPostProcessRequested && LlmEnabledCheck.IsChecked == true)
+            if (!_aiPostProcessRequested && _settings.Llm.Enabled)
                 _aiPostProcessRequested = _keyboardHook.IsAiKeyHeld();
             _recordingSource = RecordingSource.None;
             StopRecording();
@@ -1020,16 +496,16 @@ public partial class MainWindow : Window
         SoundFeedback.PlayStart();
         _audio.Start();
         var aiLabel = _aiPostProcessRequested ? " + AI" : "";
-        SetStatus($"● Recording{aiLabel}", Red);
+        SetStatus($"\u25CF Recording{aiLabel}", Red);
         ToastWindow.ShowToast(_aiPostProcessRequested ? "Recording + AI" : "Recording",
             Red.Color, autoClose: false);
 
         // Add separator between recording sessions in transcript
         var current = TranscriptText.Text;
-        if (!string.IsNullOrEmpty(current) && current != "Transcript will appear here …")
-            TranscriptText.Text = current + "\n────────────────────\n";
+        if (!string.IsNullOrEmpty(current) && current != "Transcript will appear here \u2026")
+            TranscriptText.Text = current + "\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n";
 
-        if (VadCheck.IsChecked == true && _recordingSource == RecordingSource.Toggle)
+        if (_settings.Audio.Vad && _recordingSource == RecordingSource.Toggle)
         {
             _vad = new VadService();
             _vad.SilenceDetected += () => Dispatcher.Invoke(StopRecording);
@@ -1068,7 +544,7 @@ public partial class MainWindow : Window
         }
 
         if (_connected)
-            SetStatus("Connected – ready", Green);
+            SetStatus("Connected \u2013 ready", Green);
         UpdateTrayMenu();
     }
 
@@ -1121,7 +597,7 @@ public partial class MainWindow : Window
     private void AppendTranscript(string text)
     {
         var current = TranscriptText.Text;
-        if (current == "Transcript will appear here …")
+        if (current == "Transcript will appear here \u2026")
             current = "";
 
         // Keep last ~500 characters
@@ -1219,9 +695,9 @@ public partial class MainWindow : Window
         if (_muted)
             SetStatus("Muted", Yellow);
         else if (_recording)
-            SetStatus("● Recording", Red);
+            SetStatus("\u25CF Recording", Red);
         else if (_connected)
-            SetStatus("Connected – ready", Green);
+            SetStatus("Connected \u2013 ready", Green);
         else
             SetStatus("Not connected", Red);
 
@@ -1282,10 +758,10 @@ public partial class MainWindow : Window
     {
         try
         {
-            var baseUrl = LlmBaseUrlCombo.Text.Trim();
-            var apiKey = LlmApiKeyBox.Password.Trim();
-            var model = LlmModelCombo.Text.Trim();
-            var prompt = LlmPromptBox.Text.Trim();
+            var baseUrl = _settings.Llm.BaseUrl;
+            var apiKey = _settings.Llm.ApiKey;
+            var model = _settings.Llm.Model;
+            var prompt = _settings.Llm.Prompt;
 
             if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(model))
             {
@@ -1299,7 +775,7 @@ public partial class MainWindow : Window
                 : new OpenAiLlmClient(apiKey, baseUrl, model);
 
             Log.Information("Sending {Length} chars to LLM ({BaseUrl}/{Model})", text.Length, baseUrl, model);
-            ToastWindow.ShowToast("Waiting for AI response …",
+            ToastWindow.ShowToast("Waiting for AI response \u2026",
                 Yellow.Color, autoClose: false);
 
             var result = await client.ProcessAsync(prompt, text);
