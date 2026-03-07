@@ -17,6 +17,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="VoiceDictation.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="Resources\mic.ico"/>
   </ItemGroup>
 
