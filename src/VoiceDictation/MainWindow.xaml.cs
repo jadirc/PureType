@@ -16,11 +16,7 @@ public partial class MainWindow : Window
     private readonly AudioCaptureService _audio = new();
     private readonly LogWindow _logWindow = new();
     private static readonly LogWindowSink UiSink = new();
-    private System.Windows.Forms.NotifyIcon? _trayIcon;
-    private System.Windows.Forms.ToolStripLabel? _trayStatusLabel;
-    private System.Windows.Forms.ToolStripMenuItem? _trayConnectItem;
-    private System.Windows.Forms.ToolStripMenuItem? _trayMuteItem;
-    private System.Drawing.Icon? _baseTrayIcon;
+    private readonly TrayIconManager _tray;
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
     private readonly KeyboardHookService _keyboardHook = new();
@@ -76,7 +72,23 @@ public partial class MainWindow : Window
 
         Log.Information("VoiceDictation started");
 
-        SetupTrayIcon();
+        var iconStream = Application.GetResourceStream(
+            new Uri("pack://application:,,,/Resources/mic.ico"))?.Stream;
+        var baseIcon = iconStream != null ? new System.Drawing.Icon(iconStream) : System.Drawing.SystemIcons.Application;
+
+        _tray = new TrayIconManager(baseIcon);
+        _tray.ConnectRequested += () => Dispatcher.InvokeAsync(async () => await ConnectAsync());
+        _tray.DisconnectRequested += () => Dispatcher.InvokeAsync(async () => await DisconnectAsync());
+        _tray.MuteToggleRequested += () => Dispatcher.Invoke(ToggleMute);
+        _tray.SettingsRequested += () => Dispatcher.Invoke(() => SettingsButton_Click(this, new RoutedEventArgs()));
+        _tray.ShowRequested += () => Dispatcher.Invoke(ShowFromTray);
+        _tray.ExitRequested += () =>
+        {
+            _tray.Dispose();
+            _keyboardHook.Dispose();
+            Application.Current.Shutdown();
+        };
+
         LoadSettings();
         SoundFeedback.Init(_settings.Audio.Tone);
 
@@ -312,7 +324,7 @@ public partial class MainWindow : Window
     {
         SaveSettings();
         Log.Information("Application shutting down");
-        _trayIcon?.Dispose();
+        _tray.Dispose();
         _ = DisconnectAsync();
         _keyboardHook.Dispose();
         _audio.Dispose();
@@ -387,7 +399,7 @@ public partial class MainWindow : Window
             ConnectButton.Background = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
             SaveSettings();
             Log.Information("{Provider} connected (Language: {Language})", label, language);
-            UpdateTrayMenu();
+            _tray.Update(_connected, _recording, _muted);
         }
         catch (Exception ex)
         {
@@ -419,7 +431,7 @@ public partial class MainWindow : Window
         ConnectButton.Content    = "Connect";
         ConnectButton.Background = Blue;
         Log.Information("Provider disconnected");
-        UpdateTrayMenu();
+        _tray.Update(_connected, _recording, _muted);
     }
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
@@ -504,7 +516,7 @@ public partial class MainWindow : Window
             _vad.SilenceDetected += () => Dispatcher.Invoke(StopRecording);
             _vad.Reset();
         }
-        UpdateTrayMenu();
+        _tray.Update(_connected, _recording, _muted);
     }
 
     private async void StopRecording()
@@ -538,7 +550,7 @@ public partial class MainWindow : Window
 
         if (_connected)
             SetStatus("Connected \u2013 ready", Green);
-        UpdateTrayMenu();
+        _tray.Update(_connected, _recording, _muted);
     }
 
     // ── Audio → Provider ───────────────────────────────────────────────────
@@ -618,85 +630,12 @@ public partial class MainWindow : Window
         Dispatcher.Invoke(() =>
         {
             SetStatus($"Reconnecting ({attempt}/{maxAttempts})\u2026", Yellow);
-            UpdateTrayMenu();
+            _tray.Update(_connected, _recording, _muted);
         });
-
-    // ── System Tray ──────────────────────────────────────────────────────
-
-    private void SetupTrayIcon()
-    {
-        var iconStream = Application.GetResourceStream(
-            new Uri("pack://application:,,,/Resources/mic.ico"))?.Stream;
-
-        _baseTrayIcon = iconStream != null ? new System.Drawing.Icon(iconStream) : System.Drawing.SystemIcons.Application;
-
-        _trayIcon = new System.Windows.Forms.NotifyIcon
-        {
-            Icon = _baseTrayIcon,
-            Text = "Voice Dictation",
-            Visible = true
-        };
-
-        _trayIcon.MouseClick += (_, e) =>
-        {
-            if (e.Button == System.Windows.Forms.MouseButtons.Left)
-                ShowFromTray();
-        };
-
-        var menu = new System.Windows.Forms.ContextMenuStrip();
-
-        // Status label (non-clickable)
-        _trayStatusLabel = new System.Windows.Forms.ToolStripLabel("Not connected")
-        {
-            ForeColor = System.Drawing.Color.FromArgb(0xF3, 0x8B, 0xA8)
-        };
-        menu.Items.Add(_trayStatusLabel);
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-
-        // Connect / Disconnect toggle
-        _trayConnectItem = new System.Windows.Forms.ToolStripMenuItem("Connect", null, async (_, _) =>
-        {
-            await Dispatcher.InvokeAsync(async () =>
-            {
-                if (_connected)
-                    await DisconnectAsync();
-                else
-                    await ConnectAsync();
-            });
-        });
-        menu.Items.Add(_trayConnectItem);
-
-        // Mute toggle
-        _trayMuteItem = new System.Windows.Forms.ToolStripMenuItem("Mute", null, (_, _) =>
-        {
-            Dispatcher.Invoke(ToggleMute);
-        })
-        {
-            CheckOnClick = false
-        };
-        menu.Items.Add(_trayMuteItem);
-
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-
-        menu.Items.Add("Settings", null, (_, _) =>
-        {
-            Dispatcher.Invoke(() => SettingsButton_Click(this, new RoutedEventArgs()));
-        });
-        menu.Items.Add("Open", null, (_, _) => ShowFromTray());
-        menu.Items.Add("Exit", null, (_, _) =>
-        {
-            _trayIcon.Visible = false;
-            _keyboardHook.Dispose();
-            Application.Current.Shutdown();
-        });
-        _trayIcon.ContextMenuStrip = menu;
-    }
 
     private void ToggleMute()
     {
         _muted = !_muted;
-        if (_trayMuteItem != null)
-            _trayMuteItem.Checked = _muted;
 
         if (_muted)
             SetStatus("Muted", Yellow);
@@ -708,79 +647,7 @@ public partial class MainWindow : Window
             SetStatus("Not connected", Red);
 
         Log.Information("Mute {State}", _muted ? "enabled" : "disabled");
-        UpdateTrayMenu();
-    }
-
-    private void UpdateTrayMenu()
-    {
-        if (_trayStatusLabel == null || _trayConnectItem == null) return;
-
-        if (_muted)
-        {
-            _trayStatusLabel.Text = "Muted";
-            _trayStatusLabel.ForeColor = System.Drawing.Color.FromArgb(0xF9, 0xE2, 0xAF);
-        }
-        else if (_recording)
-        {
-            _trayStatusLabel.Text = "Recording";
-            _trayStatusLabel.ForeColor = System.Drawing.Color.FromArgb(0xF3, 0x8B, 0xA8);
-        }
-        else if (_connected)
-        {
-            _trayStatusLabel.Text = "Connected";
-            _trayStatusLabel.ForeColor = System.Drawing.Color.FromArgb(0x40, 0xA0, 0x2B);
-        }
-        else
-        {
-            _trayStatusLabel.Text = "Not connected";
-            _trayStatusLabel.ForeColor = System.Drawing.Color.FromArgb(0xF3, 0x8B, 0xA8);
-        }
-
-        _trayConnectItem.Text = _connected ? "Disconnect" : "Connect";
-
-        // Update tray icon with status indicator
-        if (_trayIcon != null && _baseTrayIcon != null)
-        {
-            var color = _connected
-                ? System.Drawing.Color.FromArgb(0x40, 0xA0, 0x2B)
-                : System.Drawing.Color.FromArgb(0xE6, 0x40, 0x53);
-            _trayIcon.Icon = CreateStatusIcon(_baseTrayIcon, color, !_connected);
-        }
-    }
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool DestroyIcon(IntPtr handle);
-
-    private static System.Drawing.Icon CreateStatusIcon(System.Drawing.Icon baseIcon, System.Drawing.Color color, bool showCross)
-    {
-        using var bmp = baseIcon.ToBitmap();
-        using var g = System.Drawing.Graphics.FromImage(bmp);
-        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
-        int dotSize = 10;
-        int x = bmp.Width - dotSize;
-        int y = bmp.Height - dotSize;
-
-        // White outline for contrast
-        using var outlineBrush = new System.Drawing.SolidBrush(System.Drawing.Color.White);
-        g.FillEllipse(outlineBrush, x - 1, y - 1, dotSize + 2, dotSize + 2);
-
-        // Draw status dot
-        using var brush = new System.Drawing.SolidBrush(color);
-        g.FillEllipse(brush, x, y, dotSize, dotSize);
-
-        if (showCross)
-        {
-            using var pen = new System.Drawing.Pen(System.Drawing.Color.White, 2f);
-            g.DrawLine(pen, x + 1, y + dotSize - 1, x + dotSize - 1, y + 1);
-        }
-
-        var handle = bmp.GetHicon();
-        var icon = System.Drawing.Icon.FromHandle(handle);
-        // Clone so we can free the GDI handle
-        var result = (System.Drawing.Icon)icon.Clone();
-        DestroyIcon(handle);
-        return result;
+        _tray.Update(_connected, _recording, _muted);
     }
 
     private void ShowFromTray()
