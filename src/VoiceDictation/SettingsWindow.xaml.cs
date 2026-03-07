@@ -18,6 +18,8 @@ public partial class SettingsWindow : Window
     private ModifierKeys _toggleModifiers;
     private Key _pttKey;
     private ModifierKeys _pttModifiers;
+    private Key _muteKey;
+    private ModifierKeys _muteModifiers;
     private string? _shortcutBoxPreviousText;
 
     public AppSettings ResultSettings { get; private set; } = new();
@@ -58,6 +60,11 @@ public partial class SettingsWindow : Window
         (_pttModifiers, _pttKey) = UiHelper.ParseShortcut(settings.Shortcuts.Ptt, Key.LeftCtrl);
         ToggleShortcutBox.Text = UiHelper.FormatShortcut(_toggleModifiers, _toggleKey);
         PttShortcutBox.Text = UiHelper.FormatShortcut(_pttModifiers, _pttKey);
+        if (!string.IsNullOrEmpty(settings.Shortcuts.Mute))
+        {
+            (_muteModifiers, _muteKey) = UiHelper.ParseShortcut(settings.Shortcuts.Mute, Key.None);
+            MuteShortcutBox.Text = UiHelper.FormatShortcut(_muteModifiers, _muteKey);
+        }
         UiHelper.SelectComboByTag(AiTriggerKeyCombo, settings.Shortcuts.AiTriggerKey);
 
         // Audio
@@ -148,6 +155,7 @@ public partial class SettingsWindow : Window
             {
                 Toggle = UiHelper.FormatShortcut(_toggleModifiers, _toggleKey),
                 Ptt = UiHelper.FormatShortcut(_pttModifiers, _pttKey),
+                Mute = _muteKey != Key.None ? UiHelper.FormatShortcut(_muteModifiers, _muteKey) : "",
                 AiTriggerKey = (string)(aiTriggerItem?.Tag ?? "shift"),
             },
             Audio = new AudioSettings
@@ -359,25 +367,21 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        bool isToggleBox = box == ToggleShortcutBox;
-        var otherBox = isToggleBox ? PttShortcutBox : ToggleShortcutBox;
-        if (otherBox.Text == displayText)
+        if (key == Key.Delete || key == Key.Back)
         {
-            box.Text = "Already assigned!";
-            box.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
-            return;
+            if (box == MuteShortcutBox)
+            {
+                _muteKey = Key.None;
+                _muteModifiers = ModifierKeys.None;
+                box.Text = "";
+                box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
+                Keyboard.ClearFocus();
+                return;
+            }
         }
 
-        if (isToggleBox)
-        {
-            _toggleKey = key;
-            _toggleModifiers = modifiers;
-        }
-        else
-        {
-            _pttKey = key;
-            _pttModifiers = modifiers;
-        }
+        if (!AssignShortcut(box, displayText, modifiers, key))
+            return;
 
         box.Text = displayText;
         box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
@@ -387,32 +391,16 @@ public partial class SettingsWindow : Window
     private void OnRecordingWinPlusModifier(int heldVk)
     {
         var focused = Keyboard.FocusedElement as System.Windows.Controls.TextBox;
-        if (focused is not (var box and not null) || (box != ToggleShortcutBox && box != PttShortcutBox))
+        if (focused is not (var box and not null) ||
+            (box != ToggleShortcutBox && box != PttShortcutBox && box != MuteShortcutBox))
             return;
 
         var key = KeyInterop.KeyFromVirtualKey(heldVk);
         var modifiers = ModifierKeys.Windows;
         var displayText = UiHelper.FormatShortcut(modifiers, key);
 
-        bool isToggleBox = box == ToggleShortcutBox;
-        var otherBox = isToggleBox ? PttShortcutBox : ToggleShortcutBox;
-        if (otherBox.Text == displayText)
-        {
-            box.Text = "Already assigned!";
-            box.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
+        if (!AssignShortcut(box, displayText, modifiers, key))
             return;
-        }
-
-        if (isToggleBox)
-        {
-            _toggleKey = key;
-            _toggleModifiers = modifiers;
-        }
-        else
-        {
-            _pttKey = key;
-            _pttModifiers = modifiers;
-        }
 
         box.Text = displayText;
         box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
@@ -444,6 +432,23 @@ public partial class SettingsWindow : Window
             return;
         }
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+    }
+
+    private bool AssignShortcut(System.Windows.Controls.TextBox box, string displayText, ModifierKeys modifiers, Key key)
+    {
+        var otherBoxes = new[] { ToggleShortcutBox, PttShortcutBox, MuteShortcutBox }
+            .Where(b => b != box);
+        if (otherBoxes.Any(b => !string.IsNullOrEmpty(b.Text) && b.Text == displayText))
+        {
+            box.Text = "Already assigned!";
+            box.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
+            return false;
+        }
+
+        if (box == ToggleShortcutBox) { _toggleKey = key; _toggleModifiers = modifiers; }
+        else if (box == PttShortcutBox) { _pttKey = key; _pttModifiers = modifiers; }
+        else if (box == MuteShortcutBox) { _muteKey = key; _muteModifiers = modifiers; }
+        return true;
     }
 
     private void InputDelayBox_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)

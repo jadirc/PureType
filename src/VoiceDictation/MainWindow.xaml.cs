@@ -30,6 +30,8 @@ public partial class MainWindow : Window
     private ModifierKeys _toggleModifiers = ModifierKeys.Control | ModifierKeys.Alt;
     private Key _pttKey = Key.LeftCtrl;
     private ModifierKeys _pttModifiers = ModifierKeys.Windows;
+    private Key _muteKey = Key.None;
+    private ModifierKeys _muteModifiers = ModifierKeys.None;
 
     // ── State ────────────────────────────────────────────────────────────
     private bool _connected;
@@ -134,6 +136,7 @@ public partial class MainWindow : Window
         _keyboardHook.TogglePressed += aiKeyHeld => Dispatcher.Invoke(() => _controller.HandleToggle(aiKeyHeld));
         _keyboardHook.PttKeyDown += aiKeyHeld => Dispatcher.Invoke(() => _controller.HandlePttDown(aiKeyHeld));
         _keyboardHook.PttKeyUp += () => Dispatcher.Invoke(() => _controller.HandlePttUp());
+        _keyboardHook.MutePressed += () => Dispatcher.Invoke(ToggleMute);
 
         // Auto-connect on startup
         var providerTag = (_settings.Transcription.Provider);
@@ -152,6 +155,8 @@ public partial class MainWindow : Window
         // Parse shortcuts
         (_toggleModifiers, _toggleKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Toggle, _toggleKey);
         (_pttModifiers, _pttKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Ptt, _pttKey);
+        if (!string.IsNullOrEmpty(_settings.Shortcuts.Mute))
+            (_muteModifiers, _muteKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Mute, Key.None);
 
         // Provider combo
         UiHelper.SelectComboByTag(ProviderCombo, _settings.Transcription.Provider);
@@ -179,11 +184,17 @@ public partial class MainWindow : Window
         // Parse and register shortcuts
         (_toggleModifiers, _toggleKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Toggle, _toggleKey);
         (_pttModifiers, _pttKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Ptt, _pttKey);
+        if (!string.IsNullOrEmpty(_settings.Shortcuts.Mute))
+            (_muteModifiers, _muteKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Mute, Key.None);
+        else
+            _muteKey = Key.None;
 
         if (_connected)
         {
             _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
             _keyboardHook.SetPttShortcut(_pttModifiers, _pttKey);
+            if (_muteKey != Key.None)
+                _keyboardHook.SetMuteShortcut(_muteModifiers, _muteKey);
         }
 
         // AI trigger key
@@ -519,6 +530,8 @@ public partial class MainWindow : Window
     {
         _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
         _keyboardHook.SetPttShortcut(_pttModifiers, _pttKey);
+        if (_muteKey != Key.None)
+            _keyboardHook.SetMuteShortcut(_muteModifiers, _muteKey);
         _keyboardHook.Install();
     }
 

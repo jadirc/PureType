@@ -62,6 +62,11 @@ public class KeyboardHookService : IDisposable
     private ModifierKeys _pttModifiers = ModifierKeys.None;
     private bool _pttDown;
 
+    // ── Mute shortcut config ──
+    private int _muteVKey;
+    private ModifierKeys _muteModifiers = ModifierKeys.None;
+    private bool _muteFired;
+
     // ── State ──
     /// <summary>True while any Win key is physically held down.</summary>
     public bool IsWinDown { get; private set; }
@@ -82,6 +87,8 @@ public class KeyboardHookService : IDisposable
     /// <summary>Fired when the PTT key goes down. Bool = AI trigger key held.</summary>
     public event Action<bool>? PttKeyDown;
     public event Action? PttKeyUp;
+    /// <summary>Fired when the mute shortcut is pressed.</summary>
+    public event Action? MutePressed;
 
     /// <summary>Fired during shortcut recording when Win is pressed while a modifier key is already held.
     /// The parameter is the VK code of the held modifier key.</summary>
@@ -116,6 +123,13 @@ public class KeyboardHookService : IDisposable
         if (_aiKeyReleasedTick > 0 && Environment.TickCount64 - _aiKeyReleasedTick < AiKeyGracePeriodMs)
             return true;
         return false;
+    }
+
+    public void SetMuteShortcut(ModifierKeys modifiers, Key key)
+    {
+        _muteModifiers = modifiers;
+        _muteVKey = KeyInterop.VirtualKeyFromKey(key);
+        _muteFired = false;
     }
 
     public void SetPttShortcut(ModifierKeys modifiers, Key key)
@@ -226,6 +240,18 @@ public class KeyboardHookService : IDisposable
                     PttKeyUp?.Invoke();
                 }
             }
+
+            // ── Mute shortcut detection ──
+            if (vkCode == _muteVKey && _muteVKey != 0 && isDown && !_muteFired)
+            {
+                if (AreModifiersHeld(_muteModifiers))
+                {
+                    _muteFired = true;
+                    MutePressed?.Invoke();
+                }
+            }
+            if (vkCode == _muteVKey && isUp)
+                _muteFired = false;
 
         }
 

@@ -12,6 +12,7 @@ public record ShortcutSettings
 {
     public string Toggle { get; init; } = "Ctrl+Alt+X";
     public string Ptt { get; init; } = "Win+L-Ctrl";
+    public string Mute { get; init; } = "";
     public string AiTriggerKey { get; init; } = "shift";
 }
 

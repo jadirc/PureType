@@ -153,6 +153,23 @@
                              PreviewKeyDown="ShortcutBox_PreviewKeyDown"/>
                 </StackPanel>
 
+                <!-- Mute Shortcut -->
+                <StackPanel Margin="0,0,0,12">
+                    <TextBlock Text="MUTE SHORTCUT" Foreground="#BAC2DE"
+                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                    <TextBlock Text="Leave empty to disable"
+                               Foreground="#6C7086" FontSize="10" Margin="0,0,0,5"/>
+                    <TextBox x:Name="MuteShortcutBox"
+                             Background="#313244" Foreground="#CDD6F4"
+                             BorderBrush="#45475A" BorderThickness="1"
+                             Padding="10,8" FontSize="13"
+                             IsReadOnly="True" Cursor="Hand"
+                             Text=""
+                             GotFocus="ShortcutBox_GotFocus"
+                             LostFocus="ShortcutBox_LostFocus"
+                             PreviewKeyDown="ShortcutBox_PreviewKeyDown"/>
+                </StackPanel>
+
                 <!-- ── AUDIO ── -->
                 <TextBlock Text="AUDIO" Foreground="#89B4FA"
                            FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>
