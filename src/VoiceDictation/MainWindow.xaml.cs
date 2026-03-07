@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private System.Windows.Forms.ToolStripLabel? _trayStatusLabel;
     private System.Windows.Forms.ToolStripMenuItem? _trayConnectItem;
     private System.Windows.Forms.ToolStripMenuItem? _trayMuteItem;
+    private System.Drawing.Icon? _baseTrayIcon;
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
     private readonly KeyboardHookService _keyboardHook = new();
@@ -617,9 +618,11 @@ public partial class MainWindow : Window
         var iconStream = Application.GetResourceStream(
             new Uri("pack://application:,,,/Resources/mic.ico"))?.Stream;
 
+        _baseTrayIcon = iconStream != null ? new System.Drawing.Icon(iconStream) : System.Drawing.SystemIcons.Application;
+
         _trayIcon = new System.Windows.Forms.NotifyIcon
         {
-            Icon = iconStream != null ? new System.Drawing.Icon(iconStream) : System.Drawing.SystemIcons.Application,
+            Icon = _baseTrayIcon,
             Text = "Voice Dictation",
             Visible = true
         };
@@ -715,7 +718,7 @@ public partial class MainWindow : Window
         else if (_connected)
         {
             _trayStatusLabel.Text = "Connected";
-            _trayStatusLabel.ForeColor = System.Drawing.Color.FromArgb(0xA6, 0xE3, 0xA1);
+            _trayStatusLabel.ForeColor = System.Drawing.Color.FromArgb(0x40, 0xA0, 0x2B);
         }
         else
         {
@@ -724,6 +727,50 @@ public partial class MainWindow : Window
         }
 
         _trayConnectItem.Text = _connected ? "Disconnect" : "Connect";
+
+        // Update tray icon with status indicator
+        if (_trayIcon != null && _baseTrayIcon != null)
+        {
+            var color = _connected
+                ? System.Drawing.Color.FromArgb(0x40, 0xA0, 0x2B)
+                : System.Drawing.Color.FromArgb(0xE6, 0x40, 0x53);
+            _trayIcon.Icon = CreateStatusIcon(_baseTrayIcon, color, !_connected);
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr handle);
+
+    private static System.Drawing.Icon CreateStatusIcon(System.Drawing.Icon baseIcon, System.Drawing.Color color, bool showCross)
+    {
+        using var bmp = baseIcon.ToBitmap();
+        using var g = System.Drawing.Graphics.FromImage(bmp);
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+        int dotSize = 10;
+        int x = bmp.Width - dotSize;
+        int y = bmp.Height - dotSize;
+
+        // White outline for contrast
+        using var outlineBrush = new System.Drawing.SolidBrush(System.Drawing.Color.White);
+        g.FillEllipse(outlineBrush, x - 1, y - 1, dotSize + 2, dotSize + 2);
+
+        // Draw status dot
+        using var brush = new System.Drawing.SolidBrush(color);
+        g.FillEllipse(brush, x, y, dotSize, dotSize);
+
+        if (showCross)
+        {
+            using var pen = new System.Drawing.Pen(System.Drawing.Color.White, 2f);
+            g.DrawLine(pen, x + 1, y + dotSize - 1, x + dotSize - 1, y + 1);
+        }
+
+        var handle = bmp.GetHicon();
+        var icon = System.Drawing.Icon.FromHandle(handle);
+        // Clone so we can free the GDI handle
+        var result = (System.Drawing.Icon)icon.Clone();
+        DestroyIcon(handle);
+        return result;
     }
 
     private void ShowFromTray()
