@@ -76,6 +76,7 @@ public partial class MainWindow : Window
         _tray.MuteToggleRequested += () => Dispatcher.Invoke(ToggleMute);
         _tray.SettingsRequested += () => Dispatcher.Invoke(() => SettingsButton_Click(this, new RoutedEventArgs()));
         _tray.ExportRequested += () => Dispatcher.Invoke(ExportTranscript);
+        _tray.AboutRequested += () => Dispatcher.Invoke(ShowAbout);
         _tray.ShowRequested += () => Dispatcher.Invoke(ShowFromTray);
         _tray.ExitRequested += () =>
         {
@@ -267,6 +268,12 @@ public partial class MainWindow : Window
     {
         _logWindow.Show();
         _logWindow.Activate();
+    }
+
+    private void ShowAbout()
+    {
+        var about = new AboutWindow { Owner = this };
+        about.ShowDialog();
     }
 
     private async void ConnectButton_Click(object sender, RoutedEventArgs e)
