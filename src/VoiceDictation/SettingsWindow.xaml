@@ -37,7 +37,8 @@
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
                     <ComboBox x:Name="ThemeCombo" Padding="10,7" FontSize="13"
                               SelectionChanged="ThemeCombo_SelectionChanged">
-                        <ComboBoxItem Content="Dark" Tag="Dark" IsSelected="True"/>
+                        <ComboBoxItem Content="Auto (System)" Tag="Auto" IsSelected="True"/>
+                        <ComboBoxItem Content="Dark" Tag="Dark"/>
                         <ComboBoxItem Content="Light" Tag="Light"/>
                     </ComboBox>
                 </StackPanel>
