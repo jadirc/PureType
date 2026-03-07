@@ -60,6 +60,34 @@ public partial class AboutWindow : Window
         }
     }
 
+    private async void UpdateButton_Click(object sender, RoutedEventArgs e)
+    {
+        UpdateButton.IsEnabled = false;
+        UpdateStatus.Text = "Checking...";
+
+        var result = await Services.UpdateChecker.CheckAsync();
+
+        if (result != null)
+        {
+            UpdateStatus.Text = "";
+            UpdateStatus.Inlines.Clear();
+            UpdateStatus.Inlines.Add($"{result.TagName} available — ");
+            var link = new Hyperlink(new Run("Download"))
+            {
+                NavigateUri = new Uri(result.HtmlUrl),
+                Foreground = (SolidColorBrush)FindResource("AccentBrush"),
+            };
+            link.RequestNavigate += Hyperlink_RequestNavigate;
+            UpdateStatus.Inlines.Add(link);
+        }
+        else
+        {
+            UpdateStatus.Text = "You're up to date!";
+        }
+
+        UpdateButton.IsEnabled = true;
+    }
+
     private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
     {
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Uri.AbsoluteUri)
