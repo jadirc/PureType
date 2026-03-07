@@ -96,11 +96,16 @@
                     <TextBlock Text="TRANSCRIPT" Foreground="#BAC2DE"
                                FontSize="11" FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
-                    <Button Content="Log" Click="LogButton_Click"
-                            HorizontalAlignment="Right"
-                            Background="Transparent" Foreground="#6C7086"
-                            FontSize="11" BorderThickness="0"
-                            Padding="6,2" Cursor="Hand"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Export" Click="ExportButton_Click"
+                                Background="Transparent" Foreground="#6C7086"
+                                FontSize="11" BorderThickness="0"
+                                Padding="6,2" Cursor="Hand"/>
+                        <Button Content="Log" Click="LogButton_Click"
+                                Background="Transparent" Foreground="#6C7086"
+                                FontSize="11" BorderThickness="0"
+                                Padding="6,2" Cursor="Hand"/>
+                    </StackPanel>
                 </Grid>
                 <ScrollViewer Grid.Row="1" x:Name="TranscriptScroll"
                               VerticalScrollBarVisibility="Auto"

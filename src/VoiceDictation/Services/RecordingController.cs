@@ -21,6 +21,7 @@ public class RecordingController
     private RecordingSource _recordingSource = RecordingSource.None;
     private VadService? _vad;
     private readonly List<string> _sessionChunks = new();
+    private readonly List<(DateTime Timestamp, string Text)> _transcriptLog = new();
     private bool _aiPostProcessRequested;
     private string _interimText = "";
 
@@ -57,6 +58,7 @@ public class RecordingController
     // ── Public API ─────────────────────────────────────────────────────
     public bool IsRecording => _recording;
     public bool IsMuted { get; set; }
+    public IReadOnlyList<(DateTime Timestamp, string Text)> TranscriptLog => _transcriptLog;
 
     public RecordingController(
         AudioCaptureService audio,
@@ -214,6 +216,7 @@ public class RecordingController
             var processed = _replacements.Apply(text);
             TranscriptUpdated?.Invoke(processed);
             _sessionChunks.Add(processed);
+            _transcriptLog.Add((DateTime.Now, processed));
 
             // When AI post-processing is pending, don't type yet — LLM will type the result
             if (!_aiPostProcessRequested)

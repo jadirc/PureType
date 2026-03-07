@@ -75,6 +75,7 @@ public partial class MainWindow : Window
         _tray.DisconnectRequested += () => Dispatcher.InvokeAsync(async () => await DisconnectAsync());
         _tray.MuteToggleRequested += () => Dispatcher.Invoke(ToggleMute);
         _tray.SettingsRequested += () => Dispatcher.Invoke(() => SettingsButton_Click(this, new RoutedEventArgs()));
+        _tray.ExportRequested += () => Dispatcher.Invoke(ExportTranscript);
         _tray.ShowRequested += () => Dispatcher.Invoke(ShowFromTray);
         _tray.ExitRequested += () =>
         {
@@ -234,6 +235,31 @@ public partial class MainWindow : Window
     }
 
     // ── UI Events ─────────────────────────────────────────────────────────
+
+    private void ExportButton_Click(object sender, RoutedEventArgs e) => ExportTranscript();
+
+    private void ExportTranscript()
+    {
+        var log = _controller.TranscriptLog;
+        if (log.Count == 0)
+        {
+            MessageBox.Show("No transcript to export.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "Text files (*.txt)|*.txt",
+            FileName = $"transcript_{DateTime.Now:yyyy-MM-dd_HHmmss}.txt"
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        var sb = new System.Text.StringBuilder();
+        foreach (var (timestamp, text) in log)
+            sb.AppendLine($"[{timestamp:HH:mm:ss}] {text}");
+
+        System.IO.File.WriteAllText(dlg.FileName, sb.ToString());
+    }
 
     private void LogButton_Click(object sender, RoutedEventArgs e)
     {
