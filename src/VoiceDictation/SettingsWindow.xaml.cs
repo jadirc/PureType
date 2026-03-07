@@ -436,6 +436,15 @@ public partial class SettingsWindow : Window
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
     }
 
+    private void PromptPresetCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        if (PromptPresetCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
+        var prompt = (string)(item.Tag ?? "");
+        if (!string.IsNullOrEmpty(prompt))
+            LlmPromptBox.Text = prompt;
+    }
+
     private bool AssignShortcut(System.Windows.Controls.TextBox box, string displayText, ModifierKeys modifiers, Key key)
     {
         var otherBoxes = new[] { ToggleShortcutBox, PttShortcutBox, MuteShortcutBox }

@@ -274,7 +274,17 @@
                     </Grid>
 
                     <TextBlock Text="SYSTEM PROMPT" Foreground="#BAC2DE"
-                               FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
+                               FontSize="11" FontWeight="SemiBold" Margin="0,8,0,3"/>
+                    <ComboBox x:Name="PromptPresetCombo" Padding="10,7" FontSize="12"
+                              SelectionChanged="PromptPresetCombo_SelectionChanged"
+                              Margin="0,0,0,5">
+                        <ComboBoxItem Content="Custom" Tag="" IsSelected="True"/>
+                        <ComboBoxItem Content="Correction" Tag="Clean up the following dictated text. Fix punctuation, grammar, and formatting. Keep the meaning unchanged. Reply with only the corrected text."/>
+                        <ComboBoxItem Content="Summary" Tag="Summarize the following dictated text into a concise paragraph. Keep the key points. Reply with only the summary."/>
+                        <ComboBoxItem Content="Translation EN→DE" Tag="Translate the following text from English to German. Reply with only the translation."/>
+                        <ComboBoxItem Content="Translation DE→EN" Tag="Translate the following text from German to English. Reply with only the translation."/>
+                        <ComboBoxItem Content="Email" Tag="Rewrite the following dictated text as a professional email. Fix grammar and formatting. Reply with only the email text."/>
+                    </ComboBox>
                     <TextBox x:Name="LlmPromptBox"
                              Text="Clean up the following dictated text. Fix punctuation, grammar, and formatting. Keep the meaning unchanged. Reply with only the corrected text."
                              Background="#313244" Foreground="#CDD6F4"
