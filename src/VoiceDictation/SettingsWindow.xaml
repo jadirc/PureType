@@ -201,6 +201,12 @@
                              PreviewTextInput="InputDelayBox_PreviewTextInput"/>
                 </StackPanel>
 
+                <!-- Clipboard Mode -->
+                <CheckBox x:Name="ClipboardModeCheck"
+                          Content="  Clipboard mode (copy instead of type)"
+                          Foreground="#CDD6F4" FontSize="12"
+                          Margin="0,0,0,4"/>
+
                 <!-- VAD Auto-Stop -->
                 <CheckBox x:Name="VadCheck"
                           Content="  Auto-stop on silence (3s)"

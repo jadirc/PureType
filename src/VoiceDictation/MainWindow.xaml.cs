@@ -119,6 +119,10 @@ public partial class MainWindow : Window
         });
         _controller.RecordingStopped += () => Dispatcher.Invoke(() => VuMeterBar.Width = 0);
         _controller.LlmProcessingRequested += text => Dispatcher.Invoke(() => _ = ProcessWithLlmAsync(text));
+        _controller.ClipboardRequested += text => Dispatcher.Invoke(() =>
+        {
+            System.Windows.Clipboard.SetText(text);
+        });
         _controller.ToastRequested += (message, color, autoClose) =>
             ToastWindow.ShowToast(message, color, autoClose);
 

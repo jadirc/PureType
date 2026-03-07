@@ -32,6 +32,7 @@ public class RecordingController
     // ── Settings ───────────────────────────────────────────────────────
     private bool _vadEnabled;
     private bool _llmEnabled;
+    private bool _clipboardMode;
 
     // ── Colors ─────────────────────────────────────────────────────────
     private static readonly Color Red    = Color.FromRgb(0xF3, 0x8B, 0xA8);
@@ -52,6 +53,8 @@ public class RecordingController
     public event Action? RecordingStopped;
     /// <summary>Request LLM post-processing with the given text.</summary>
     public event Action<string>? LlmProcessingRequested;
+    /// <summary>Request clipboard copy (clipboard mode).</summary>
+    public event Action<string>? ClipboardRequested;
     /// <summary>(message, dotColor, autoClose) for toast notifications.</summary>
     public event Action<string, Color, bool>? ToastRequested;
 
@@ -80,6 +83,7 @@ public class RecordingController
     {
         _vadEnabled = settings.Audio.Vad;
         _llmEnabled = settings.Llm.Enabled;
+        _clipboardMode = settings.Audio.ClipboardMode;
     }
 
     /// <summary>
@@ -223,7 +227,10 @@ public class RecordingController
             {
                 try
                 {
-                    await KeyboardInjector.TypeTextAsync(processed);
+                    if (_clipboardMode)
+                        ClipboardRequested?.Invoke(processed);
+                    else
+                        await KeyboardInjector.TypeTextAsync(processed);
                 }
                 catch (Exception ex)
                 {

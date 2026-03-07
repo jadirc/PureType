@@ -31,6 +31,7 @@ public record AudioSettings
     public string Tone { get; init; } = "Gentle";
     public bool Vad { get; init; }
     public int InputDelayMs { get; init; }
+    public bool ClipboardMode { get; init; }
 }
 
 public record LlmSettings
