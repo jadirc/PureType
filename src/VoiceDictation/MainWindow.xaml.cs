@@ -53,10 +53,9 @@ public partial class MainWindow : Window
     private const string AutostartRegistryKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
     private const string AutostartValueName = "VoiceDictation";
 
-    // Path to settings file (stores API key)
-    private static readonly string SettingsPath =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                     "VoiceDictation", "settings.txt");
+    // Settings
+    private readonly SettingsService _settingsService = new();
+    private AppSettings _settings = new();
 
     // ── Colors ────────────────────────────────────────────────────────────
     private static readonly SolidColorBrush Red    = new(Color.FromRgb(0xF3, 0x8B, 0xA8));
@@ -128,100 +127,38 @@ public partial class MainWindow : Window
 
     private void LoadSettings()
     {
-        if (!File.Exists(SettingsPath))
-        {
-            CenterOnScreen();
-            return;
-        }
+        _settings = _settingsService.Load();
 
-        var lines = File.ReadAllLines(SettingsPath);
-        if (lines.Length > 0)
-            ApiKeyBox.Password = lines[0].Trim();
+        ApiKeyBox.Password = _settings.Transcription.ApiKey;
+
+        ParseToggleShortcut(_settings.Shortcuts.Toggle);
+        ParsePttShortcut(_settings.Shortcuts.Ptt);
+        SelectComboByTag(AiTriggerKeyCombo, _settings.Shortcuts.AiTriggerKey);
+
+        SelectComboByTag(LanguageCombo, _settings.Transcription.Language);
+        SelectComboByTag(ProviderCombo, _settings.Transcription.Provider);
+        _savedWhisperModel = _settings.Transcription.WhisperModel;
+        KeywordsBox.Text = _settings.Transcription.Keywords;
+
+        _savedMicrophoneDevice = _settings.Audio.Microphone;
+        SelectMicrophoneByName(_settings.Audio.Microphone);
+        SelectComboByTag(ToneCombo, _settings.Audio.Tone);
+        VadCheck.IsChecked = _settings.Audio.Vad;
+
+        LlmEnabledCheck.IsChecked = _settings.Llm.Enabled;
+        LlmSettingsPanel.Visibility = _settings.Llm.Enabled ? Visibility.Visible : Visibility.Collapsed;
+        LlmApiKeyBox.Password = _settings.Llm.ApiKey;
+        LlmBaseUrlCombo.Text = _settings.Llm.BaseUrl;
+        LlmModelCombo.Text = _settings.Llm.Model;
+        LlmPromptBox.Text = _settings.Llm.Prompt;
 
         bool hasPosition = false;
-        foreach (var line in lines.Skip(1))
-        {
-            var parts = line.Split('=', 2);
-            if (parts.Length != 2) continue;
-            var key = parts[0].Trim();
-            var value = parts[1].Trim();
+        if (_settings.Window.Left.HasValue) { Left = _settings.Window.Left.Value; hasPosition = true; }
+        if (_settings.Window.Top.HasValue) { Top = _settings.Window.Top.Value; hasPosition = true; }
+        if (_settings.Window.Width.HasValue && _settings.Window.Width.Value >= MinWidth) Width = _settings.Window.Width.Value;
+        if (_settings.Window.Height.HasValue && _settings.Window.Height.Value >= MinHeight) Height = _settings.Window.Height.Value;
+        StartMinimizedCheck.IsChecked = _settings.Window.StartMinimized;
 
-            switch (key)
-            {
-                case "toggle":
-                    ParseToggleShortcut(value);
-                    break;
-                case "ptt":
-                    ParsePttShortcut(value);
-                    break;
-                case "language":
-                    SelectComboByTag(LanguageCombo, value);
-                    break;
-                case "mode":
-                    break; // legacy setting, ignored — both modes always active
-                case "tone":
-                    SelectComboByTag(ToneCombo, SoundFeedback.MigrateName(value));
-                    break;
-                case "microphone":
-                    _savedMicrophoneDevice = value;
-                    SelectMicrophoneByName(value);
-                    break;
-                case "keywords":
-                    KeywordsBox.Text = value;
-                    break;
-                case "provider":
-                    SelectComboByTag(ProviderCombo, value);
-                    break;
-                case "whisper_model":
-                    _savedWhisperModel = value;
-                    break;
-                case "vad":
-                    VadCheck.IsChecked = value.Equals("True", StringComparison.OrdinalIgnoreCase);
-                    break;
-                case "start_minimized":
-                    StartMinimizedCheck.IsChecked = value.Equals("True", StringComparison.OrdinalIgnoreCase);
-                    break;
-                case "llm_enabled":
-                    LlmEnabledCheck.IsChecked = value.Equals("True", StringComparison.OrdinalIgnoreCase);
-                    LlmSettingsPanel.Visibility = LlmEnabledCheck.IsChecked == true
-                        ? Visibility.Visible : Visibility.Collapsed;
-                    break;
-                case "llm_provider":
-                    // Legacy: migrate anthropic provider to base URL
-                    if (value == "anthropic")
-                        LlmBaseUrlCombo.Text = "https://api.anthropic.com/v1";
-                    break;
-                case "llm_apikey":
-                    LlmApiKeyBox.Password = value;
-                    break;
-                case "llm_baseurl":
-                    LlmBaseUrlCombo.Text = value;
-                    break;
-                case "llm_model":
-                    LlmModelCombo.Text = value;
-                    break;
-                case "llm_prompt":
-                    LlmPromptBox.Text = value.Replace("\\n", "\n");
-                    break;
-                case "ai_trigger_key":
-                    SelectComboByTag(AiTriggerKeyCombo, value);
-                    break;
-                case "left":
-                    if (double.TryParse(value, out var left)) { Left = left; hasPosition = true; }
-                    break;
-                case "top":
-                    if (double.TryParse(value, out var top)) { Top = top; hasPosition = true; }
-                    break;
-                case "width":
-                    if (double.TryParse(value, out var w) && w >= MinWidth) Width = w;
-                    break;
-                case "height":
-                    if (double.TryParse(value, out var h) && h >= MinHeight) Height = h;
-                    break;
-            }
-        }
-
-        // Set UI fields directly (controls exist after InitializeComponent)
         ToggleShortcutBox.Text = FormatShortcut(_toggleModifiers, _toggleKey);
         PttShortcutBox.Text = FormatShortcut(_pttModifiers, _pttKey);
         AutostartCheck.IsChecked = IsAutostartEnabled();
@@ -284,37 +221,52 @@ public partial class MainWindow : Window
 
     private void SaveSettings()
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
         var langItem = LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var micItem = MicrophoneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-        var micName = micItem?.Content?.ToString() ?? "";
         var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var whisperModelItem = WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-        var lines = new List<string>
+
+        _settings = new AppSettings
         {
-            ApiKeyBox.Password.Trim(),
-            $"toggle={FormatShortcut(_toggleModifiers, _toggleKey)}",
-            $"ptt={FormatShortcut(_pttModifiers, _pttKey)}",
-            $"language={(string)(langItem?.Tag ?? "de")}",
-            $"tone={(string)((ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Gentle")}",
-            $"microphone={micName}",
-            $"keywords={KeywordsBox.Text.Trim()}",
-            $"provider={(string)(providerItem?.Tag ?? "deepgram")}",
-            $"whisper_model={(string)(whisperModelItem?.Tag ?? "tiny")}",
-            $"vad={VadCheck.IsChecked == true}",
-            $"start_minimized={StartMinimizedCheck.IsChecked == true}",
-            $"llm_enabled={LlmEnabledCheck.IsChecked == true}",
-            $"llm_apikey={LlmApiKeyBox.Password.Trim()}",
-            $"llm_baseurl={LlmBaseUrlCombo.Text.Trim()}",
-            $"llm_model={LlmModelCombo.Text.Trim()}",
-            $"llm_prompt={LlmPromptBox.Text.Trim().Replace("\n", "\\n")}",
-            $"ai_trigger_key={(string)((AiTriggerKeyCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "shift")}",
-            $"left={Left}",
-            $"top={Top}",
-            $"width={Width}",
-            $"height={Height}"
+            Transcription = new TranscriptionSettings
+            {
+                ApiKey = ApiKeyBox.Password.Trim(),
+                Language = (string)(langItem?.Tag ?? "de"),
+                Provider = (string)(providerItem?.Tag ?? "deepgram"),
+                WhisperModel = (string)(whisperModelItem?.Tag ?? "tiny"),
+                Keywords = KeywordsBox.Text.Trim(),
+            },
+            Shortcuts = new ShortcutSettings
+            {
+                Toggle = FormatShortcut(_toggleModifiers, _toggleKey),
+                Ptt = FormatShortcut(_pttModifiers, _pttKey),
+                AiTriggerKey = (string)((AiTriggerKeyCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "shift"),
+            },
+            Audio = new AudioSettings
+            {
+                Microphone = micItem?.Content?.ToString() ?? "",
+                Tone = (string)((ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Gentle"),
+                Vad = VadCheck.IsChecked == true,
+            },
+            Llm = new LlmSettings
+            {
+                Enabled = LlmEnabledCheck.IsChecked == true,
+                ApiKey = LlmApiKeyBox.Password.Trim(),
+                BaseUrl = LlmBaseUrlCombo.Text.Trim(),
+                Model = LlmModelCombo.Text.Trim(),
+                Prompt = LlmPromptBox.Text.Trim(),
+            },
+            Window = new WindowSettings
+            {
+                Left = Left,
+                Top = Top,
+                Width = Width,
+                Height = Height,
+                StartMinimized = StartMinimizedCheck.IsChecked == true,
+            },
         };
-        File.WriteAllLines(SettingsPath, lines);
+
+        _settingsService.Save(_settings);
     }
 
     private static bool SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag)
