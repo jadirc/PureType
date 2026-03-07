@@ -50,17 +50,17 @@ public partial class SettingsWindow : Window
         // Transcription
         ApiKeyBox.Password = settings.Transcription.ApiKey;
         KeywordsBox.Text = settings.Transcription.Keywords;
-        SelectComboByTag(LanguageCombo, settings.Transcription.Language);
+        UiHelper.SelectComboByTag(LanguageCombo, settings.Transcription.Language);
 
         // Shortcuts
-        (_toggleModifiers, _toggleKey) = ParseShortcut(settings.Shortcuts.Toggle, Key.X);
-        (_pttModifiers, _pttKey) = ParseShortcut(settings.Shortcuts.Ptt, Key.LeftCtrl);
-        ToggleShortcutBox.Text = FormatShortcut(_toggleModifiers, _toggleKey);
-        PttShortcutBox.Text = FormatShortcut(_pttModifiers, _pttKey);
-        SelectComboByTag(AiTriggerKeyCombo, settings.Shortcuts.AiTriggerKey);
+        (_toggleModifiers, _toggleKey) = UiHelper.ParseShortcut(settings.Shortcuts.Toggle, Key.X);
+        (_pttModifiers, _pttKey) = UiHelper.ParseShortcut(settings.Shortcuts.Ptt, Key.LeftCtrl);
+        ToggleShortcutBox.Text = UiHelper.FormatShortcut(_toggleModifiers, _toggleKey);
+        PttShortcutBox.Text = UiHelper.FormatShortcut(_pttModifiers, _pttKey);
+        UiHelper.SelectComboByTag(AiTriggerKeyCombo, settings.Shortcuts.AiTriggerKey);
 
         // Audio
-        SelectComboByTag(ToneCombo, settings.Audio.Tone);
+        UiHelper.SelectComboByTag(ToneCombo, settings.Audio.Tone);
         VadCheck.IsChecked = settings.Audio.Vad;
 
         // AI Post-Processing
@@ -100,7 +100,7 @@ public partial class SettingsWindow : Window
             WhisperModelCombo.Items.Add(item);
         }
 
-        if (!SelectComboByTag(WhisperModelCombo, selectedModel))
+        if (!UiHelper.SelectComboByTag(WhisperModelCombo, selectedModel))
         {
             foreach (System.Windows.Controls.ComboBoxItem item in WhisperModelCombo.Items)
             {
@@ -136,8 +136,8 @@ public partial class SettingsWindow : Window
             },
             Shortcuts = new ShortcutSettings
             {
-                Toggle = FormatShortcut(_toggleModifiers, _toggleKey),
-                Ptt = FormatShortcut(_pttModifiers, _pttKey),
+                Toggle = UiHelper.FormatShortcut(_toggleModifiers, _toggleKey),
+                Ptt = UiHelper.FormatShortcut(_pttModifiers, _pttKey),
                 AiTriggerKey = (string)(aiTriggerItem?.Tag ?? "shift"),
             },
             Audio = new AudioSettings
@@ -338,7 +338,7 @@ public partial class SettingsWindow : Window
             else if (key is Key.LeftShift or Key.RightShift) modifiers &= ~ModifierKeys.Shift;
         }
 
-        var displayText = FormatShortcut(modifiers, key);
+        var displayText = UiHelper.FormatShortcut(modifiers, key);
 
         if (key == Key.Escape)
         {
@@ -381,7 +381,7 @@ public partial class SettingsWindow : Window
 
         var key = KeyInterop.KeyFromVirtualKey(heldVk);
         var modifiers = ModifierKeys.Windows;
-        var displayText = FormatShortcut(modifiers, key);
+        var displayText = UiHelper.FormatShortcut(modifiers, key);
 
         bool isToggleBox = box == ToggleShortcutBox;
         var otherBox = isToggleBox ? PttShortcutBox : ToggleShortcutBox;
@@ -465,74 +465,4 @@ public partial class SettingsWindow : Window
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-
-    private static bool SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag)
-    {
-        foreach (System.Windows.Controls.ComboBoxItem item in combo.Items)
-        {
-            if ((string)item.Tag == tag)
-            {
-                combo.SelectedItem = item;
-                return true;
-            }
-        }
-        return false;
-    }
-
-    internal static string FormatShortcut(ModifierKeys mod, Key key)
-    {
-        var parts = new List<string>();
-        if (mod.HasFlag(ModifierKeys.Windows)) parts.Add("Win");
-        if (mod.HasFlag(ModifierKeys.Control)) parts.Add("Ctrl");
-        if (mod.HasFlag(ModifierKeys.Alt)) parts.Add("Alt");
-        if (mod.HasFlag(ModifierKeys.Shift)) parts.Add("Shift");
-        var keyName = key switch
-        {
-            Key.LeftCtrl => "L-Ctrl",
-            Key.RightCtrl => "R-Ctrl",
-            Key.LeftAlt => "L-Alt",
-            Key.RightAlt => "R-Alt",
-            Key.LeftShift => "L-Shift",
-            Key.RightShift => "R-Shift",
-            _ => key.ToString()
-        };
-        parts.Add(keyName);
-        return string.Join("+", parts);
-    }
-
-    internal static (ModifierKeys mods, Key key) ParseShortcut(string value, Key defaultKey)
-    {
-        var mods = ModifierKeys.None;
-        var key = defaultKey;
-        var parts = value.Split('+');
-        foreach (var part in parts)
-        {
-            var trimmed = part.Trim();
-            if (trimmed.Equals("Win", StringComparison.OrdinalIgnoreCase))
-                mods |= ModifierKeys.Windows;
-            else if (trimmed.Equals("Ctrl", StringComparison.OrdinalIgnoreCase))
-                mods |= ModifierKeys.Control;
-            else if (trimmed.Equals("Alt", StringComparison.OrdinalIgnoreCase))
-                mods |= ModifierKeys.Alt;
-            else if (trimmed.Equals("Shift", StringComparison.OrdinalIgnoreCase))
-                mods |= ModifierKeys.Shift;
-            else
-            {
-                var mappedKey = trimmed switch
-                {
-                    "L-Ctrl" => Key.LeftCtrl,
-                    "R-Ctrl" => Key.RightCtrl,
-                    "L-Alt" => Key.LeftAlt,
-                    "R-Alt" => Key.RightAlt,
-                    "L-Shift" => Key.LeftShift,
-                    "R-Shift" => Key.RightShift,
-                    _ => Enum.TryParse<Key>(trimmed, out var k) ? k : (Key?)null
-                };
-                if (mappedKey.HasValue)
-                    key = mappedKey.Value;
-            }
-        }
-        return (mods, key);
-    }
 }

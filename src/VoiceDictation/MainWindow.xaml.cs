@@ -111,11 +111,11 @@ public partial class MainWindow : Window
         _settings = _settingsService.Load();
 
         // Parse shortcuts
-        (_toggleModifiers, _toggleKey) = SettingsWindow.ParseShortcut(_settings.Shortcuts.Toggle, _toggleKey);
-        (_pttModifiers, _pttKey) = SettingsWindow.ParseShortcut(_settings.Shortcuts.Ptt, _pttKey);
+        (_toggleModifiers, _toggleKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Toggle, _toggleKey);
+        (_pttModifiers, _pttKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Ptt, _pttKey);
 
         // Provider combo
-        SelectComboByTag(ProviderCombo, _settings.Transcription.Provider);
+        UiHelper.SelectComboByTag(ProviderCombo, _settings.Transcription.Provider);
 
         // Window position
         bool hasPosition = false;
@@ -138,8 +138,8 @@ public partial class MainWindow : Window
     private void ApplySettings()
     {
         // Parse and register shortcuts
-        (_toggleModifiers, _toggleKey) = SettingsWindow.ParseShortcut(_settings.Shortcuts.Toggle, _toggleKey);
-        (_pttModifiers, _pttKey) = SettingsWindow.ParseShortcut(_settings.Shortcuts.Ptt, _pttKey);
+        (_toggleModifiers, _toggleKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Toggle, _toggleKey);
+        (_pttModifiers, _pttKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Ptt, _pttKey);
 
         if (_connected)
         {
@@ -194,19 +194,6 @@ public partial class MainWindow : Window
         };
 
         _settingsService.Save(_settings);
-    }
-
-    private static bool SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag)
-    {
-        foreach (System.Windows.Controls.ComboBoxItem item in combo.Items)
-        {
-            if ((string)item.Tag == tag)
-            {
-                combo.SelectedItem = item;
-                return true;
-            }
-        }
-        return false;
     }
 
     // ── UI Events ─────────────────────────────────────────────────────────
@@ -678,6 +665,10 @@ public partial class MainWindow : Window
 
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
+        menu.Items.Add("Settings", null, (_, _) =>
+        {
+            Dispatcher.Invoke(() => SettingsButton_Click(this, new RoutedEventArgs()));
+        });
         menu.Items.Add("Open", null, (_, _) => ShowFromTray());
         menu.Items.Add("Exit", null, (_, _) =>
         {
