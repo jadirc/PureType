@@ -12,6 +12,7 @@ public static class SoundFeedback
 {
     private static SoundPlayer? _startPlayer;
     private static SoundPlayer? _stopPlayer;
+    private static SoundPlayer? _reconnectPlayer;
 
     private enum Envelope { Linear, Exponential }
     private enum Pattern { Single, DoublePip }
@@ -63,8 +64,10 @@ public static class SoundFeedback
 
         _startPlayer?.Dispose();
         _stopPlayer?.Dispose();
+        _reconnectPlayer?.Dispose();
         _startPlayer = null;
         _stopPlayer = null;
+        _reconnectPlayer = null;
 
         if (presetName == NoTonePreset)
             return;
@@ -77,11 +80,17 @@ public static class SoundFeedback
 
         _stopPlayer = new SoundPlayer(GenerateTone(preset.Stop));
         _stopPlayer.Load();
+
+        var reconnectSpec = new ToneSpec(660, 60, 0.25f, Envelope.Linear, Pattern.DoublePip);
+        _reconnectPlayer = new SoundPlayer(GenerateTone(reconnectSpec));
+        _reconnectPlayer.Load();
     }
 
     public static void PlayStart() => Task.Run(() => _startPlayer?.Play());
 
     public static void PlayStop() => Task.Run(() => _stopPlayer?.Play());
+
+    public static void PlayReconnect() => Task.Run(() => _reconnectPlayer?.Play());
 
     private static MemoryStream GenerateTone(ToneSpec spec)
     {

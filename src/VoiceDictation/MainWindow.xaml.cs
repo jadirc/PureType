@@ -584,6 +584,7 @@ public partial class MainWindow : Window
             SetStatus("Connected \u2013 ready", Green);
             _tray.Update(_connected, _controller.IsRecording, _muted);
             ToastWindow.ShowToast("Reconnected", Green.Color, autoClose: true);
+            SoundFeedback.PlayReconnect();
         });
 
     private void ToggleMute()
