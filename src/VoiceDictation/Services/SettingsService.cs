@@ -29,6 +29,7 @@ public record AudioSettings
     public string Microphone { get; init; } = "";
     public string Tone { get; init; } = "Gentle";
     public bool Vad { get; init; }
+    public int InputDelayMs { get; init; }
 }
 
 public record LlmSettings

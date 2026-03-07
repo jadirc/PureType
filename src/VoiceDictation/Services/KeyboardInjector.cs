@@ -12,6 +12,12 @@ public static class KeyboardInjector
 {
     private static readonly SemaphoreSlim ClipboardLock = new(1, 1);
 
+    /// <summary>
+    /// Delay in milliseconds between each character when typing via SendInput.
+    /// 0 = send all at once (default). Useful for apps that drop fast input.
+    /// </summary>
+    public static int InputDelayMs { get; set; }
+
     #region Win32
 
     [DllImport("user32.dll", SetLastError = true)]
@@ -88,6 +94,15 @@ public static class KeyboardInjector
         if (isTerminal)
         {
             await PasteViaClipboardAsync(text + " ");
+        }
+        else if (InputDelayMs > 0)
+        {
+            foreach (char c in text + " ")
+            {
+                var inputs = BuildInputs(c.ToString());
+                SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+                await Task.Delay(InputDelayMs);
+            }
         }
         else
         {

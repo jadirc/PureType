@@ -62,6 +62,7 @@ public partial class SettingsWindow : Window
         // Audio
         UiHelper.SelectComboByTag(ToneCombo, settings.Audio.Tone);
         VadCheck.IsChecked = settings.Audio.Vad;
+        InputDelayBox.Text = settings.Audio.InputDelayMs.ToString();
 
         // AI Post-Processing
         LlmEnabledCheck.IsChecked = settings.Llm.Enabled;
@@ -144,6 +145,7 @@ public partial class SettingsWindow : Window
             {
                 Tone = (string)(toneItem?.Tag ?? "Gentle"),
                 Vad = VadCheck.IsChecked == true,
+                InputDelayMs = int.TryParse(InputDelayBox.Text, out var delay) ? Math.Max(0, delay) : 0,
             },
             Llm = new LlmSettings
             {
@@ -433,6 +435,11 @@ public partial class SettingsWindow : Window
             return;
         }
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+    }
+
+    private void InputDelayBox_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+    {
+        e.Handled = !e.Text.All(char.IsDigit);
     }
 
     // ── Autostart ─────────────────────────────────────────────────────────

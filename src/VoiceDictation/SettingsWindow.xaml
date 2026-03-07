@@ -160,6 +160,19 @@
                     </ComboBox>
                 </StackPanel>
 
+                <!-- Input Delay -->
+                <StackPanel Margin="0,0,0,12">
+                    <TextBlock Text="INPUT DELAY (MS)" Foreground="#BAC2DE"
+                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                    <TextBlock Text="Delay between keystrokes (0 = instant)"
+                               Foreground="#6C7086" FontSize="10" Margin="0,0,0,5"/>
+                    <TextBox x:Name="InputDelayBox"
+                             Background="#313244" Foreground="#CDD6F4"
+                             BorderBrush="#45475A" BorderThickness="1"
+                             Padding="10,8" FontSize="13" Text="0"
+                             PreviewTextInput="InputDelayBox_PreviewTextInput"/>
+                </StackPanel>
+
                 <!-- VAD Auto-Stop -->
                 <CheckBox x:Name="VadCheck"
                           Content="  Auto-stop on silence (3s)"

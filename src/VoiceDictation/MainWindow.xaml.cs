@@ -86,6 +86,7 @@ public partial class MainWindow : Window
 
         LoadSettings();
         SoundFeedback.Init(_settings.Audio.Tone);
+        KeyboardInjector.InputDelayMs = _settings.Audio.InputDelayMs;
 
         _controller = new RecordingController(_audio, _keyboardHook, _replacements);
         _controller.StatusChanged += (text, color) => Dispatcher.Invoke(() => SetStatus(text, new SolidColorBrush(color)));
@@ -188,6 +189,7 @@ public partial class MainWindow : Window
 
         // Sound
         SoundFeedback.Init(_settings.Audio.Tone);
+        KeyboardInjector.InputDelayMs = _settings.Audio.InputDelayMs;
 
         _controller.Configure(_settings);
     }
