@@ -149,7 +149,7 @@ public static class ThemeManager
         Application.Current.Dispatcher.InvokeAsync(ApplyResolved);
     }
 
-    private static string DetectSystemTheme()
+    internal static string DetectSystemTheme()
     {
         try
         {

@@ -99,37 +99,36 @@ public partial class TrayMenuWindow : Window
         AddClickItem("Exit", () => ExitRequested?.Invoke());
     }
 
+    internal record StateInfo(string StatusText, string StatusBrush, string ConnectText, bool MuteVisible);
+
+    internal static StateInfo ComputeState(bool connected, bool recording, bool muted)
+    {
+        var (statusText, statusBrush) = muted
+            ? ("Muted", "YellowBrush")
+            : !connected
+                ? ("Not connected", "RedBrush")
+                : recording
+                    ? ("Recording", "RedBrush")
+                    : ("Connected", "GreenBrush");
+
+        return new StateInfo(statusText, statusBrush, connected ? "Disconnect" : "Connect", muted);
+    }
+
     public void UpdateState(bool connected, bool recording, bool muted)
     {
         _connected = connected;
         _muted = muted;
 
-        if (muted)
-        {
-            StatusLabel.Text = "Muted";
-            StatusLabel.Foreground = FindBrush("YellowBrush");
-        }
-        else if (!connected)
-        {
-            StatusLabel.Text = "Not connected";
-            StatusLabel.Foreground = FindBrush("RedBrush");
-        }
-        else if (recording)
-        {
-            StatusLabel.Text = "Recording";
-            StatusLabel.Foreground = FindBrush("RedBrush");
-        }
-        else
-        {
-            StatusLabel.Text = "Connected";
-            StatusLabel.Foreground = FindBrush("GreenBrush");
-        }
+        var state = ComputeState(connected, recording, muted);
+
+        StatusLabel.Text = state.StatusText;
+        StatusLabel.Foreground = FindBrush(state.StatusBrush);
 
         if (_connectText != null)
-            _connectText.Text = connected ? "Disconnect" : "Connect";
+            _connectText.Text = state.ConnectText;
 
         if (_muteCheckmark != null)
-            _muteCheckmark.Visibility = muted ? Visibility.Visible : Visibility.Collapsed;
+            _muteCheckmark.Visibility = state.MuteVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private Border AddClickItem(string text, Action onClick)
