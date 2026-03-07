@@ -372,6 +372,9 @@ public partial class MainWindow : Window
             _provider.ErrorOccurred += OnError;
             _provider.Disconnected += OnDisconnected;
 
+            if (_provider is DeepgramService deepgram)
+                deepgram.Reconnecting += OnReconnecting;
+
             await _provider.ConnectAsync();
 
             _connected = true;
@@ -609,6 +612,13 @@ public partial class MainWindow : Window
         {
             if (_connected) // unexpectedly disconnected
                 await DisconnectAsync();
+        });
+
+    private void OnReconnecting(int attempt, int maxAttempts) =>
+        Dispatcher.Invoke(() =>
+        {
+            SetStatus($"Reconnecting ({attempt}/{maxAttempts})\u2026", Yellow);
+            UpdateTrayMenu();
         });
 
     // ── System Tray ──────────────────────────────────────────────────────
