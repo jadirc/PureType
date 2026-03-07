@@ -160,7 +160,7 @@ public partial class MainWindow : Window
                 case "mode":
                     break; // legacy setting, ignored — both modes always active
                 case "tone":
-                    SelectComboByTag(ToneCombo, value);
+                    SelectComboByTag(ToneCombo, SoundFeedback.MigrateName(value));
                     break;
                 case "microphone":
                     _savedMicrophoneDevice = value;
@@ -296,7 +296,7 @@ public partial class MainWindow : Window
             $"toggle={FormatShortcut(_toggleModifiers, _toggleKey)}",
             $"ptt={FormatShortcut(_pttModifiers, _pttKey)}",
             $"language={(string)(langItem?.Tag ?? "de")}",
-            $"tone={(string)((ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Sanft")}",
+            $"tone={(string)((ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Gentle")}",
             $"microphone={micName}",
             $"keywords={KeywordsBox.Text.Trim()}",
             $"provider={(string)(providerItem?.Tag ?? "deepgram")}",

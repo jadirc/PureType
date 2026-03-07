@@ -20,22 +20,38 @@ public static class SoundFeedback
 
     private static readonly Dictionary<string, (ToneSpec Start, ToneSpec Stop)> Presets = new()
     {
-        ["Sanft"]      = (new(880,  80, 0.30f, Envelope.Linear,      Pattern.Single),
+        ["Gentle"]     = (new(880,  80, 0.30f, Envelope.Linear,      Pattern.Single),
                           new(440,  80, 0.30f, Envelope.Linear,      Pattern.Single)),
-        ["Klick"]      = (new(1200, 30, 0.35f, Envelope.Linear,      Pattern.Single),
+        ["Click"]      = (new(1200, 30, 0.35f, Envelope.Linear,      Pattern.Single),
                           new(800,  30, 0.35f, Envelope.Linear,      Pattern.Single)),
-        ["Glocke"]     = (new(1047, 120, 0.30f, Envelope.Exponential, Pattern.Single),
+        ["Bell"]       = (new(1047, 120, 0.30f, Envelope.Exponential, Pattern.Single),
                           new(523,  120, 0.30f, Envelope.Exponential, Pattern.Single)),
-        ["Tief"]       = (new(330,  60, 0.35f, Envelope.Linear,      Pattern.Single),
+        ["Deep"]       = (new(330,  60, 0.35f, Envelope.Linear,      Pattern.Single),
                           new(220,  60, 0.35f, Envelope.Linear,      Pattern.Single)),
-        ["Doppel-Pip"] = (new(660,  60, 0.30f, Envelope.Linear,      Pattern.DoublePip),
+        ["Double-Pip"] = (new(660,  60, 0.30f, Envelope.Linear,      Pattern.DoublePip),
                           new(440,  60, 0.30f, Envelope.Linear,      Pattern.DoublePip)),
+    };
+
+    private static readonly Dictionary<string, string> LegacyNameMap = new()
+    {
+        ["Sanft"] = "Gentle",
+        ["Klick"] = "Click",
+        ["Glocke"] = "Bell",
+        ["Tief"] = "Deep",
+        ["Doppel-Pip"] = "Double-Pip",
+        ["Kein"] = "None",
     };
 
     public static string[] GetPresetNames() => [.. Presets.Keys];
 
-    public const string NoTonePreset = "Kein";
-    public static string DefaultPreset => "Sanft";
+    public const string NoTonePreset = "None";
+    public static string DefaultPreset => "Gentle";
+
+    /// <summary>
+    /// Migrates legacy German preset names from old settings files to English.
+    /// </summary>
+    public static string MigrateName(string name) =>
+        LegacyNameMap.TryGetValue(name, out var english) ? english : name;
 
     /// <summary>
     /// Pre-generates the tone WAVs so playback is instant.

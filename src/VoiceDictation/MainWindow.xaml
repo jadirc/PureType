@@ -391,12 +391,12 @@
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="ToneCombo" Padding="10,7" FontSize="13"
                       SelectionChanged="ToneCombo_SelectionChanged">
-                <ComboBoxItem Content="None (Off)" Tag="Kein"/>
-                <ComboBoxItem Content="Gentle" Tag="Sanft" IsSelected="True"/>
-                <ComboBoxItem Content="Click" Tag="Klick"/>
-                <ComboBoxItem Content="Bell" Tag="Glocke"/>
-                <ComboBoxItem Content="Deep" Tag="Tief"/>
-                <ComboBoxItem Content="Double Pip" Tag="Doppel-Pip"/>
+                <ComboBoxItem Content="None (Off)" Tag="None"/>
+                <ComboBoxItem Content="Gentle" Tag="Gentle" IsSelected="True"/>
+                <ComboBoxItem Content="Click" Tag="Click"/>
+                <ComboBoxItem Content="Bell" Tag="Bell"/>
+                <ComboBoxItem Content="Deep" Tag="Deep"/>
+                <ComboBoxItem Content="Double Pip" Tag="Double-Pip"/>
             </ComboBox>
         </StackPanel>
 
