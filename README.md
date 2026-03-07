@@ -17,22 +17,28 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 ## Features
 
 - **Dual transcription engines**
-  - **Deepgram** (cloud) — Real-time streaming via WebSocket with Nova-2 model, interim results with live preview
+  - **Deepgram** (cloud) — Real-time streaming via WebSocket with Nova-3 model, interim results with live preview, automatic reconnect with exponential backoff
   - **Whisper** (local) — Offline transcription using [Whisper.net](https://github.com/sandrohanea/whisper.net) with GGML models, optional CUDA GPU acceleration
 - **Types into any window** — Recognized text is injected as simulated keystrokes (Unicode `SendInput`), working in editors, browsers, chat apps, and terminals
 - **Terminal-aware** — Automatically detects terminal windows (Windows Terminal, PowerShell, cmd, Warp, Alacritty, etc.) and uses clipboard paste instead of `SendInput`
-- **Two input modes**
+- **Configurable input delay** — Optional per-character delay for apps that drop fast simulated keystrokes
+- **Two input modes** (always active simultaneously)
   - **Toggle** — Press a hotkey to start/stop recording
   - **Push-to-Talk** — Hold a key to record, release to stop
-- **Voice activity detection (VAD)** — Automatically stops recording after a configurable silence duration
+- **AI post-processing** — Optionally send transcribed text through an LLM (OpenAI, Anthropic, OpenRouter, Google Gemini) for cleanup, formatting, or transformation
+- **Voice activity detection (VAD)** — Automatically stops recording after silence
+- **Text replacements** — Define custom text substitutions applied to transcribed text
+- **Transcript export** — Export the current session transcript as a timestamped `.txt` file
 - **Configurable shortcuts** — Assign any key or key combination (including Win+key chords) for toggle and PTT
 - **Microphone selection** — Choose from available input devices with a live VU meter
 - **Keyword boosting** — Improve recognition accuracy for domain-specific terms (Deepgram)
 - **Multi-language** — Supports German, English, and automatic language detection
 - **Audio feedback** — Choose from 5 signal tone presets (or silence) for recording start/stop
-- **System tray** — Minimizes to tray, runs unobtrusively in the background
+- **System tray** — Minimizes to tray with dynamic status icon, toast notifications for recording and connection state
 - **Start minimized** — Optional launch directly to system tray
-- **Auto-connect** — Reconnects automatically on startup if an API key is saved
+- **Auto-connect** — Connects automatically on startup if an API key is saved
+- **Auto-reconnect** — Deepgram connections are automatically restored with exponential backoff (up to 10 attempts) and toast notifications
+- **Settings dialog** — All configuration in one place, including provider selection, shortcuts, audio, and AI settings
 - **Dark UI** — Catppuccin Mocha-inspired dark theme
 
 ## Important Notes
@@ -66,53 +72,63 @@ cd VoiceDictation
 dotnet run
 ```
 
-On first launch, enter your Deepgram API key in the settings panel and click **Verbinden** (Connect).
+On first launch, open Settings (gear icon), enter your Deepgram API key and click **Connect**.
 
 ## Usage
 
 | Action | Default Shortcut |
 |---|---|
-| Start/stop recording (toggle mode) | `F9` |
-| Record while held (push-to-talk mode) | `Right Ctrl` |
+| Start/stop recording (toggle mode) | `Ctrl+Alt+X` |
+| Record while held (push-to-talk mode) | `Win+L-Ctrl` |
 
-1. **Connect** — Enter your API key and click *Verbinden*
+Both input modes are always active simultaneously.
+
+1. **Connect** — Enter your API key in Settings and click *Connect*
 2. **Speak** — Press your hotkey and start talking. The transcript appears in the preview panel and is simultaneously typed into the focused window.
-3. **Switch modes** — Use the *Modus* dropdown to switch between Toggle and Push-to-Talk
-4. **Customize shortcuts** — Click the shortcut field and press your desired key combination
+3. **Customize shortcuts** — Open Settings and click the shortcut field to record a new key combination
+4. **Export transcript** — Click *Export* in the transcript panel or use the tray menu to save the session as a timestamped `.txt` file
 
-Settings (API key, language, mode, shortcuts, tone, window position) are persisted automatically to `%LOCALAPPDATA%\VoiceDictation\settings.txt`.
+Settings are persisted automatically to `%LOCALAPPDATA%\VoiceDictation\settings.json`.
 
 ## Architecture
 
 ```
 VoiceDictation/
 ├── MainWindow.xaml(.cs)          # UI & orchestration
+├── SettingsWindow.xaml(.cs)      # Settings dialog
+├── AboutWindow.xaml(.cs)         # About dialog with OSS credits
+├── ToastWindow.xaml(.cs)         # Non-intrusive status notifications
+├── LogWindow.xaml(.cs)           # Debug log viewer
 ├── Services/
 │   ├── ITranscriptionProvider.cs # Common interface for transcription engines
-│   ├── DeepgramService.cs        # WebSocket streaming to Deepgram Nova-2
+│   ├── DeepgramService.cs        # WebSocket streaming to Deepgram Nova-3 (auto-reconnect)
 │   ├── WhisperService.cs         # Local offline transcription via Whisper.net
 │   ├── WhisperModelManager.cs    # GGML model downloading & caching
 │   ├── AudioCaptureService.cs    # Microphone capture (NAudio, 16kHz/16bit/mono)
+│   ├── RecordingController.cs    # Recording lifecycle, audio routing, VAD, transcript collection
 │   ├── VadService.cs             # Voice activity detection (auto-stop on silence)
-│   ├── KeyboardInjector.cs       # Win32 SendInput / clipboard paste
+│   ├── KeyboardInjector.cs       # Win32 SendInput / clipboard paste (configurable delay)
+│   ├── ReplacementService.cs     # User-defined text substitutions
+│   ├── SettingsService.cs        # JSON settings persistence & migration
 │   ├── SoundFeedback.cs          # Synthesized WAV tone presets
 │   └── LogWindowSink.cs          # Serilog sink for the log viewer
 ├── Helpers/
-│   └── KeyboardHookService.cs    # Low-level keyboard hook (WH_KEYBOARD_LL)
-├── LogWindow.xaml(.cs)           # Debug log viewer
+│   ├── KeyboardHookService.cs    # Low-level keyboard hook (WH_KEYBOARD_LL)
+│   ├── TrayIconManager.cs        # System tray icon with dynamic status dot
+│   └── UiHelper.cs               # Shared UI helper methods
 └── Resources/
     └── mic.ico                   # Application icon
 ```
 
-The app follows a simple code-behind architecture — no DI container or MVVM framework. `MainWindow` is the central orchestrator that wires together the services and manages state.
+The app follows a simple code-behind architecture — no DI container or MVVM framework. `MainWindow` is the central orchestrator that wires together the services and manages state. `RecordingController` and `TrayIconManager` are extracted from MainWindow to keep it focused on UI orchestration.
 
 ### Data Flow
 
 ```
-                                  ┌─ DeepgramService (WebSocket, cloud)
-Microphone → AudioCaptureService ─┤                                      → transcript text
-                                  └─ WhisperService (local, offline)            ↓
-                                                                   KeyboardInjector → active window
+                                                    ┌─ DeepgramService (WebSocket, cloud)
+Microphone → AudioCaptureService → RecordingController ─┤                                      → transcript
+                                                    └─ WhisperService (local, offline)            ↓
+                                                                               ReplacementService → KeyboardInjector → active window
 ```
 
 ## Dependencies
