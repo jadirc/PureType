@@ -72,7 +72,7 @@ public partial class MainWindow : Window
         _tray.SettingsRequested += () => Dispatcher.Invoke(() => SettingsButton_Click(this, new RoutedEventArgs()));
         _tray.ExportRequested += () => Dispatcher.Invoke(ExportTranscript);
         _tray.HistoryRequested += () => Dispatcher.Invoke(ShowTranscriptHistory);
-        _tray.AboutRequested += () => Dispatcher.Invoke(ShowAbout);
+        _tray.AboutRequested += () => Dispatcher.BeginInvoke(ShowAbout);
         _tray.ShowRequested += () => Dispatcher.Invoke(ShowFromTray);
         _tray.ExitRequested += () =>
         {
@@ -346,6 +346,7 @@ public partial class MainWindow : Window
 
     private void ShowAbout()
     {
+        ShowFromTray();
         var about = new AboutWindow { Owner = this };
         about.ShowDialog();
     }

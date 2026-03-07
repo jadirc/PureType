@@ -102,7 +102,7 @@
                     <PasswordBox x:Name="ApiKeyBox"
                                  Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
                                  BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                 Padding="10,8" FontFamily="Consolas" FontSize="13"
+                                 Padding="10,5" FontFamily="Consolas" FontSize="13"
                                  PasswordChar="&#x25CF;"/>
                 </StackPanel>
 
@@ -137,7 +137,7 @@
                     <TextBox x:Name="KeywordsBox"
                              Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                             Padding="10,8" FontFamily="Consolas" FontSize="13"/>
+                             Padding="10,5" FontFamily="Consolas" FontSize="13"/>
                 </StackPanel>
 
                 <!-- Language -->
@@ -164,7 +164,7 @@
                     <TextBox x:Name="ToggleShortcutBox"
                              Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                             Padding="10,8" FontSize="13"
+                             Padding="10,5" FontSize="13"
                              IsReadOnly="True" Cursor="Hand"
                              Text="Ctrl+Alt+X"
                              GotFocus="ShortcutBox_GotFocus"
@@ -180,7 +180,7 @@
                     <TextBox x:Name="PttShortcutBox"
                              Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                             Padding="10,8" FontSize="13"
+                             Padding="10,5" FontSize="13"
                              IsReadOnly="True" Cursor="Hand"
                              Text="Win+L-Ctrl"
                              GotFocus="ShortcutBox_GotFocus"
@@ -196,7 +196,7 @@
                     <TextBox x:Name="MuteShortcutBox"
                              Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                             Padding="10,8" FontSize="13"
+                             Padding="10,5" FontSize="13"
                              IsReadOnly="True" Cursor="Hand"
                              Text=""
                              GotFocus="ShortcutBox_GotFocus"
@@ -231,7 +231,7 @@
                     <TextBox x:Name="InputDelayBox"
                              Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                             Padding="10,8" FontSize="13" Text="0"
+                             Padding="10,5" FontSize="13" Text="0"
                              PreviewTextInput="InputDelayBox_PreviewTextInput"/>
                 </StackPanel>
 
@@ -293,7 +293,7 @@
                         <PasswordBox x:Name="LlmApiKeyBox"
                                      Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
                                      BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                     Padding="10,8" FontFamily="Consolas" FontSize="13"
+                                     Padding="10,5" FontFamily="Consolas" FontSize="13"
                                      PasswordChar="&#x25CF;"/>
                     </StackPanel>
 
@@ -337,7 +337,7 @@
                                  Text="Clean up the following dictated text. Fix punctuation, grammar, and formatting. Keep the meaning unchanged. Reply with only the corrected text."
                                  Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
                                  BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                 Padding="10,8" FontSize="12"
+                                 Padding="10,5" FontSize="12"
                                  TextWrapping="Wrap" AcceptsReturn="True"
                                  Height="80" VerticalScrollBarVisibility="Auto"/>
                     </StackPanel>
