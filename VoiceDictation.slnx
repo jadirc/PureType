@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/VoiceDictation/VoiceDictation.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VoiceDictation.Tests/VoiceDictation.Tests.csproj" />
+  </Folder>
 </Solution>
