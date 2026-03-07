@@ -4,7 +4,7 @@
         Title="Voice Dictation – Log"
         Width="600" Height="400"
         MinWidth="300" MinHeight="200"
-        Background="#1E1E2E"
+        Background="{DynamicResource BackgroundBrush}"
         FontFamily="Consolas">
 
     <Grid Margin="8">
@@ -14,13 +14,13 @@
         </Grid.RowDefinitions>
 
         <Button Grid.Row="0" Content="Clear" Click="ClearButton_Click"
-                Background="#313244" Foreground="#CDD6F4"
+                Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
                 BorderThickness="0" Padding="8,4" Margin="0,0,0,8"
                 HorizontalAlignment="Left" Cursor="Hand"/>
 
         <TextBox Grid.Row="1" x:Name="LogTextBox"
-                 Background="#181825" Foreground="#A6ADC8"
-                 BorderBrush="#45475A" BorderThickness="1"
+                 Background="{DynamicResource DeepBrush}" Foreground="{DynamicResource LabelBrush}"
+                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                  FontSize="11" IsReadOnly="True"
                  VerticalScrollBarVisibility="Auto"
                  HorizontalScrollBarVisibility="Auto"

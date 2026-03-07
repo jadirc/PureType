@@ -10,8 +10,8 @@ public partial class ToastWindow : Window
     private static ToastWindow? _current;
     private readonly DispatcherTimer _closeTimer;
 
-    private static readonly Color Red = Color.FromRgb(0xF3, 0x8B, 0xA8);
-    private static readonly Color Green = Color.FromRgb(0xA6, 0xE3, 0xA1);
+    private static Color ThemeColor(string key) =>
+        ((SolidColorBrush)Application.Current.FindResource(key)).Color;
 
     private ToastWindow(string message, Color dotColor)
     {
@@ -43,7 +43,7 @@ public partial class ToastWindow : Window
 
     public static void ShowToast(string message, bool isRecording)
     {
-        ShowToast(message, isRecording ? Red : Green, autoClose: true);
+        ShowToast(message, isRecording ? ThemeColor("RedBrush") : ThemeColor("GreenBrush"), autoClose: true);
     }
 
     public static void ShowToast(string message, Color dotColor, bool autoClose)

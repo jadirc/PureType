@@ -34,9 +34,12 @@ public class RecordingController
     private bool _llmEnabled;
     private bool _clipboardMode;
 
-    // ── Colors ─────────────────────────────────────────────────────────
-    private static readonly Color Red    = Color.FromRgb(0xF3, 0x8B, 0xA8);
-    private static readonly Color Green  = Color.FromRgb(0xA6, 0xE3, 0xA1);
+    // ── Colors (resolved from theme resources) ─────────────────────────
+    private static Color Red    => ThemeColor("RedBrush");
+    private static Color Green  => ThemeColor("GreenBrush");
+
+    private static Color ThemeColor(string key) =>
+        ((SolidColorBrush)System.Windows.Application.Current.FindResource(key)).Color;
 
     // ── Events ─────────────────────────────────────────────────────────
     /// <summary>(statusText, color)</summary>

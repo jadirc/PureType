@@ -52,6 +52,7 @@ public record WindowSettings
     public bool StartMinimized { get; init; }
     public double? SettingsWidth { get; init; }
     public double? SettingsHeight { get; init; }
+    public string Theme { get; init; } = "Dark";
 }
 
 public record AppSettings

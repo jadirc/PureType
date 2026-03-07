@@ -10,14 +10,14 @@
         IsHitTestVisible="False"
         SizeToContent="WidthAndHeight"
         Background="Transparent">
-    <Border Background="#F01E1E2E" CornerRadius="12" Padding="20,14"
-            BorderBrush="#45475A" BorderThickness="1">
+    <Border Background="{DynamicResource ToastBackgroundBrush}" CornerRadius="12" Padding="20,14"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect Color="Black" BlurRadius="20" ShadowDepth="4" Opacity="0.5"/>
         </Border.Effect>
         <StackPanel Orientation="Horizontal">
             <Ellipse x:Name="Dot" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,12,0"/>
-            <TextBlock x:Name="MessageText" Foreground="#CDD6F4" FontSize="16" FontWeight="SemiBold"
+            <TextBlock x:Name="MessageText" Foreground="{DynamicResource TextBrush}" FontSize="16" FontWeight="SemiBold"
                        FontFamily="Segoe UI" VerticalAlignment="Center"/>
         </StackPanel>
     </Border>

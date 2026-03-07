@@ -84,6 +84,7 @@ public partial class SettingsWindow : Window
         // General
         AutostartCheck.IsChecked = IsAutostartEnabled();
         StartMinimizedCheck.IsChecked = settings.Window.StartMinimized;
+        UiHelper.SelectComboByTag(ThemeCombo, settings.Window.Theme);
     }
 
     private void SetProviderVisibility(string providerTag)
@@ -179,6 +180,7 @@ public partial class SettingsWindow : Window
                 StartMinimized = StartMinimizedCheck.IsChecked == true,
                 SettingsWidth = Width,
                 SettingsHeight = Height,
+                Theme = (ThemeCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string ?? "Dark",
             },
         };
 
@@ -319,7 +321,7 @@ public partial class SettingsWindow : Window
         var box = (System.Windows.Controls.TextBox)sender;
         _shortcutBoxPreviousText = box.Text;
         box.Text = "Press a key\u2026";
-        box.Foreground = new SolidColorBrush(Color.FromRgb(0xF9, 0xE2, 0xAF));
+        box.Foreground = (SolidColorBrush)FindResource("YellowBrush");
         _keyboardHook.SuppressWinKey = true;
     }
 
@@ -328,7 +330,7 @@ public partial class SettingsWindow : Window
         var box = (System.Windows.Controls.TextBox)sender;
         if (box.Text == "Press a key\u2026")
             box.Text = _shortcutBoxPreviousText ?? "";
-        box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
+        box.Foreground = (SolidColorBrush)FindResource("TextBrush");
         _keyboardHook.SuppressWinKey = false;
     }
 
@@ -364,7 +366,7 @@ public partial class SettingsWindow : Window
         if (key == Key.Escape)
         {
             box.Text = _shortcutBoxPreviousText ?? "";
-            box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
+            box.Foreground = (SolidColorBrush)FindResource("TextBrush");
             Keyboard.ClearFocus();
             return;
         }
@@ -376,7 +378,7 @@ public partial class SettingsWindow : Window
                 _muteKey = Key.None;
                 _muteModifiers = ModifierKeys.None;
                 box.Text = "";
-                box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
+                box.Foreground = (SolidColorBrush)FindResource("TextBrush");
                 Keyboard.ClearFocus();
                 return;
             }
@@ -386,7 +388,7 @@ public partial class SettingsWindow : Window
             return;
 
         box.Text = displayText;
-        box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
+        box.Foreground = (SolidColorBrush)FindResource("TextBrush");
         Keyboard.ClearFocus();
     }
 
@@ -405,7 +407,7 @@ public partial class SettingsWindow : Window
             return;
 
         box.Text = displayText;
-        box.Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
+        box.Foreground = (SolidColorBrush)FindResource("TextBrush");
         Keyboard.ClearFocus();
     }
 
@@ -436,6 +438,13 @@ public partial class SettingsWindow : Window
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
     }
 
+    private void ThemeCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        if (ThemeCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
+        ThemeManager.Apply((string)(item.Tag ?? "Dark"));
+    }
+
     private void PromptPresetCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (!IsLoaded) return;
@@ -452,7 +461,7 @@ public partial class SettingsWindow : Window
         if (otherBoxes.Any(b => !string.IsNullOrEmpty(b.Text) && b.Text == displayText))
         {
             box.Text = "Already assigned!";
-            box.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
+            box.Foreground = (SolidColorBrush)FindResource("RedBrush");
             return false;
         }
 

@@ -4,7 +4,7 @@
         Title="Text Replacements"
         Width="450" Height="400"
         MinWidth="350" MinHeight="300"
-        Background="#1E1E2E"
+        Background="{DynamicResource BackgroundBrush}"
         FontFamily="Segoe UI"
         ResizeMode="CanResizeWithGrip"
         WindowStartupLocation="CenterOwner">
@@ -18,27 +18,27 @@
 
         <!-- Header -->
         <TextBlock Grid.Row="0" Text="REPLACEMENT RULES"
-                   Foreground="#BAC2DE" FontSize="11" FontWeight="SemiBold"
+                   Foreground="{DynamicResource LabelBrush}" FontSize="11" FontWeight="SemiBold"
                    Margin="0,0,0,8"/>
 
         <!-- DataGrid -->
         <DataGrid Grid.Row="1" x:Name="RulesGrid"
-                  Background="#181825" Foreground="#CDD6F4"
-                  BorderBrush="#45475A" BorderThickness="1"
+                  Background="{DynamicResource DeepBrush}" Foreground="{DynamicResource TextBrush}"
+                  BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                   GridLinesVisibility="None"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"
                   SelectionMode="Single"
                   HeadersVisibility="Column"
-                  RowBackground="#181825"
-                  AlternatingRowBackground="#181825"
+                  RowBackground="{DynamicResource DeepBrush}"
+                  AlternatingRowBackground="{DynamicResource DeepBrush}"
                   Margin="0,0,0,8">
 
             <DataGrid.ColumnHeaderStyle>
                 <Style TargetType="DataGridColumnHeader">
-                    <Setter Property="Background" Value="#313244"/>
-                    <Setter Property="Foreground" Value="#BAC2DE"/>
+                    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource LabelBrush}"/>
                     <Setter Property="Padding" Value="8,4"/>
                     <Setter Property="BorderThickness" Value="0"/>
                     <Setter Property="FontWeight" Value="SemiBold"/>
@@ -48,13 +48,13 @@
             <DataGrid.CellStyle>
                 <Style TargetType="DataGridCell">
                     <Setter Property="Background" Value="Transparent"/>
-                    <Setter Property="Foreground" Value="#CDD6F4"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                     <Setter Property="BorderThickness" Value="0"/>
                     <Setter Property="Padding" Value="4,2"/>
                     <Style.Triggers>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Background" Value="#313244"/>
-                            <Setter Property="Foreground" Value="#CDD6F4"/>
+                            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                         </Trigger>
                     </Style.Triggers>
                 </Style>
@@ -64,8 +64,8 @@
                 <DataGridTextColumn Header="Trigger" Binding="{Binding Trigger, UpdateSourceTrigger=PropertyChanged}" Width="*">
                     <DataGridTextColumn.EditingElementStyle>
                         <Style TargetType="TextBox">
-                            <Setter Property="Background" Value="#313244"/>
-                            <Setter Property="Foreground" Value="#CDD6F4"/>
+                            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                             <Setter Property="BorderThickness" Value="0"/>
                             <Setter Property="Padding" Value="4,2"/>
                         </Style>
@@ -74,8 +74,8 @@
                 <DataGridTextColumn Header="Replacement" Binding="{Binding Replacement, UpdateSourceTrigger=PropertyChanged}" Width="*">
                     <DataGridTextColumn.EditingElementStyle>
                         <Style TargetType="TextBox">
-                            <Setter Property="Background" Value="#313244"/>
-                            <Setter Property="Foreground" Value="#CDD6F4"/>
+                            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                             <Setter Property="BorderThickness" Value="0"/>
                             <Setter Property="Padding" Value="4,2"/>
                         </Style>
@@ -87,16 +87,16 @@
         <!-- Button Bar -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Open File" Click="OpenFile_Click"
-                    Background="Transparent" Foreground="#89B4FA"
+                    Background="Transparent" Foreground="{DynamicResource AccentBrush}"
                     BorderThickness="0" Padding="12,6" Margin="0,0,8,0"
                     Cursor="Hand"/>
             <Button Content="Add" Click="Add_Click"
-                    Background="#89B4FA" Foreground="#1E1E2E"
+                    Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource AccentForegroundBrush}"
                     FontWeight="SemiBold"
                     BorderThickness="0" Padding="12,6" Margin="0,0,8,0"
                     Cursor="Hand"/>
             <Button Content="Remove" Click="Remove_Click"
-                    Background="#F38BA8" Foreground="#1E1E2E"
+                    Background="{DynamicResource RedBrush}" Foreground="{DynamicResource AccentForegroundBrush}"
                     FontWeight="SemiBold"
                     BorderThickness="0" Padding="12,6"
                     Cursor="Hand"/>

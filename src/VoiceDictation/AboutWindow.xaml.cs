@@ -29,9 +29,9 @@ public partial class AboutWindow : Window
 
     private void PopulateLibraries()
     {
-        var labelColor = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4));
-        var dimColor = new SolidColorBrush(Color.FromRgb(0x6C, 0x70, 0x86));
-        var linkColor = new SolidColorBrush(Color.FromRgb(0x89, 0xB4, 0xFA));
+        var labelColor = (SolidColorBrush)FindResource("TextBrush");
+        var dimColor = (SolidColorBrush)FindResource("TextDimBrush");
+        var linkColor = (SolidColorBrush)FindResource("AccentBrush");
 
         foreach (var (name, ver, license, url) in Libraries)
         {

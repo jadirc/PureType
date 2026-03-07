@@ -42,11 +42,11 @@ public partial class MainWindow : Window
     private readonly SettingsService _settingsService = new();
     private AppSettings _settings = new();
 
-    // ── Colors ────────────────────────────────────────────────────────────
-    private static readonly SolidColorBrush Red    = new(Color.FromRgb(0xF3, 0x8B, 0xA8));
-    private static readonly SolidColorBrush Green  = new(Color.FromRgb(0xA6, 0xE3, 0xA1));
-    private static readonly SolidColorBrush Yellow = new(Color.FromRgb(0xF9, 0xE2, 0xAF));
-    private static readonly SolidColorBrush Blue   = new(Color.FromRgb(0x89, 0xB4, 0xFA));
+    // ── Colors (resolved from theme resources) ────────────────────────────
+    private SolidColorBrush Red    => (SolidColorBrush)FindResource("RedBrush");
+    private SolidColorBrush Green  => (SolidColorBrush)FindResource("GreenBrush");
+    private SolidColorBrush Yellow => (SolidColorBrush)FindResource("YellowBrush");
+    private SolidColorBrush Blue   => (SolidColorBrush)FindResource("AccentBrush");
 
     // ── Init ──────────────────────────────────────────────────────────────
 
@@ -89,6 +89,7 @@ public partial class MainWindow : Window
         };
 
         LoadSettings();
+        ThemeManager.Apply(_settings.Window.Theme);
         SoundFeedback.Init(_settings.Audio.Tone);
         KeyboardInjector.InputDelayMs = _settings.Audio.InputDelayMs;
 
@@ -204,6 +205,9 @@ public partial class MainWindow : Window
         // AI trigger key
         ApplyAiTriggerKey();
 
+        // Theme
+        ThemeManager.Apply(_settings.Window.Theme);
+
         // Sound
         SoundFeedback.Init(_settings.Audio.Tone);
         KeyboardInjector.InputDelayMs = _settings.Audio.InputDelayMs;
@@ -247,6 +251,7 @@ public partial class MainWindow : Window
                 Width = Width,
                 Height = Height,
                 StartMinimized = _settings.Window.StartMinimized,
+                Theme = _settings.Window.Theme,
             },
         };
 
@@ -332,6 +337,7 @@ public partial class MainWindow : Window
                     StartMinimized = dialog.ResultSettings.Window.StartMinimized,
                     SettingsWidth = dialog.ResultSettings.Window.SettingsWidth,
                     SettingsHeight = dialog.ResultSettings.Window.SettingsHeight,
+                    Theme = dialog.ResultSettings.Window.Theme,
                 },
             };
 
@@ -489,7 +495,7 @@ public partial class MainWindow : Window
             var label = providerType == "whisper" ? "Whisper (local)" : "Deepgram";
             SetStatus($"Connected - {label}", Green);
             ConnectButton.Content = "Disconnect";
-            ConnectButton.Background = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
+            ConnectButton.Background = Red;
             SaveSettings();
             Log.Information("{Provider} connected (Language: {Language})", label, language);
             _tray.Update(_connected, _controller.IsRecording, _muted);

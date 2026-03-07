@@ -9,7 +9,7 @@
         ShowInTaskbar="False"
         Visibility="Hidden"
         Icon="Resources/mic.ico"
-        Background="#1E1E2E"
+        Background="{DynamicResource BackgroundBrush}"
         Closing="Window_Closing"
         FontFamily="Segoe UI">
 
@@ -27,21 +27,21 @@
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
-        <Border Grid.Row="0" Background="#313244" CornerRadius="8" Padding="12,10">
+        <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="12,10">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                     <Ellipse x:Name="StatusDot" Width="12" Height="12"
-                             Fill="#F38BA8" VerticalAlignment="Center" Margin="0,0,10,0">
+                             Fill="{DynamicResource RedBrush}" VerticalAlignment="Center" Margin="0,0,10,0">
                         <Ellipse.Effect>
-                            <DropShadowEffect Color="#F38BA8" BlurRadius="8" ShadowDepth="0" Opacity="0.8"/>
+                            <DropShadowEffect x:Name="StatusGlow" Color="#F38BA8" BlurRadius="8" ShadowDepth="0" Opacity="0.8"/>
                         </Ellipse.Effect>
                     </Ellipse>
                     <TextBlock x:Name="StatusText" Text="Not connected"
-                               Foreground="#CDD6F4" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
                 </StackPanel>
-                <Border Background="#181825" CornerRadius="3" Height="4" Margin="0,8,0,0">
-                    <Border x:Name="VuMeterBar" Background="#A6E3A1" CornerRadius="3" Height="4"
+                <Border Background="{DynamicResource DeepBrush}" CornerRadius="3" Height="4" Margin="0,8,0,0">
+                    <Border x:Name="VuMeterBar" Background="{DynamicResource GreenBrush}" CornerRadius="3" Height="4"
                             HorizontalAlignment="Left" Width="0"/>
                 </Border>
             </StackPanel>
@@ -55,20 +55,20 @@
             </Grid.ColumnDefinitions>
             <Button Grid.Column="0" x:Name="ConnectButton" Content="Connect"
                     Click="ConnectButton_Click"
-                    Background="#89B4FA" Foreground="#1E1E2E"
+                    Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource AccentForegroundBrush}"
                     FontWeight="SemiBold" FontSize="14"
                     BorderThickness="0" Padding="0,11" Cursor="Hand"/>
             <Button Grid.Column="1" x:Name="SettingsButton" Content="&#xE713;"
                     Click="SettingsButton_Click"
                     FontFamily="Segoe MDL2 Assets" FontSize="16"
-                    Background="#313244" Foreground="#CDD6F4"
+                    Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
                     BorderThickness="0" Padding="12,11" Margin="8,0,0,0"
                     Cursor="Hand" ToolTip="Settings"/>
         </Grid>
 
         <!-- Provider -->
         <StackPanel Grid.Row="4">
-            <TextBlock Text="PROVIDER" Foreground="#BAC2DE"
+            <TextBlock Text="PROVIDER" Foreground="{DynamicResource LabelBrush}"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="ProviderCombo" Padding="10,7" FontSize="13"
                       SelectionChanged="ProviderCombo_SelectionChanged">
@@ -79,34 +79,34 @@
 
         <!-- Microphone -->
         <StackPanel Grid.Row="6">
-            <TextBlock Text="MICROPHONE" Foreground="#BAC2DE"
+            <TextBlock Text="MICROPHONE" Foreground="{DynamicResource LabelBrush}"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="MicrophoneCombo" Padding="10,7" FontSize="13"
                       SelectionChanged="MicrophoneCombo_SelectionChanged"/>
         </StackPanel>
 
         <!-- Transcript -->
-        <Border Grid.Row="8" Background="#181825" CornerRadius="6">
+        <Border Grid.Row="8" Background="{DynamicResource DeepBrush}" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0" Margin="10,6,6,0">
-                    <TextBlock Text="TRANSCRIPT" Foreground="#BAC2DE"
+                    <TextBlock Text="TRANSCRIPT" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Export" Click="ExportButton_Click"
-                                Background="Transparent" Foreground="#6C7086"
+                                Background="Transparent" Foreground="{DynamicResource TextDimBrush}"
                                 FontSize="11" BorderThickness="0"
                                 Padding="6,2" Cursor="Hand"/>
                         <Button Content="History" Click="HistoryButton_Click"
-                                Background="Transparent" Foreground="#6C7086"
+                                Background="Transparent" Foreground="{DynamicResource TextDimBrush}"
                                 FontSize="11" BorderThickness="0"
                                 Padding="6,2" Cursor="Hand"/>
                         <Button Content="Log" Click="LogButton_Click"
-                                Background="Transparent" Foreground="#6C7086"
+                                Background="Transparent" Foreground="{DynamicResource TextDimBrush}"
                                 FontSize="11" BorderThickness="0"
                                 Padding="6,2" Cursor="Hand"/>
                     </StackPanel>
@@ -116,14 +116,14 @@
                               Padding="10,4,10,10">
                     <StackPanel>
                         <TextBox x:Name="TranscriptText"
-                                 Foreground="#A6E3A1" FontSize="13"
+                                 Foreground="{DynamicResource GreenBrush}" FontSize="13"
                                  TextWrapping="Wrap"
                                  Text="Transcript will appear here &#x2026;"
                                  IsReadOnly="True" BorderThickness="0"
                                  Background="Transparent" Padding="0"
                                  IsTabStop="False"/>
                         <TextBlock x:Name="InterimText"
-                                   Foreground="#6C7086" FontStyle="Italic" FontSize="13"
+                                   Foreground="{DynamicResource TextDimBrush}" FontStyle="Italic" FontSize="13"
                                    TextWrapping="Wrap" LineHeight="20"/>
                     </StackPanel>
                 </ScrollViewer>
