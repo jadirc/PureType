@@ -5,11 +5,10 @@ namespace VoiceDictation.Helpers;
 internal class TrayIconManager : IDisposable
 {
     private readonly System.Windows.Forms.NotifyIcon _trayIcon;
-    private readonly System.Windows.Forms.ToolStripLabel _statusLabel;
-    private readonly System.Windows.Forms.ToolStripMenuItem _connectItem;
-    private readonly System.Windows.Forms.ToolStripMenuItem _muteItem;
     private readonly System.Drawing.Icon _baseIcon;
     private bool _connected;
+    private bool _recording;
+    private bool _muted;
 
     public event Action? ConnectRequested;
     public event Action? DisconnectRequested;
@@ -36,74 +35,57 @@ internal class TrayIconManager : IDisposable
         {
             if (e.Button == System.Windows.Forms.MouseButtons.Left)
                 ShowRequested?.Invoke();
+            else if (e.Button == System.Windows.Forms.MouseButtons.Right)
+                ShowTrayMenu();
         };
+    }
 
-        var menu = new System.Windows.Forms.ContextMenuStrip();
-
-        _statusLabel = new System.Windows.Forms.ToolStripLabel("Not connected")
+    private void ShowTrayMenu()
+    {
+        System.Windows.Application.Current.Dispatcher.Invoke(() =>
         {
-            ForeColor = System.Drawing.Color.FromArgb(0xF3, 0x8B, 0xA8)
-        };
-        menu.Items.Add(_statusLabel);
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+            var menu = new TrayMenuWindow();
+            menu.ConnectRequested += () => ConnectRequested?.Invoke();
+            menu.DisconnectRequested += () => DisconnectRequested?.Invoke();
+            menu.MuteToggleRequested += () => MuteToggleRequested?.Invoke();
+            menu.SettingsRequested += () => SettingsRequested?.Invoke();
+            menu.ExportRequested += () => ExportRequested?.Invoke();
+            menu.HistoryRequested += () => HistoryRequested?.Invoke();
+            menu.AboutRequested += () => AboutRequested?.Invoke();
+            menu.ShowRequested += () => ShowRequested?.Invoke();
+            menu.ExitRequested += () => ExitRequested?.Invoke();
+            menu.UpdateState(_connected, _recording, _muted);
 
-        _connectItem = new System.Windows.Forms.ToolStripMenuItem("Connect", null, (_, _) =>
-        {
-            if (_connected)
-                DisconnectRequested?.Invoke();
-            else
-                ConnectRequested?.Invoke();
+            // Position near cursor (above the click point)
+            var pos = System.Windows.Forms.Cursor.Position;
+            // Use screen-to-WPF coordinate conversion
+            var source = System.Windows.PresentationSource.FromVisual(System.Windows.Application.Current.MainWindow);
+            double dpiX = 1.0, dpiY = 1.0;
+            if (source?.CompositionTarget != null)
+            {
+                dpiX = source.CompositionTarget.TransformToDevice.M11;
+                dpiY = source.CompositionTarget.TransformToDevice.M22;
+            }
+            menu.Left = pos.X / dpiX - 100;
+            menu.Top = pos.Y / dpiY;
+
+            menu.Loaded += (_, _) =>
+            {
+                // Adjust so menu appears above the click point
+                menu.Top = pos.Y / dpiY - menu.ActualHeight;
+                if (menu.Left < 0) menu.Left = 0;
+                if (menu.Top < 0) menu.Top = 0;
+            };
+
+            menu.Show();
         });
-        menu.Items.Add(_connectItem);
-
-        _muteItem = new System.Windows.Forms.ToolStripMenuItem("Mute", null, (_, _) =>
-        {
-            MuteToggleRequested?.Invoke();
-        })
-        {
-            CheckOnClick = false
-        };
-        menu.Items.Add(_muteItem);
-
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-
-        menu.Items.Add("Settings", null, (_, _) => SettingsRequested?.Invoke());
-        menu.Items.Add("Export Transcript", null, (_, _) => ExportRequested?.Invoke());
-        menu.Items.Add("Transcript History", null, (_, _) => HistoryRequested?.Invoke());
-        menu.Items.Add("About", null, (_, _) => AboutRequested?.Invoke());
-        menu.Items.Add("Open", null, (_, _) => ShowRequested?.Invoke());
-        menu.Items.Add("Exit", null, (_, _) => ExitRequested?.Invoke());
-
-        _trayIcon.ContextMenuStrip = menu;
     }
 
     public void Update(bool connected, bool recording, bool muted)
     {
         _connected = connected;
-        _muteItem.Checked = muted;
-
-        if (muted)
-        {
-            _statusLabel.Text = "Muted";
-            _statusLabel.ForeColor = System.Drawing.Color.FromArgb(0xF9, 0xE2, 0xAF);
-        }
-        else if (recording)
-        {
-            _statusLabel.Text = "Recording";
-            _statusLabel.ForeColor = System.Drawing.Color.FromArgb(0xF3, 0x8B, 0xA8);
-        }
-        else if (connected)
-        {
-            _statusLabel.Text = "Connected";
-            _statusLabel.ForeColor = System.Drawing.Color.FromArgb(0x40, 0xA0, 0x2B);
-        }
-        else
-        {
-            _statusLabel.Text = "Not connected";
-            _statusLabel.ForeColor = System.Drawing.Color.FromArgb(0xF3, 0x8B, 0xA8);
-        }
-
-        _connectItem.Text = connected ? "Disconnect" : "Connect";
+        _recording = recording;
+        _muted = muted;
 
         var dotColor = connected
             ? System.Drawing.Color.FromArgb(0x40, 0xA0, 0x2B)

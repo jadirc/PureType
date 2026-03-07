@@ -96,7 +96,12 @@ public partial class TrayMenuWindow : Window
         _connected = connected;
         _muted = muted;
 
-        if (!connected)
+        if (muted)
+        {
+            StatusLabel.Text = "Muted";
+            StatusLabel.Foreground = FindBrush("YellowBrush");
+        }
+        else if (!connected)
         {
             StatusLabel.Text = "Not connected";
             StatusLabel.Foreground = FindBrush("RedBrush");
