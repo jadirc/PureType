@@ -10,10 +10,15 @@
         IsHitTestVisible="False"
         SizeToContent="WidthAndHeight"
         Background="Transparent">
-    <Border Background="#E61E1E2E" CornerRadius="8" Padding="14,8">
+    <Border Background="#F01E1E2E" CornerRadius="12" Padding="20,14"
+            BorderBrush="#45475A" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect Color="Black" BlurRadius="20" ShadowDepth="4" Opacity="0.5"/>
+        </Border.Effect>
         <StackPanel Orientation="Horizontal">
-            <Ellipse x:Name="Dot" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <TextBlock x:Name="MessageText" Foreground="#CDD6F4" FontSize="13" FontFamily="Segoe UI" VerticalAlignment="Center"/>
+            <Ellipse x:Name="Dot" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <TextBlock x:Name="MessageText" Foreground="#CDD6F4" FontSize="16" FontWeight="SemiBold"
+                       FontFamily="Segoe UI" VerticalAlignment="Center"/>
         </StackPanel>
     </Border>
 </Window>

@@ -49,6 +49,17 @@
                                               ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                               Margin="10,3,23,3" VerticalAlignment="Center"
                                               HorizontalAlignment="Left"/>
+                            <TextBox x:Name="PART_EditableTextBox"
+                                     Style="{x:Null}"
+                                     HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                     Margin="10,3,23,3"
+                                     Focusable="True"
+                                     Background="Transparent"
+                                     Foreground="#CDD6F4"
+                                     CaretBrush="#CDD6F4"
+                                     BorderThickness="0"
+                                     Visibility="Hidden"
+                                     IsReadOnly="{TemplateBinding IsReadOnly}"/>
                             <Popup Name="Popup" Placement="Bottom"
                                    IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True" Focusable="False"
@@ -67,6 +78,12 @@
                                 </Grid>
                             </Popup>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEditable" Value="True">
+                                <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden"/>
+                                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -96,6 +113,113 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- Dark-themed Button with rounded corners and hover -->
+        <Style TargetType="{x:Type Button}">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.7"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark-themed TextBox with rounded corners -->
+        <Style TargetType="{x:Type TextBox}">
+            <Setter Property="CaretBrush" Value="#CDD6F4"/>
+            <Setter Property="SelectionBrush" Value="#45475A"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TextBox}">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#89B4FA"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark-themed PasswordBox with rounded corners -->
+        <Style TargetType="{x:Type PasswordBox}">
+            <Setter Property="CaretBrush" Value="#CDD6F4"/>
+            <Setter Property="SelectionBrush" Value="#45475A"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type PasswordBox}">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#89B4FA"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark-themed CheckBox -->
+        <Style TargetType="{x:Type CheckBox}">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type CheckBox}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border x:Name="CheckBorder" Width="16" Height="16"
+                                    Background="#313244" BorderBrush="#45475A" BorderThickness="1"
+                                    CornerRadius="3" VerticalAlignment="Center">
+                                <Path x:Name="CheckMark" Data="M 2 5 L 5.5 8.5 L 11 3"
+                                      Stroke="#89B4FA" StrokeThickness="1.5"
+                                      Visibility="Collapsed" Margin="1"/>
+                            </Border>
+                            <ContentPresenter Margin="6,0,0,0" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="CheckBorder" Property="BorderBrush" Value="#89B4FA"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CheckBorder" Property="BorderBrush" Value="#89B4FA"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="16">
@@ -104,39 +228,9 @@
             <RowDefinition Height="8"/>
             <RowDefinition Height="Auto"/>  <!-- Row 2: Button -->
             <RowDefinition Height="8"/>
-            <RowDefinition Height="*"/>     <!-- Row 4: Transkript -->
+            <RowDefinition Height="3*"/>    <!-- Row 4: Transkript -->
             <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 6: Provider -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 8: Whisper Model -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 10: API Key -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 12: Microphone -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 14: Keywords -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 16: Language -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 18: Modus -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 20: Toggle Shortcut -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 22: PTT Shortcut -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 24: Signal Tone -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 26: Hotkey Info -->
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 28: Autostart -->
-            <RowDefinition Height="4"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 30: Start minimized -->
-            <RowDefinition Height="4"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 32: VAD -->
-            <RowDefinition Height="4"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 34: Replacements -->
-            <RowDefinition Height="4"/>
-            <RowDefinition Height="Auto"/>  <!-- Row 36: LLM Post-Processing -->
+            <RowDefinition Height="2*"/>    <!-- Row 6: Settings (scrollable) -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
@@ -170,16 +264,21 @@
                 Cursor="Hand"/>
 
         <!-- Transkript Vorschau -->
-        <Border Grid.Row="4" Background="#181825" CornerRadius="6">
+        <Border Grid.Row="4" x:Name="TranscriptBorder" Background="#181825" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <Grid Grid.Row="0" Margin="10,6,6,0">
-                    <TextBlock Text="TRANSCRIPT" Foreground="#BAC2DE"
-                               FontSize="11" FontWeight="SemiBold"
-                               VerticalAlignment="Center"/>
+                <Grid Grid.Row="0" Margin="10,6,6,0" Cursor="Hand"
+                      MouseLeftButtonDown="TranscriptHeader_Click">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="TranscriptArrow" Text="▾" Foreground="#6C7086"
+                                   FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="TRANSCRIPT" Foreground="#BAC2DE"
+                                   FontSize="11" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
                     <Button Content="Log" Click="LogButton_Click"
                             HorizontalAlignment="Right"
                             Background="Transparent" Foreground="#6C7086"
@@ -205,8 +304,11 @@
             </Grid>
         </Border>
 
+        <ScrollViewer Grid.Row="6" VerticalScrollBarVisibility="Auto" Padding="0">
+        <StackPanel>
+
         <!-- Provider -->
-        <StackPanel Grid.Row="6">
+        <StackPanel Margin="0,0,0,12">
             <TextBlock Text="PROVIDER" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="ProviderCombo" Padding="10,7" FontSize="13"
@@ -217,7 +319,7 @@
         </StackPanel>
 
         <!-- Whisper Modell -->
-        <StackPanel Grid.Row="8" x:Name="WhisperModelPanel" Visibility="Collapsed">
+        <StackPanel x:Name="WhisperModelPanel" Visibility="Collapsed" Margin="0,0,0,12">
             <TextBlock Text="WHISPER MODEL" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <Grid>
@@ -239,7 +341,7 @@
         </StackPanel>
 
         <!-- API Key -->
-        <StackPanel Grid.Row="10" x:Name="ApiKeyPanel">
+        <StackPanel x:Name="ApiKeyPanel" Margin="0,0,0,12">
             <TextBlock Text="DEEPGRAM API KEY" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <PasswordBox x:Name="ApiKeyBox"
@@ -251,7 +353,7 @@
         </StackPanel>
 
         <!-- Mikrofon -->
-        <StackPanel Grid.Row="12">
+        <StackPanel Margin="0,0,0,12">
             <TextBlock Text="MICROPHONE" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="MicrophoneCombo" Padding="10,7" FontSize="13"
@@ -259,7 +361,7 @@
         </StackPanel>
 
         <!-- Keywords (Boost) -->
-        <StackPanel Grid.Row="14" x:Name="KeywordsPanel">
+        <StackPanel x:Name="KeywordsPanel" Margin="0,0,0,12">
             <TextBlock Text="KEYWORDS (Boost)" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <TextBox x:Name="KeywordsBox"
@@ -271,7 +373,7 @@
         </StackPanel>
 
         <!-- Sprache -->
-        <StackPanel Grid.Row="16">
+        <StackPanel Margin="0,0,0,12">
             <TextBlock Text="LANGUAGE" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="LanguageCombo" Padding="10,7" FontSize="13"
@@ -282,10 +384,8 @@
             </ComboBox>
         </StackPanel>
 
-        <!-- (Mode dropdown removed — both Toggle and PTT are always active) -->
-
         <!-- Toggle Shortcut -->
-        <StackPanel Grid.Row="20">
+        <StackPanel Margin="0,0,0,12">
             <TextBlock Text="TOGGLE SHORTCUT" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <TextBox x:Name="ToggleShortcutBox"
@@ -300,7 +400,7 @@
         </StackPanel>
 
         <!-- PTT Shortcut -->
-        <StackPanel Grid.Row="22">
+        <StackPanel Margin="0,0,0,12">
             <TextBlock Text="PTT SHORTCUT" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <TextBox x:Name="PttShortcutBox"
@@ -315,7 +415,7 @@
         </StackPanel>
 
         <!-- Signalton -->
-        <StackPanel Grid.Row="24">
+        <StackPanel Margin="0,0,0,12">
             <TextBlock Text="SIGNAL TONE" Foreground="#BAC2DE"
                        FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ComboBox x:Name="ToneCombo" Padding="10,7" FontSize="13"
@@ -329,16 +429,15 @@
             </ComboBox>
         </StackPanel>
 
-
         <!-- Autostart -->
-        <CheckBox Grid.Row="28" x:Name="AutostartCheck"
+        <CheckBox x:Name="AutostartCheck"
                   Content="  Start with Windows"
                   Foreground="#CDD6F4" FontSize="12"
                   Checked="AutostartCheck_Changed"
                   Unchecked="AutostartCheck_Changed"/>
 
         <!-- Start minimiert -->
-        <CheckBox Grid.Row="30" x:Name="StartMinimizedCheck"
+        <CheckBox x:Name="StartMinimizedCheck"
                   Content="  Start minimized"
                   Foreground="#CDD6F4" FontSize="12"
                   Margin="0,4,0,0"
@@ -346,7 +445,7 @@
                   Unchecked="StartMinimizedCheck_Changed"/>
 
         <!-- VAD Auto-Stop -->
-        <CheckBox Grid.Row="32" x:Name="VadCheck"
+        <CheckBox x:Name="VadCheck"
                   Content="  Auto-stop on silence (3s)"
                   Foreground="#CDD6F4" FontSize="12"
                   Margin="0,4,0,0"
@@ -354,26 +453,43 @@
                   Unchecked="VadCheck_Changed"/>
 
         <!-- Replacements -->
-        <Button Grid.Row="34" Content="Text Replacements …"
+        <Button Content="Text Replacements …"
                 Click="ReplacementsButton_Click"
                 Background="Transparent" Foreground="#89B4FA"
                 FontSize="12" BorderThickness="0"
                 Padding="0,4" Cursor="Hand"
                 HorizontalAlignment="Left"/>
+
         <!-- LLM Post-Processing -->
-        <StackPanel Grid.Row="36" x:Name="LlmPanel">
+        <StackPanel x:Name="LlmPanel">
             <CheckBox x:Name="LlmEnabledCheck"
                       Content="  AI Post-Processing"
                       Foreground="#CDD6F4" FontSize="12"
                       Checked="LlmEnabledCheck_Changed"
                       Unchecked="LlmEnabledCheck_Changed"/>
             <StackPanel x:Name="LlmSettingsPanel" Visibility="Collapsed" Margin="0,8,0,0">
-                <TextBlock Text="LLM PROVIDER" Foreground="#BAC2DE"
-                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                <ComboBox x:Name="LlmProviderCombo" Padding="10,7" FontSize="13"
-                          SelectionChanged="LlmProviderCombo_SelectionChanged">
-                    <ComboBoxItem Content="OpenAI-compatible" Tag="openai" IsSelected="True"/>
-                    <ComboBoxItem Content="Anthropic Claude" Tag="anthropic"/>
+                <TextBlock Text="AI TRIGGER KEY" Foreground="#BAC2DE"
+                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                <TextBlock Text="Hold this key with your shortcut to activate AI"
+                           Foreground="#6C7086" FontSize="10" Margin="0,0,0,5"/>
+                <ComboBox x:Name="AiTriggerKeyCombo" Padding="10,7" FontSize="13"
+                          SelectionChanged="AiTriggerKeyCombo_SelectionChanged">
+                    <ComboBoxItem Content="Shift" Tag="shift" IsSelected="True"/>
+                    <ComboBoxItem Content="Ctrl" Tag="ctrl"/>
+                    <ComboBoxItem Content="Alt" Tag="alt"/>
+                    <ComboBoxItem Content="Caps Lock" Tag="caps"/>
+                </ComboBox>
+
+                <TextBlock Text="API ENDPOINT" Foreground="#BAC2DE"
+                           FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
+                <ComboBox x:Name="LlmBaseUrlCombo" IsEditable="True"
+                          Text="https://api.openai.com/v1"
+                          Padding="10,7" FontFamily="Consolas" FontSize="12"
+                          SelectionChanged="LlmBaseUrlCombo_SelectionChanged">
+                    <ComboBoxItem Content="https://api.openai.com/v1" ToolTip="OpenAI"/>
+                    <ComboBoxItem Content="https://api.anthropic.com/v1" ToolTip="Anthropic Claude"/>
+                    <ComboBoxItem Content="https://openrouter.ai/api/v1" ToolTip="OpenRouter"/>
+                    <ComboBoxItem Content="https://generativelanguage.googleapis.com/v1beta/openai" ToolTip="Google Gemini"/>
                 </ComboBox>
 
                 <TextBlock Text="API KEY" Foreground="#BAC2DE"
@@ -385,25 +501,25 @@
                              PasswordChar="●"
                              PasswordChanged="LlmApiKeyBox_PasswordChanged"/>
 
-                <StackPanel x:Name="LlmBaseUrlPanel">
-                    <TextBlock Text="BASE URL" Foreground="#BAC2DE"
-                               FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
-                    <TextBox x:Name="LlmBaseUrlBox"
-                             Text="https://api.openai.com/v1"
-                             Background="#313244" Foreground="#CDD6F4"
-                             BorderBrush="#45475A" BorderThickness="1"
-                             Padding="10,8" FontFamily="Consolas" FontSize="13"
-                             LostFocus="LlmSettingChanged"/>
-                </StackPanel>
-
                 <TextBlock Text="MODEL" Foreground="#BAC2DE"
                            FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
-                <TextBox x:Name="LlmModelBox"
-                         Text="gpt-4o-mini"
-                         Background="#313244" Foreground="#CDD6F4"
-                         BorderBrush="#45475A" BorderThickness="1"
-                         Padding="10,8" FontFamily="Consolas" FontSize="13"
-                         LostFocus="LlmSettingChanged"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ComboBox x:Name="LlmModelCombo"
+                              IsEditable="True" Text="gpt-4o-mini"
+                              Padding="10,7" FontFamily="Consolas" FontSize="13"
+                              LostFocus="LlmSettingChanged"/>
+                    <Button Grid.Column="1" Content="&#x21BB;"
+                            Click="FetchModelsButton_Click"
+                            Background="Transparent" Foreground="#89B4FA"
+                            FontSize="16" BorderThickness="0"
+                            Padding="8,4" Margin="4,0,0,0"
+                            ToolTip="Fetch models from API"
+                            Cursor="Hand"/>
+                </Grid>
 
                 <TextBlock Text="SYSTEM PROMPT" Foreground="#BAC2DE"
                            FontSize="11" FontWeight="SemiBold" Margin="0,8,0,5"/>
@@ -417,5 +533,8 @@
                          LostFocus="LlmSettingChanged"/>
             </StackPanel>
         </StackPanel>
+
+        </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>

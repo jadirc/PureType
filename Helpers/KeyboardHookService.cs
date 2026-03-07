@@ -69,9 +69,17 @@ public class KeyboardHookService : IDisposable
     /// Suppresses Win key and disables toggle/PTT event firing.</summary>
     public bool SuppressWinKey { get; set; }
 
+    // ── AI trigger key ──
+    private int _aiVk1;
+    private int _aiVk2;
+    private bool _aiKeyDown;
+    private long _aiKeyReleasedTick;
+
     // ── Events ──
-    public event Action? TogglePressed;
-    public event Action? PttKeyDown;
+    /// <summary>Fired when the toggle shortcut is pressed. Bool = AI trigger key held.</summary>
+    public event Action<bool>? TogglePressed;
+    /// <summary>Fired when the PTT key goes down. Bool = AI trigger key held.</summary>
+    public event Action<bool>? PttKeyDown;
     public event Action? PttKeyUp;
 
     /// <summary>Fired during shortcut recording when Win is pressed while a modifier key is already held.
@@ -88,6 +96,26 @@ public class KeyboardHookService : IDisposable
         _toggleModifiers = modifiers;
         _toggleVKey = KeyInterop.VirtualKeyFromKey(key);
         _toggleFired = false;
+    }
+
+    /// <summary>Sets the virtual key codes for the AI trigger key.
+    /// Pass both L/R variants for modifier keys (e.g. VK_LSHIFT + VK_RSHIFT).</summary>
+    public void SetAiTriggerKey(int vk1, int vk2 = 0)
+    {
+        _aiVk1 = vk1;
+        _aiVk2 = vk2;
+    }
+
+    /// <summary>Check if the AI trigger key is currently held. Can be called from outside the hook.</summary>
+    public bool IsAiKeyCurrentlyHeld() => IsAiKeyHeld();
+
+    private bool IsAiKeyHeld()
+    {
+        if (_aiKeyDown) return true;
+        // Grace period: count as held if released within last 500ms
+        if (_aiKeyReleasedTick > 0 && Environment.TickCount64 - _aiKeyReleasedTick < 500)
+            return true;
+        return false;
     }
 
     public void SetPttShortcut(ModifierKeys modifiers, Key key)
@@ -117,6 +145,7 @@ public class KeyboardHookService : IDisposable
         IsWinDown = false;
         _pttDown = false;
         _toggleFired = false;
+        _aiKeyDown = false;
     }
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
@@ -159,13 +188,24 @@ public class KeyboardHookService : IDisposable
             if (SuppressWinKey)
                 return CallNextHookEx(_hookId, nCode, wParam, lParam);
 
+            // ── AI trigger key tracking ──
+            if (vkCode == _aiVk1 || vkCode == _aiVk2)
+            {
+                if (isDown) _aiKeyDown = true;
+                else if (isUp)
+                {
+                    _aiKeyDown = false;
+                    _aiKeyReleasedTick = Environment.TickCount64;
+                }
+            }
+
             // ── Toggle shortcut detection ──
             if (vkCode == _toggleVKey && _toggleVKey != 0 && isDown && !_toggleFired)
             {
                 if (AreModifiersHeld(_toggleModifiers))
                 {
                     _toggleFired = true;
-                    TogglePressed?.Invoke();
+                    TogglePressed?.Invoke(IsAiKeyHeld());
                 }
             }
             // Reset toggle-fired when the main key is released
@@ -178,7 +218,7 @@ public class KeyboardHookService : IDisposable
                 if (isDown && !_pttDown && AreModifiersHeld(_pttModifiers))
                 {
                     _pttDown = true;
-                    PttKeyDown?.Invoke();
+                    PttKeyDown?.Invoke(IsAiKeyHeld());
                 }
                 else if (isUp && _pttDown)
                 {

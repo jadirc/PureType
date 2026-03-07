@@ -45,6 +45,7 @@ public partial class MainWindow : Window
     private string _interimText = "";
     private bool _isLoading = true;
     private readonly List<string> _sessionChunks = new();
+    private bool _aiPostProcessRequested;
     private string? _savedMicrophoneDevice;
     private string? _savedWhisperModel;
 
@@ -97,8 +98,10 @@ public partial class MainWindow : Window
             SelectComboByTag(WhisperModelCombo, _savedWhisperModel);
 
         var provItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-        WhisperModelPanel.Visibility = (string?)provItem?.Tag == "whisper"
-            ? Visibility.Visible : Visibility.Collapsed;
+        var isWhisper = (string?)provItem?.Tag == "whisper";
+        WhisperModelPanel.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
+        ApiKeyPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
+        KeywordsPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
 
         // Enable settings persistence only after all controls are populated
         _isLoading = false;
@@ -107,6 +110,7 @@ public partial class MainWindow : Window
 
         _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
         _keyboardHook.SetPttShortcut(_pttModifiers, _pttKey);
+        ApplyAiTriggerKey();
         _keyboardHook.TogglePressed += OnToggleHotkey;
         _keyboardHook.PttKeyDown += OnPttKeyDown;
         _keyboardHook.PttKeyUp += OnPttKeyUp;
@@ -183,19 +187,24 @@ public partial class MainWindow : Window
                         ? Visibility.Visible : Visibility.Collapsed;
                     break;
                 case "llm_provider":
-                    SelectComboByTag(LlmProviderCombo, value);
+                    // Legacy: migrate anthropic provider to base URL
+                    if (value == "anthropic")
+                        LlmBaseUrlCombo.Text = "https://api.anthropic.com/v1";
                     break;
                 case "llm_apikey":
                     LlmApiKeyBox.Password = value;
                     break;
                 case "llm_baseurl":
-                    LlmBaseUrlBox.Text = value;
+                    LlmBaseUrlCombo.Text = value;
                     break;
                 case "llm_model":
-                    LlmModelBox.Text = value;
+                    LlmModelCombo.Text = value;
                     break;
                 case "llm_prompt":
                     LlmPromptBox.Text = value.Replace("\\n", "\n");
+                    break;
+                case "ai_trigger_key":
+                    SelectComboByTag(AiTriggerKeyCombo, value);
                     break;
                 case "left":
                     if (double.TryParse(value, out var left)) { Left = left; hasPosition = true; }
@@ -295,11 +304,11 @@ public partial class MainWindow : Window
             $"vad={VadCheck.IsChecked == true}",
             $"start_minimized={StartMinimizedCheck.IsChecked == true}",
             $"llm_enabled={LlmEnabledCheck.IsChecked == true}",
-            $"llm_provider={(string)((LlmProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "openai")}",
             $"llm_apikey={LlmApiKeyBox.Password.Trim()}",
-            $"llm_baseurl={LlmBaseUrlBox.Text.Trim()}",
-            $"llm_model={LlmModelBox.Text.Trim()}",
+            $"llm_baseurl={LlmBaseUrlCombo.Text.Trim()}",
+            $"llm_model={LlmModelCombo.Text.Trim()}",
             $"llm_prompt={LlmPromptBox.Text.Trim().Replace("\n", "\\n")}",
+            $"ai_trigger_key={(string)((AiTriggerKeyCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "shift")}",
             $"left={Left}",
             $"top={Top}",
             $"width={Width}",
@@ -349,6 +358,22 @@ public partial class MainWindow : Window
     {
         _logWindow.Show();
         _logWindow.Activate();
+    }
+
+    private bool _transcriptCollapsed;
+
+    private void TranscriptHeader_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        _transcriptCollapsed = !_transcriptCollapsed;
+        TranscriptScroll.Visibility = _transcriptCollapsed ? Visibility.Collapsed : Visibility.Visible;
+        TranscriptArrow.Text = _transcriptCollapsed ? "▸" : "▾";
+
+        // When collapsed, transcript row becomes Auto (just header); settings get all space
+        var grid = (System.Windows.Controls.Grid)TranscriptBorder.Parent;
+        var rowDef = grid.RowDefinitions[4]; // Row 4 = Transcript
+        rowDef.Height = _transcriptCollapsed
+            ? GridLength.Auto
+            : new GridLength(3, GridUnitType.Star);
     }
 
     private void ApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
@@ -575,12 +600,13 @@ public partial class MainWindow : Window
         SaveSettings();
     }
 
-    private void LlmProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void LlmBaseUrlCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (_isLoading || LlmProviderCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
-        var isOpenAi = (string)item.Tag == "openai";
-        LlmBaseUrlPanel.Visibility = isOpenAi ? Visibility.Visible : Visibility.Collapsed;
+        if (_isLoading) return;
         SaveSettings();
+        // Auto-fetch models when endpoint changes (only if API key is set)
+        if (!string.IsNullOrWhiteSpace(LlmApiKeyBox.Password))
+            Dispatcher.BeginInvoke(() => FetchModelsButton_Click(sender, new RoutedEventArgs()));
     }
 
     private void LlmApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
@@ -591,6 +617,98 @@ public partial class MainWindow : Window
     private void LlmSettingChanged(object sender, RoutedEventArgs e)
     {
         if (!_isLoading) SaveSettings();
+    }
+
+    private void AiTriggerKeyCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isLoading) return;
+        ApplyAiTriggerKey();
+        SaveSettings();
+    }
+
+    private void ApplyAiTriggerKey()
+    {
+        var item = AiTriggerKeyCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var tag = (string)(item?.Tag ?? "shift");
+        var (vk1, vk2) = tag switch
+        {
+            "shift" => (0xA0, 0xA1), // VK_LSHIFT, VK_RSHIFT
+            "ctrl"  => (0xA2, 0xA3), // VK_LCONTROL, VK_RCONTROL
+            "alt"   => (0xA4, 0xA5), // VK_LMENU, VK_RMENU
+            "caps"  => (0x14, 0),    // VK_CAPITAL
+            _       => (0xA0, 0xA1)
+        };
+        _keyboardHook.SetAiTriggerKey(vk1, vk2);
+    }
+
+    private async void FetchModelsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var apiKey = LlmApiKeyBox.Password.Trim();
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            Log.Warning("Cannot fetch models: no API key");
+            return;
+        }
+
+        var baseUrl = LlmBaseUrlCombo.Text.Trim();
+        var previousModel = LlmModelCombo.Text;
+
+        try
+        {
+            var models = await FetchModelsAsync(baseUrl, apiKey);
+            LlmModelCombo.Items.Clear();
+            foreach (var model in models)
+                LlmModelCombo.Items.Add(model);
+
+            // Restore previous selection or pick first
+            LlmModelCombo.Text = models.Contains(previousModel) ? previousModel
+                : models.Count > 0 ? models[0] : previousModel;
+
+            Log.Information("Fetched {Count} models from {BaseUrl}", models.Count, baseUrl);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to fetch models");
+            MessageBox.Show($"Failed to fetch models:\n{ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private static async Task<List<string>> FetchModelsAsync(string baseUrl, string apiKey)
+    {
+        using var http = new System.Net.Http.HttpClient();
+        var trimmedBase = string.IsNullOrWhiteSpace(baseUrl)
+            ? "https://api.openai.com/v1" : baseUrl.TrimEnd('/');
+        var url = $"{trimmedBase}/models";
+
+        if (trimmedBase.Contains("anthropic.com", StringComparison.OrdinalIgnoreCase))
+        {
+            http.DefaultRequestHeaders.Add("x-api-key", apiKey);
+            http.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+        }
+        else
+        {
+            http.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+        }
+
+        var response = await http.GetAsync(url);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var models = new List<string>();
+
+        if (doc.RootElement.TryGetProperty("data", out var data))
+        {
+            foreach (var item in data.EnumerateArray())
+            {
+                if (item.TryGetProperty("id", out var id))
+                    models.Add(id.GetString()!);
+            }
+        }
+
+        models.Sort(StringComparer.OrdinalIgnoreCase);
+        return models;
     }
 
     private static void SetAutostart(bool enable)
@@ -892,18 +1010,22 @@ public partial class MainWindow : Window
 
     // ── Toggle Mode ───────────────────────────────────────────────────────
 
-    private void OnToggleHotkey()
+    private void OnToggleHotkey(bool aiKeyHeld)
     {
         Dispatcher.Invoke(() =>
         {
             if (_recording)
             {
                 if (_recordingSource != RecordingSource.Toggle) return;
+                // Also check AI key at stop time
+                if (!_aiPostProcessRequested && LlmEnabledCheck.IsChecked == true)
+                    _aiPostProcessRequested = aiKeyHeld;
                 _recordingSource = RecordingSource.None;
                 StopRecording();
             }
             else
             {
+                _aiPostProcessRequested = aiKeyHeld && LlmEnabledCheck.IsChecked == true;
                 _recordingSource = RecordingSource.Toggle;
                 StartRecording();
             }
@@ -912,11 +1034,12 @@ public partial class MainWindow : Window
 
     // ── Push-to-Talk ──────────────────────────────────────────────────────
 
-    private void OnPttKeyDown()
+    private void OnPttKeyDown(bool aiKeyHeld)
     {
         if (!_connected || _recording) return;
         Dispatcher.Invoke(() =>
         {
+            _aiPostProcessRequested = aiKeyHeld && LlmEnabledCheck.IsChecked == true;
             _recordingSource = RecordingSource.Ptt;
             StartRecording();
         });
@@ -927,6 +1050,9 @@ public partial class MainWindow : Window
         if (_recordingSource != RecordingSource.Ptt) return;
         Dispatcher.Invoke(() =>
         {
+            // Also check AI key at stop time (user may press it after PTT started)
+            if (!_aiPostProcessRequested && LlmEnabledCheck.IsChecked == true)
+                _aiPostProcessRequested = _keyboardHook.IsAiKeyCurrentlyHeld();
             _recordingSource = RecordingSource.None;
             StopRecording();
         });
@@ -941,8 +1067,10 @@ public partial class MainWindow : Window
         _recording = true;
         SoundFeedback.PlayStart();
         _audio.Start();
-        SetStatus("● Recording", Red);
-        ToastWindow.ShowToast("Recording started", true);
+        var aiLabel = _aiPostProcessRequested ? " + AI" : "";
+        SetStatus($"● Recording{aiLabel}", Red);
+        ToastWindow.ShowToast(_aiPostProcessRequested ? "Recording + AI" : "Recording",
+            Color.FromRgb(0xF3, 0x8B, 0xA8), autoClose: false);
 
         // Add separator between recording sessions in transcript
         var current = TranscriptText.Text;
@@ -973,11 +1101,16 @@ public partial class MainWindow : Window
         if (_provider is not null)
             await _provider.SendFinalizeAsync();
 
-        SoundFeedback.PlayStop();
-        ToastWindow.ShowToast("Recording stopped", false);
+        // Yield to Dispatcher so pending TranscriptReceived callbacks populate _sessionChunks
+        await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
 
-        if (LlmEnabledCheck.IsChecked == true && _sessionChunks.Count > 0)
+        SoundFeedback.PlayStop();
+        if (!_aiPostProcessRequested)
+            ToastWindow.ShowToast("Recording stopped", false);
+
+        if (_aiPostProcessRequested && _sessionChunks.Count > 0)
         {
+            _aiPostProcessRequested = false;
             var fullText = string.Join("", _sessionChunks);
             _ = ProcessWithLlmAsync(fullText);
         }
@@ -1009,15 +1142,20 @@ public partial class MainWindow : Window
                 InterimText.Text = "";
                 var processed = _replacements.Apply(text);
                 AppendTranscript(processed);
-                try
-                {
-                    await KeyboardInjector.TypeTextAsync(processed);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Text injection error");
-                }
                 _sessionChunks.Add(processed);
+
+                // When AI post-processing is pending, don't type yet — LLM will type the result
+                if (!_aiPostProcessRequested)
+                {
+                    try
+                    {
+                        await KeyboardInjector.TypeTextAsync(processed);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Text injection error");
+                    }
+                }
             }
             else
             {
@@ -1192,10 +1330,9 @@ public partial class MainWindow : Window
     {
         try
         {
-            var providerItem = LlmProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-            var providerTag = (string)(providerItem?.Tag ?? "openai");
+            var baseUrl = LlmBaseUrlCombo.Text.Trim();
             var apiKey = LlmApiKeyBox.Password.Trim();
-            var model = LlmModelBox.Text.Trim();
+            var model = LlmModelCombo.Text.Trim();
             var prompt = LlmPromptBox.Text.Trim();
 
             if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(model))
@@ -1204,12 +1341,14 @@ public partial class MainWindow : Window
                 return;
             }
 
-            ILlmClient client = providerTag == "anthropic"
+            bool isAnthropic = baseUrl.Contains("anthropic.com", StringComparison.OrdinalIgnoreCase);
+            ILlmClient client = isAnthropic
                 ? new AnthropicLlmClient(apiKey, model)
-                : new OpenAiLlmClient(apiKey, LlmBaseUrlBox.Text.Trim(), model);
+                : new OpenAiLlmClient(apiKey, baseUrl, model);
 
-            Log.Information("Sending {Length} chars to LLM ({Provider}/{Model})", text.Length, providerTag, model);
-            ToastWindow.ShowToast("Processing with AI …", true);
+            Log.Information("Sending {Length} chars to LLM ({BaseUrl}/{Model})", text.Length, baseUrl, model);
+            ToastWindow.ShowToast("Waiting for AI response …",
+                Color.FromRgb(0xF9, 0xE2, 0xAF), autoClose: false);
 
             var result = await client.ProcessAsync(prompt, text);
             var processed = _replacements.Apply(result);
@@ -1217,8 +1356,16 @@ public partial class MainWindow : Window
             Log.Information("LLM result: {Length} chars", processed.Length);
             ToastWindow.ShowToast("AI processing complete", false);
 
-            System.Windows.Clipboard.SetText(processed);
-            Log.Information("LLM result copied to clipboard");
+            try
+            {
+                await KeyboardInjector.TypeTextAsync(processed);
+                Log.Information("LLM result typed at cursor");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "LLM result typing failed, copying to clipboard");
+                System.Windows.Clipboard.SetText(processed);
+            }
         }
         catch (Exception ex)
         {

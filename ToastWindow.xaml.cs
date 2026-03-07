@@ -12,13 +12,14 @@ public partial class ToastWindow : Window
 
     private static readonly Color Red = Color.FromRgb(0xF3, 0x8B, 0xA8);
     private static readonly Color Green = Color.FromRgb(0xA6, 0xE3, 0xA1);
+    private static readonly Color Yellow = Color.FromRgb(0xF9, 0xE2, 0xAF);
 
-    private ToastWindow(string message, bool isRecording)
+    private ToastWindow(string message, Color dotColor)
     {
         InitializeComponent();
 
         MessageText.Text = message;
-        Dot.Fill = new SolidColorBrush(isRecording ? Red : Green);
+        Dot.Fill = new SolidColorBrush(dotColor);
 
         var workArea = SystemParameters.WorkArea;
         Loaded += (_, _) =>
@@ -43,12 +44,27 @@ public partial class ToastWindow : Window
 
     public static void ShowToast(string message, bool isRecording)
     {
+        ShowToast(message, isRecording ? Red : Green, autoClose: true);
+    }
+
+    public static void ShowToast(string message, Color dotColor, bool autoClose)
+    {
         Application.Current.Dispatcher.Invoke(() =>
         {
             _current?.Close();
-            _current = new ToastWindow(message, isRecording);
+            _current = new ToastWindow(message, dotColor);
             _current.Show();
-            _current._closeTimer.Start();
+            if (autoClose)
+                _current._closeTimer.Start();
+        });
+    }
+
+    public static void DismissToast()
+    {
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            _current?.Close();
+            _current = null;
         });
     }
 }
