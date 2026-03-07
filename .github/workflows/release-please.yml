@@ -35,7 +35,7 @@ jobs:
 
       - name: Publish framework-dependent
         run: >
-          dotnet publish
+          dotnet publish src/VoiceDictation/VoiceDictation.csproj
           -c Release
           -r win-x64
           --self-contained false
@@ -46,7 +46,7 @@ jobs:
 
       - name: Publish self-contained portable
         run: >
-          dotnet publish
+          dotnet publish src/VoiceDictation/VoiceDictation.csproj
           -c Release
           -r win-x64
           --self-contained true
