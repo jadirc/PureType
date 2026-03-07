@@ -100,6 +100,7 @@ public class ReplacementService : IDisposable
         var dir = Path.GetDirectoryName(_filePath);
         var name = Path.GetFileName(_filePath);
         if (dir == null) return;
+        Directory.CreateDirectory(dir);
 
         _watcher = new FileSystemWatcher(dir, name)
         {
