@@ -101,6 +101,10 @@
                                 Background="Transparent" Foreground="#6C7086"
                                 FontSize="11" BorderThickness="0"
                                 Padding="6,2" Cursor="Hand"/>
+                        <Button Content="History" Click="HistoryButton_Click"
+                                Background="Transparent" Foreground="#6C7086"
+                                FontSize="11" BorderThickness="0"
+                                Padding="6,2" Cursor="Hand"/>
                         <Button Content="Log" Click="LogButton_Click"
                                 Background="Transparent" Foreground="#6C7086"
                                 FontSize="11" BorderThickness="0"

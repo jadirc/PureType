@@ -16,6 +16,7 @@ internal class TrayIconManager : IDisposable
     public event Action? MuteToggleRequested;
     public event Action? SettingsRequested;
     public event Action? ExportRequested;
+    public event Action? HistoryRequested;
     public event Action? AboutRequested;
     public event Action? ShowRequested;
     public event Action? ExitRequested;
@@ -68,6 +69,7 @@ internal class TrayIconManager : IDisposable
 
         menu.Items.Add("Settings", null, (_, _) => SettingsRequested?.Invoke());
         menu.Items.Add("Export Transcript", null, (_, _) => ExportRequested?.Invoke());
+        menu.Items.Add("Transcript History", null, (_, _) => HistoryRequested?.Invoke());
         menu.Items.Add("About", null, (_, _) => AboutRequested?.Invoke());
         menu.Items.Add("Open", null, (_, _) => ShowRequested?.Invoke());
         menu.Items.Add("Exit", null, (_, _) => ExitRequested?.Invoke());

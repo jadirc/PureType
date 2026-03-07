@@ -76,6 +76,7 @@ public partial class MainWindow : Window
         _tray.MuteToggleRequested += () => Dispatcher.Invoke(ToggleMute);
         _tray.SettingsRequested += () => Dispatcher.Invoke(() => SettingsButton_Click(this, new RoutedEventArgs()));
         _tray.ExportRequested += () => Dispatcher.Invoke(ExportTranscript);
+        _tray.HistoryRequested += () => Dispatcher.Invoke(ShowTranscriptHistory);
         _tray.AboutRequested += () => Dispatcher.Invoke(ShowAbout);
         _tray.ShowRequested += () => Dispatcher.Invoke(ShowFromTray);
         _tray.ExitRequested += () =>
@@ -240,6 +241,7 @@ public partial class MainWindow : Window
     // ── UI Events ─────────────────────────────────────────────────────────
 
     private void ExportButton_Click(object sender, RoutedEventArgs e) => ExportTranscript();
+    private void HistoryButton_Click(object sender, RoutedEventArgs e) => ShowTranscriptHistory();
 
     private void ExportTranscript()
     {
@@ -268,6 +270,12 @@ public partial class MainWindow : Window
     {
         _logWindow.Show();
         _logWindow.Activate();
+    }
+
+    private void ShowTranscriptHistory()
+    {
+        var history = new TranscriptHistoryWindow { Owner = this };
+        history.Show();
     }
 
     private void ShowAbout()
@@ -388,6 +396,7 @@ public partial class MainWindow : Window
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         SaveSettings();
+        TranscriptHistoryWindow.SaveSession(_controller.TranscriptLog);
         Log.Information("Application shutting down");
         _tray.Dispose();
         _ = DisconnectAsync();
