@@ -1,10 +1,48 @@
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using PureType.Services;
 
 namespace PureType.Helpers;
 
 internal static class UiHelper
 {
+    /// <summary>
+    /// Populates a ComboBox with available Whisper models, showing a checkmark for downloaded ones.
+    /// Selects <paramref name="preferredModel"/> if found, otherwise the first downloaded model, otherwise "base".
+    /// </summary>
+    internal static void PopulateWhisperModelCombo(System.Windows.Controls.ComboBox combo, string? preferredModel = null)
+    {
+        combo.Items.Clear();
+        foreach (var (name, displayName, _) in WhisperModelManager.AvailableModels)
+        {
+            var isDownloaded = WhisperModelManager.IsModelDownloaded(name);
+            var suffix = isDownloaded ? " \u2713" : "";
+            var item = new System.Windows.Controls.ComboBoxItem
+            {
+                Content = displayName + suffix,
+                Tag = name,
+                FontWeight = isDownloaded ? FontWeights.SemiBold : FontWeights.Normal
+            };
+            combo.Items.Add(item);
+        }
+
+        if (preferredModel != null && SelectComboByTag(combo, preferredModel))
+            return;
+
+        foreach (System.Windows.Controls.ComboBoxItem item in combo.Items)
+        {
+            if (WhisperModelManager.IsModelDownloaded((string)item.Tag))
+            {
+                combo.SelectedItem = item;
+                return;
+            }
+        }
+
+        if (!SelectComboByTag(combo, "base") && combo.Items.Count > 0)
+            combo.SelectedIndex = 0;
+    }
+
     internal static bool SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag)
     {
         foreach (System.Windows.Controls.ComboBoxItem item in combo.Items)

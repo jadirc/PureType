@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using PureType.Helpers;
 using PureType.Services;
 using Serilog;
 
@@ -19,48 +20,8 @@ public partial class WelcomeWindow : Window
     public WelcomeWindow()
     {
         InitializeComponent();
-        PopulateWhisperModels();
+        UiHelper.PopulateWhisperModelCombo(WhisperModelCombo);
         UpdateStartButton();
-    }
-
-    private void PopulateWhisperModels()
-    {
-        WhisperModelCombo.Items.Clear();
-        foreach (var (name, displayName, _) in WhisperModelManager.AvailableModels)
-        {
-            var isDownloaded = WhisperModelManager.IsModelDownloaded(name);
-            var suffix = isDownloaded ? " \u2713" : "";
-            var item = new ComboBoxItem
-            {
-                Content = displayName + suffix,
-                Tag = name,
-                FontWeight = isDownloaded ? FontWeights.SemiBold : FontWeights.Normal
-            };
-            WhisperModelCombo.Items.Add(item);
-        }
-
-        // Select first downloaded model, or default to "base"
-        foreach (ComboBoxItem item in WhisperModelCombo.Items)
-        {
-            if (WhisperModelManager.IsModelDownloaded((string)item.Tag))
-            {
-                WhisperModelCombo.SelectedItem = item;
-                return;
-            }
-        }
-
-        // No model downloaded — select "base" as default
-        foreach (ComboBoxItem item in WhisperModelCombo.Items)
-        {
-            if ((string)item.Tag == "base")
-            {
-                WhisperModelCombo.SelectedItem = item;
-                return;
-            }
-        }
-
-        if (WhisperModelCombo.Items.Count > 0)
-            WhisperModelCombo.SelectedIndex = 0;
     }
 
     private void WhisperCard_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -106,7 +67,7 @@ public partial class WelcomeWindow : Window
         try
         {
             await WhisperModelManager.DownloadModelAsync(modelName,
-                progress => Dispatcher.Invoke(() =>
+                progress => Dispatcher.BeginInvoke(() =>
                 {
                     DownloadProgress.Value = progress * 100;
                     DownloadStatus.Text = $"Downloading\u2026 {progress:P0}";
@@ -114,17 +75,7 @@ public partial class WelcomeWindow : Window
                 _downloadCts.Token);
 
             DownloadStatus.Text = "Download complete.";
-            PopulateWhisperModels();
-
-            // Re-select the just-downloaded model
-            foreach (ComboBoxItem ci in WhisperModelCombo.Items)
-            {
-                if ((string)ci.Tag == modelName)
-                {
-                    WhisperModelCombo.SelectedItem = ci;
-                    break;
-                }
-            }
+            UiHelper.PopulateWhisperModelCombo(WhisperModelCombo, modelName);
         }
         catch (OperationCanceledException)
         {
@@ -142,6 +93,7 @@ public partial class WelcomeWindow : Window
             DownloadModelButton.IsEnabled = true;
             WhisperModelCombo.IsEnabled = true;
             DownloadProgress.Visibility = Visibility.Collapsed;
+            _downloadCts?.Dispose();
             _downloadCts = null;
             UpdateStartButton();
         }
@@ -179,6 +131,7 @@ public partial class WelcomeWindow : Window
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         _downloadCts?.Cancel();
+        _downloadCts?.Dispose();
         base.OnClosing(e);
     }
 }
