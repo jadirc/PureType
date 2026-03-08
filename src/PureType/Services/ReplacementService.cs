@@ -73,7 +73,7 @@ public class ReplacementService : IDisposable
 
         foreach (var (trigger, replacement) in _rules)
         {
-            text = Regex.Replace(text, Regex.Escape(trigger), replacement, RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\b" + Regex.Escape(trigger) + @"\b[.,;:!?]?", replacement, RegexOptions.IgnoreCase);
         }
 
         return text;

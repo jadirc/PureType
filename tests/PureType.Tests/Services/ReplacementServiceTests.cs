@@ -75,4 +75,25 @@ public class ReplacementServiceTests : IDisposable
         var svc = CreateService("aa -> bb", "bb -> cc");
         Assert.Equal("cc", svc.Apply("aa"));
     }
+
+    [Fact]
+    public void Apply_matches_keyword_followed_by_period()
+    {
+        var svc = CreateService("Enter -> \\n");
+        Assert.Equal("text \n", svc.Apply("text Enter."));
+    }
+
+    [Fact]
+    public void Apply_matches_keyword_followed_by_comma()
+    {
+        var svc = CreateService("Komma -> ,");
+        Assert.Equal("text , more", svc.Apply("text Komma, more"));
+    }
+
+    [Fact]
+    public void Apply_does_not_match_partial_words()
+    {
+        var svc = CreateService("Punkt -> .");
+        Assert.Equal("Kontrapunkt", svc.Apply("Kontrapunkt"));
+    }
 }
