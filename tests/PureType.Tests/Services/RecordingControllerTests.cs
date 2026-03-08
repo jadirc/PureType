@@ -86,4 +86,31 @@ public class RecordingControllerTests
         controller.StopRecording();
         Assert.False(stateChanged);
     }
+
+    // ── Auto-capitalize tests ──────────────────────────────────────────
+
+    [Theory]
+    [InlineData("hello world.", true, "Hello world.", true)]
+    [InlineData("hello world?", true, "Hello world?", true)]
+    [InlineData("hello world!", true, "Hello world!", true)]
+    [InlineData("hello world", true, "Hello world", false)]
+    [InlineData("hello world.", false, "hello world.", true)]
+    [InlineData(" hello", true, " Hello", false)]
+    [InlineData(".", true, ".", true)]
+    [InlineData("", true, "", true)]
+    [InlineData("123 test", true, "123 Test", false)]
+    public void ApplyAutoCapitalize_handles_cases(
+        string input, bool capitalizeNext, string expectedText, bool expectedNextFlag)
+    {
+        var (result, nextFlag) = RecordingController.ApplyAutoCapitalize(input, capitalizeNext);
+        Assert.Equal(expectedText, result);
+        Assert.Equal(expectedNextFlag, nextFlag);
+    }
+
+    [Fact]
+    public void ApplyAutoCapitalize_newline_triggers_next_capitalize()
+    {
+        var (_, nextFlag) = RecordingController.ApplyAutoCapitalize("hello\n", false);
+        Assert.True(nextFlag);
+    }
 }

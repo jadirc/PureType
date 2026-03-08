@@ -155,6 +155,38 @@ public class RecordingController
         return 0;
     }
 
+    // ── Auto-capitalize ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Capitalizes the first letter if <paramref name="capitalizeNext"/> is true.
+    /// Returns the transformed text and whether the *next* chunk should be capitalized
+    /// (true if text ends with sentence-ending punctuation).
+    /// </summary>
+    internal static (string text, bool capitalizeNext) ApplyAutoCapitalize(string text, bool capitalizeNext)
+    {
+        if (string.IsNullOrEmpty(text))
+            return (text, capitalizeNext);
+
+        if (capitalizeNext)
+        {
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (char.IsLetter(text[i]))
+                {
+                    text = string.Concat(text.AsSpan(0, i), text[i].ToString().ToUpperInvariant(), text.AsSpan(i + 1));
+                    break;
+                }
+            }
+        }
+
+        var endsWithNewline = text.Length > 0 && text[^1] == '\n';
+        var trimmed = text.TrimEnd();
+        var lastChar = trimmed.Length > 0 ? trimmed[^1] : '\0';
+        var nextCapitalize = endsWithNewline || lastChar is '.' or '?' or '!';
+
+        return (text, nextCapitalize);
+    }
+
     // ── Start / Stop ───────────────────────────────────────────────────
 
     private void StartRecording()
