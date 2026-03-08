@@ -64,12 +64,14 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 
 ## Download
 
-Grab the latest release from the [Releases page](https://github.com/jadirc/PureType/releases):
+Grab the latest release from the [Releases page](https://github.com/jadirc/PureType/releases). Two variants are available:
 
-| Asset | Description |
-|---|---|
-| `PureType-vX.Y.Z-win-x64.zip` | Requires [.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) installed |
-| `PureType-vX.Y.Z-win-x64-portable.zip` | Standalone, no runtime needed (~70 MB) |
+| Asset | Size | .NET Runtime required? | Best for |
+|---|---|---|---|
+| `PureType-vX.Y.Z-win-x64.zip` | ~5 MB | Yes — install the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) first | Developers who already have .NET installed |
+| `PureType-vX.Y.Z-win-x64-portable.zip` | ~70 MB | No — everything is included | Most users — just extract and run |
+
+> **Not sure which to pick?** Download the **portable** version. It works out of the box without installing anything. Windows does **not** ship with .NET 8 pre-installed, so the smaller variant will not launch unless you install the runtime separately.
 
 ## Getting Started
 
