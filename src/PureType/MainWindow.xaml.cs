@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     private static readonly LoggingLevelSwitch LevelSwitch = new(LogEventLevel.Information);
     private readonly TrayIconManager _tray;
     private readonly RecordingController _controller;
+    private StatusOverlayWindow? _overlay;
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
     private readonly KeyboardHookService _keyboardHook = new();
@@ -124,7 +125,11 @@ public partial class MainWindow : Window
         KeyboardInjector.InputDelayMs = _settings.Audio.InputDelayMs;
 
         _controller = new RecordingController(_audio, _replacements);
-        _controller.StatusChanged += (text, color) => Dispatcher.Invoke(() => SetStatus(text, new SolidColorBrush(color)));
+        _controller.StatusChanged += (text, color) => Dispatcher.Invoke(() =>
+        {
+            SetStatus(text, new SolidColorBrush(color));
+            _overlay?.UpdateState(_controller.IsRecording, _muted, text, color);
+        });
         _controller.TranscriptUpdated += text => Dispatcher.Invoke(() =>
         {
             if (text == "\0separator")
@@ -145,6 +150,7 @@ public partial class MainWindow : Window
         {
             _tray.Update(_connected, _controller.IsRecording, _muted);
             _keyboardHook.SetPromptKeyDetection(_controller.IsRecording);
+            UpdateOverlay();
         });
         _controller.AudioLevelChanged += level => Dispatcher.BeginInvoke(() =>
         {
@@ -191,6 +197,11 @@ public partial class MainWindow : Window
         _keyboardHook.PromptKeyPressed += vkCode => Dispatcher.Invoke(() => _controller.HandlePromptKeyPressed(vkCode));
         _keyboardHook.PttKeyUp += () => Dispatcher.Invoke(() => _controller.HandlePttUp());
         _keyboardHook.MutePressed += () => Dispatcher.Invoke(ToggleMute);
+
+        if (_settings.Window.ShowOverlay)
+        {
+            _overlay = new StatusOverlayWindow();
+        }
 
         // Auto-connect on startup
         var providerTag = (_settings.Transcription.Provider);
@@ -293,15 +304,12 @@ public partial class MainWindow : Window
                 Microphone = micItem?.Content?.ToString() ?? "",
                 InputMode = (string)((InputModeComboMain.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Type"),
             },
-            Window = new WindowSettings
+            Window = _settings.Window with
             {
                 Left = Left,
                 Top = Top,
                 Width = Width,
                 Height = Height,
-                StartMinimized = _settings.Window.StartMinimized,
-                Theme = _settings.Window.Theme,
-                LogLevel = _settings.Window.LogLevel,
             },
         };
 
@@ -489,6 +497,7 @@ public partial class MainWindow : Window
         _keyboardHook.Dispose();
         _audio.Dispose();
         _replacements.Dispose();
+        _overlay?.Close();
         Application.Current.Shutdown();
         Log.CloseAndFlush();
     }
@@ -564,6 +573,8 @@ public partial class MainWindow : Window
             SaveSettings();
             Log.Information("{Provider} connected (Language: {Language})", label, language);
             _tray.Update(_connected, _controller.IsRecording, _muted);
+            _overlay?.Show();
+            _overlay?.UpdateState(false, false, $"Connected \u2013 {label}", Green.Color);
         }
         catch (Exception ex)
         {
@@ -597,6 +608,7 @@ public partial class MainWindow : Window
         ConnectButton.Background = Blue;
         Log.Information("Provider disconnected");
         _tray.Update(_connected, _controller.IsRecording, _muted);
+        _overlay?.Hide();
     }
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
@@ -644,6 +656,7 @@ public partial class MainWindow : Window
         {
             SetStatus($"Reconnecting ({attempt}/{maxAttempts})\u2026", Yellow);
             _tray.Update(_connected, _controller.IsRecording, _muted);
+            _overlay?.UpdateState(false, false, $"Reconnecting ({attempt}/{maxAttempts})\u2026", Yellow.Color);
             if (attempt == 1)
                 ToastWindow.ShowToast("Connection lost \u2013 reconnecting\u2026",
                     Yellow.Color, autoClose: false);
@@ -654,6 +667,7 @@ public partial class MainWindow : Window
         {
             SetStatus("Connected \u2013 ready", Green);
             _tray.Update(_connected, _controller.IsRecording, _muted);
+            UpdateOverlay();
             ToastWindow.ShowToast("Reconnected", Green.Color, autoClose: true);
             SoundFeedback.PlayReconnect();
         });
@@ -674,6 +688,7 @@ public partial class MainWindow : Window
 
         Log.Information("Mute {State}", _muted ? "enabled" : "disabled");
         _tray.Update(_connected, _controller.IsRecording, _muted);
+        UpdateOverlay();
     }
 
     private void ShowFromTray()
@@ -757,6 +772,24 @@ public partial class MainWindow : Window
     }
 
     // ── Helper Functions ──────────────────────────────────────────────────
+
+    private void UpdateOverlay()
+    {
+        if (_overlay is null) return;
+
+        if (_muted)
+        {
+            _overlay.UpdateState(false, true, "Muted", Yellow.Color);
+        }
+        else if (_controller.IsRecording)
+        {
+            _overlay.UpdateState(true, false, "Recording", Red.Color);
+        }
+        else if (_connected)
+        {
+            _overlay.UpdateState(false, false, "Connected \u2013 ready", Green.Color);
+        }
+    }
 
     private void SetStatus(string text, SolidColorBrush color)
     {
