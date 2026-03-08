@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.0](https://github.com/jadirc/PureType/compare/v1.0.0...v1.1.0) (2026-03-08)
+
+
+### Features
+
+* emit VK_RETURN for newline characters in keyboard injection ([249ef5c](https://github.com/jadirc/PureType/commit/249ef5cf826b23d3b359dcc6aeb5655862354150))
+* replace single AI trigger key with named prompt library ([1fc4a98](https://github.com/jadirc/PureType/commit/1fc4a981b768b40b4bfb8f59b1df8f684c15708f))
+* smart space handling for replacement keywords ([ab7476d](https://github.com/jadirc/PureType/commit/ab7476d68777abc07256914964fe37e43134273a))
+* switch replacement rules from custom txt to JSON format ([fdc2e26](https://github.com/jadirc/PureType/commit/fdc2e26e7408f7c927445f9454dc2b5c258bf004))
+* use word-boundary matching for text replacements ([b2358da](https://github.com/jadirc/PureType/commit/b2358dab20f4d3eb2485d3ec70e98518d7916004))
+
+
+### Bug Fixes
+
+* simplify README download section to prevent staleness ([9292a2b](https://github.com/jadirc/PureType/commit/9292a2ba6600a83a3ae3e09405b944e3d4a36484))
+
 ## 1.0.0 (2026-03-08)
 
 
