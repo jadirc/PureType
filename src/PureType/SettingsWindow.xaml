@@ -33,6 +33,12 @@
                           Foreground="{DynamicResource TextBrush}" FontSize="12"
                           Margin="0,4,0,0"/>
 
+                <CheckBox x:Name="ShowOverlayCheck"
+                          Content="  Show floating status overlay"
+                          ToolTip="Display a small always-on-top indicator showing the current recording state. Useful for multi-window workflows."
+                          Foreground="{DynamicResource TextBrush}" FontSize="12"
+                          Margin="0,4,0,0"/>
+
                 <!-- Theme -->
                 <StackPanel Margin="0,8,0,0"
                             ToolTip="Choose a color theme. Auto follows your Windows dark/light setting and switches automatically.">

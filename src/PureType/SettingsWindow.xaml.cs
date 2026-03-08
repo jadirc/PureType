@@ -86,6 +86,7 @@ public partial class SettingsWindow : Window
         // General
         AutostartCheck.IsChecked = IsAutostartEnabled();
         StartMinimizedCheck.IsChecked = settings.Window.StartMinimized;
+        ShowOverlayCheck.IsChecked = settings.Window.ShowOverlay;
         UiHelper.SelectComboByTag(ThemeCombo, settings.Window.Theme);
         UiHelper.SelectComboByTag(LogLevelCombo, settings.Window.LogLevel);
     }
@@ -153,6 +154,7 @@ public partial class SettingsWindow : Window
             Window = new WindowSettings
             {
                 StartMinimized = StartMinimizedCheck.IsChecked == true,
+                ShowOverlay = ShowOverlayCheck.IsChecked == true,
                 SettingsWidth = Width,
                 SettingsHeight = Height,
                 Theme = (ThemeCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string ?? "Dark",
