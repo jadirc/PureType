@@ -58,10 +58,7 @@ public partial class ReplacementsWindow : Window
     {
         var path = _service.FilePath;
         if (!File.Exists(path))
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, "# Replacement rules: trigger -> replacement\n");
-        }
+            _service.Reload(); // seeds defaults
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
     }
 

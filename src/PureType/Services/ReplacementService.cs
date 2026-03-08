@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Serilog;
 
@@ -6,6 +7,28 @@ namespace PureType.Services;
 
 public class ReplacementService : IDisposable
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+    };
+
+    private static readonly Dictionary<string, string> DefaultRules = new()
+    {
+        ["period"] = ".",
+        ["comma"] = ",",
+        ["question mark"] = "?",
+        ["exclamation mark"] = "!",
+        ["colon"] = ":",
+        ["semicolon"] = ";",
+        ["new line"] = "\n",
+        ["new paragraph"] = "\n\n",
+        ["dash"] = "—",
+        ["open paren"] = "(",
+        ["close paren"] = ")",
+    };
+
     private readonly string _filePath;
     private FileSystemWatcher? _watcher;
     private List<(string trigger, string replacement)> _rules = new();
@@ -23,47 +46,31 @@ public class ReplacementService : IDisposable
     public void Reload()
     {
         if (!File.Exists(_filePath))
+            SeedDefaults();
+
+        try
         {
+            var json = File.ReadAllText(_filePath);
+            var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json, JsonOptions);
+
+            if (dict == null)
+            {
+                _rules = new List<(string, string)>();
+                return;
+            }
+
+            _rules = dict
+                .Where(kv => !string.IsNullOrEmpty(kv.Key))
+                .Select(kv => (kv.Key, kv.Value))
+                .ToList();
+
+            Log.Information("Loaded {Count} replacement rules from {Path}", _rules.Count, _filePath);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to parse replacements from {Path}", _filePath);
             _rules = new List<(string, string)>();
-            return;
         }
-
-        var rules = new List<(string, string)>();
-        foreach (var line in File.ReadAllLines(_filePath))
-        {
-            var trimmed = line.Trim();
-            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#'))
-                continue;
-
-            string? trigger = null, replacement = null;
-
-            var idx = line.IndexOf(" -> ", StringComparison.Ordinal);
-            if (idx >= 0)
-            {
-                trigger = line[..idx].Trim();
-                replacement = line[(idx + 4)..].Trim();
-            }
-            else
-            {
-                idx = line.IndexOf(" → ", StringComparison.Ordinal);
-                if (idx >= 0)
-                {
-                    trigger = line[..idx].Trim();
-                    replacement = line[(idx + 3)..].Trim();
-                }
-            }
-
-            if (trigger != null && replacement != null && trigger.Length > 0)
-            {
-                replacement = replacement
-                    .Replace("\\n", "\n")
-                    .Replace("\\t", "\t");
-                rules.Add((trigger, replacement));
-            }
-        }
-
-        _rules = rules;
-        Log.Information("Loaded {Count} replacement rules from {Path}", rules.Count, _filePath);
     }
 
     public string Apply(string text)
@@ -91,18 +98,23 @@ public class ReplacementService : IDisposable
 
     public void Save(IEnumerable<(string trigger, string replacement)> rules)
     {
-        var lines = new List<string>();
+        var dict = new Dictionary<string, string>();
         foreach (var (trigger, replacement) in rules)
         {
-            var stored = replacement
-                .Replace("\n", "\\n")
-                .Replace("\t", "\\t");
-            lines.Add($"{trigger} -> {stored}");
+            if (!string.IsNullOrWhiteSpace(trigger))
+                dict[trigger] = replacement;
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
-        File.WriteAllLines(_filePath, lines);
+        File.WriteAllText(_filePath, JsonSerializer.Serialize(dict, JsonOptions));
         Reload();
+    }
+
+    private void SeedDefaults()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
+        File.WriteAllText(_filePath, JsonSerializer.Serialize(DefaultRules, JsonOptions));
+        Log.Information("Created default replacements at {Path}", _filePath);
     }
 
     private void WatchFile()

@@ -26,7 +26,7 @@ public partial class MainWindow : Window
     private readonly KeyboardHookService _keyboardHook = new();
     private readonly ReplacementService _replacements = new(
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                     "PureType", "replacements.txt"));
+                     "PureType", "replacements.json"));
 
     // Shortcut settings (defaults)
     private Key _toggleKey = Key.X;
