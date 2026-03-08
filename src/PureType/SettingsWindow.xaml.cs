@@ -105,33 +105,7 @@ public partial class SettingsWindow : Window
 
     private void PopulateWhisperModels(string selectedModel)
     {
-        WhisperModelCombo.Items.Clear();
-        foreach (var (name, displayName, _) in WhisperModelManager.AvailableModels)
-        {
-            var isDownloaded = WhisperModelManager.IsModelDownloaded(name);
-            var suffix = isDownloaded ? " \u2713" : "";
-            var item = new System.Windows.Controls.ComboBoxItem
-            {
-                Content = displayName + suffix,
-                Tag = name,
-                FontWeight = isDownloaded ? FontWeights.SemiBold : FontWeights.Normal
-            };
-            WhisperModelCombo.Items.Add(item);
-        }
-
-        if (!UiHelper.SelectComboByTag(WhisperModelCombo, selectedModel))
-        {
-            foreach (System.Windows.Controls.ComboBoxItem item in WhisperModelCombo.Items)
-            {
-                if (WhisperModelManager.IsModelDownloaded((string)item.Tag))
-                {
-                    WhisperModelCombo.SelectedItem = item;
-                    break;
-                }
-            }
-            if (WhisperModelCombo.SelectedItem == null && WhisperModelCombo.Items.Count > 0)
-                WhisperModelCombo.SelectedIndex = 0;
-        }
+        UiHelper.PopulateWhisperModelCombo(WhisperModelCombo, selectedModel);
     }
 
     // ── Save / Cancel ─────────────────────────────────────────────────────
@@ -438,7 +412,14 @@ public partial class SettingsWindow : Window
             MessageBox.Show("Settings file not found.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            System.Diagnostics.Process.Start("notepad.exe", path);
+        }
     }
 
     private void ThemeCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

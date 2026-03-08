@@ -54,6 +54,8 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 
 > **Deepgram (cloud mode)** requires a [Deepgram account](https://console.deepgram.com/). A free tier is available, but usage beyond the free quota will incur costs. See [Deepgram pricing](https://deepgram.com/pricing) for details.
 
+> **Terminal windows and clipboard:** When the focused window is a terminal (Windows Terminal, PowerShell, cmd, Warp, Alacritty, etc.), PureType automatically uses clipboard paste (Ctrl+V) instead of simulated keystrokes, because terminals do not reliably accept `SendInput`. This happens regardless of the "Clipboard mode" setting and will overwrite your current clipboard contents. The separate **Clipboard mode** option in Settings forces clipboard paste for *all* windows, not just terminals.
+
 ## Prerequisites
 
 - **Windows 10/11**
@@ -64,12 +66,14 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 
 ## Download
 
-Grab the latest release from the [Releases page](https://github.com/jadirc/PureType/releases):
+Grab the latest release from the [Releases page](https://github.com/jadirc/PureType/releases). Two variants are available:
 
-| Asset | Description |
-|---|---|
-| `PureType-vX.Y.Z-win-x64.zip` | Requires [.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) installed |
-| `PureType-vX.Y.Z-win-x64-portable.zip` | Standalone, no runtime needed (~70 MB) |
+| Asset | Size | .NET Runtime required? | Best for |
+|---|---|---|---|
+| `PureType-vX.Y.Z-win-x64.zip` | ~5 MB | Yes — install the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) first | Developers who already have .NET installed |
+| `PureType-vX.Y.Z-win-x64-portable.zip` | ~70 MB | No — everything is included | Most users — just extract and run |
+
+> **Not sure which to pick?** Download the **portable** version. It works out of the box without installing anything. Windows does **not** ship with .NET 8 pre-installed, so the smaller variant will not launch unless you install the runtime separately.
 
 ## Getting Started
 

@@ -41,3 +41,6 @@ ehthumbs.db
 Desktop.ini
 .DS_Store
 .worktrees/
+
+## Build output
+publish/
