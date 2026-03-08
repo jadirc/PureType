@@ -7,7 +7,7 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         Focusable="False"
-        IsHitTestVisible="False"
+        IsHitTestVisible="True"
         SizeToContent="WidthAndHeight"
         Background="Transparent">
     <Border Background="{DynamicResource ToastBackgroundBrush}" CornerRadius="14" Padding="12,6"
