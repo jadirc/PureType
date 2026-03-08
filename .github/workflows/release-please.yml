@@ -33,17 +33,6 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Publish framework-dependent
-        run: >
-          dotnet publish src/PureType/PureType.csproj
-          -c Release
-          -r win-x64
-          --self-contained false
-          -p:Version=${{ needs.release-please.outputs.version }}
-          -p:PublishSingleFile=true
-          -p:DebugType=none
-          -o publish/framework-dependent
-
       - name: Publish self-contained portable
         run: >
           dotnet publish src/PureType/PureType.csproj
@@ -57,11 +46,10 @@ jobs:
           -p:DebugType=none
           -o publish/self-contained
 
-      - name: Create ZIPs
+      - name: Create ZIP
         shell: pwsh
         run: |
           $tag = "${{ needs.release-please.outputs.tag_name }}"
-          Compress-Archive -Path publish/framework-dependent/* -DestinationPath "PureType-${tag}-win-x64.zip"
           Compress-Archive -Path publish/self-contained/* -DestinationPath "PureType-${tag}-win-x64-portable.zip"
 
       - name: Upload release assets
