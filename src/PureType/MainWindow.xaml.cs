@@ -200,7 +200,7 @@ public partial class MainWindow : Window
 
         if (_settings.Window.ShowOverlay)
         {
-            _overlay = new StatusOverlayWindow();
+            _overlay = CreateOverlay();
         }
 
         // Auto-connect on startup
@@ -413,7 +413,7 @@ public partial class MainWindow : Window
             // Toggle overlay based on setting
             if (_settings.Window.ShowOverlay && _overlay is null)
             {
-                _overlay = new StatusOverlayWindow();
+                _overlay = CreateOverlay();
                 if (_connected) { _overlay.Show(); UpdateOverlay(); }
             }
             else if (!_settings.Window.ShowOverlay && _overlay is not null)
@@ -785,6 +785,37 @@ public partial class MainWindow : Window
     }
 
     // ── Helper Functions ──────────────────────────────────────────────────
+
+    private StatusOverlayWindow CreateOverlay()
+    {
+        var overlay = new StatusOverlayWindow
+        {
+            RestoreLeft = _settings.Window.OverlayLeft,
+            RestoreTop = _settings.Window.OverlayTop,
+        };
+
+        overlay.PositionChanged += (left, top) =>
+        {
+            _settings = _settings with
+            {
+                Window = _settings.Window with { OverlayLeft = left, OverlayTop = top }
+            };
+            _settingsService.Save(_settings);
+        };
+
+        overlay.HideRequested += () =>
+        {
+            _settings = _settings with
+            {
+                Window = _settings.Window with { ShowOverlay = false }
+            };
+            _settingsService.Save(_settings);
+            _overlay?.Close();
+            _overlay = null;
+        };
+
+        return overlay;
+    }
 
     private void UpdateOverlay()
     {
