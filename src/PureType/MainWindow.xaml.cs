@@ -112,6 +112,7 @@ public partial class MainWindow : Window
                     {
                         Provider = welcome.SelectedProvider,
                         ApiKey = welcome.EnteredApiKey,
+                        WhisperModel = welcome.SelectedWhisperModel,
                     }
                 };
                 _settingsService.Save(_settings);

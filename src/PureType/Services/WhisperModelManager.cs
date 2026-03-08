@@ -15,11 +15,11 @@ public static class WhisperModelManager
 
     public static readonly (string Name, string DisplayName, string Size)[] AvailableModels =
     [
-        ("tiny",     "Tiny (schnell, ~75 MB)",    "ggml-tiny.bin"),
-        ("base",     "Base (gut, ~142 MB)",        "ggml-base.bin"),
-        ("small",    "Small (besser, ~466 MB)",    "ggml-small.bin"),
-        ("medium",   "Medium (sehr gut, ~1.5 GB)", "ggml-medium.bin"),
-        ("large-v3", "Large-v3 (beste, ~3 GB)",    "ggml-large-v3.bin"),
+        ("tiny",     "Tiny (fast, ~75 MB)",       "ggml-tiny.bin"),
+        ("base",     "Base (good, ~142 MB)",       "ggml-base.bin"),
+        ("small",    "Small (better, ~466 MB)",    "ggml-small.bin"),
+        ("medium",   "Medium (great, ~1.5 GB)",    "ggml-medium.bin"),
+        ("large-v3", "Large-v3 (best, ~3 GB)",     "ggml-large-v3.bin"),
     ];
 
     public static string GetModelPath(string modelName)
