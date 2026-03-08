@@ -54,6 +54,8 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 
 > **Deepgram (cloud mode)** requires a [Deepgram account](https://console.deepgram.com/). A free tier is available, but usage beyond the free quota will incur costs. See [Deepgram pricing](https://deepgram.com/pricing) for details.
 
+> **Terminal windows and clipboard:** When the focused window is a terminal (Windows Terminal, PowerShell, cmd, Warp, Alacritty, etc.), PureType automatically uses clipboard paste (Ctrl+V) instead of simulated keystrokes, because terminals do not reliably accept `SendInput`. This happens regardless of the "Clipboard mode" setting and will overwrite your current clipboard contents. The separate **Clipboard mode** option in Settings forces clipboard paste for *all* windows, not just terminals.
+
 ## Prerequisites
 
 - **Windows 10/11**

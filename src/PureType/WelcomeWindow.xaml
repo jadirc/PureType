@@ -83,7 +83,7 @@
                          Visibility="Collapsed" Minimum="0" Maximum="100"
                          Background="{DynamicResource DeepBrush}" Foreground="{DynamicResource GreenBrush}"/>
             <TextBlock x:Name="DownloadStatus" Foreground="{DynamicResource TextDimBrush}"
-                       FontSize="11" Margin="0,4,0,0" Text=""/>
+                       FontSize="11" Margin="0,4,0,0" Text="Select a model and click download."/>
         </StackPanel>
 
         <!-- API Key (Deepgram only) -->

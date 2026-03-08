@@ -69,6 +69,7 @@ public partial class WelcomeWindow : Window
             await WhisperModelManager.DownloadModelAsync(modelName,
                 progress => Dispatcher.BeginInvoke(() =>
                 {
+                    if (!IsLoaded) return;
                     DownloadProgress.Value = progress * 100;
                     DownloadStatus.Text = $"Downloading\u2026 {progress:P0}";
                 }),
