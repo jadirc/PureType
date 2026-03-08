@@ -247,6 +247,33 @@ public class SettingsServiceTests
     }
 
     [Fact]
+    public void AutoCapitalize_defaults_to_true()
+    {
+        var settings = new AppSettings();
+        Assert.True(settings.Audio.AutoCapitalize);
+    }
+
+    [Fact]
+    public void AutoCapitalize_roundtrips_through_json()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "settings.json");
+        try
+        {
+            var svc = new SettingsService(path);
+            var original = new AppSettings
+            {
+                Audio = new AudioSettings { AutoCapitalize = false }
+            };
+            svc.Save(original);
+            var loaded = svc.Load();
+            Assert.False(loaded.Audio.AutoCapitalize);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void IsFirstRun_false_when_json_exists()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"PureType_Test_{Guid.NewGuid():N}");

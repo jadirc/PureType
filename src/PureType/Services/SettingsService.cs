@@ -34,6 +34,10 @@ public record AudioSettings
     /// How transcribed text is delivered: "Type" (SendInput), "Paste" (Clipboard + Ctrl+V), "Copy" (Clipboard only).
     /// </summary>
     public string InputMode { get; init; } = "Type";
+    /// <summary>
+    /// Capitalize the first letter after sentence-ending punctuation (. ? ! \n).
+    /// </summary>
+    public bool AutoCapitalize { get; init; } = true;
 }
 
 public record NamedPrompt
