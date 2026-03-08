@@ -20,6 +20,7 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
   - **Deepgram** (cloud) — Real-time streaming via WebSocket with Nova-3 model, interim results with live preview, automatic reconnect with exponential backoff
   - **Whisper** (local) — Offline transcription using [Whisper.net](https://github.com/sandrohanea/whisper.net) with GGML models, optional CUDA GPU acceleration
 - **Types into any window** — Recognized text is injected as simulated keystrokes (Unicode `SendInput`), working in editors, browsers, chat apps, and terminals
+- **Three input modes** — *Type* (simulated keystrokes), *Paste* (clipboard + Ctrl+V, avoids Windows 11 text suggestion popups), or *Copy* (clipboard only for manual pasting)
 - **Terminal-aware** — Automatically detects terminal windows (Windows Terminal, PowerShell, cmd, Warp, Alacritty, etc.) and uses clipboard paste instead of `SendInput`
 - **Configurable input delay** — Optional per-character delay for apps that drop fast simulated keystrokes
 - **Two input modes** (always active simultaneously)
@@ -41,7 +42,7 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 - **Settings dialog** — All configuration in one place, including provider selection, shortcuts, audio, and AI settings
 - **Themes** — Dark (Catppuccin Mocha) and Light (Catppuccin Latte) color palettes with Auto mode that follows the Windows system setting
 - **Mute function** — Mute/unmute the microphone with a configurable shortcut; muted state shown in status bar and tray menu
-- **Clipboard mode** — Optionally copy transcribed text to the clipboard instead of typing it
+- **Input mode selection** — Choose between *Type* (SendInput), *Paste* (clipboard + auto Ctrl+V), or *Copy* (clipboard only) in Settings
 - **First-run wizard** — On first launch, a guided setup wizard helps select a transcription provider and enter API credentials
 - **Audio device hot-swap** — Detects when microphones are connected or disconnected and refreshes the device list automatically
 - **Transcript search** — Search through saved transcript sessions by keyword with real-time filtering and text highlighting
@@ -54,7 +55,9 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 
 > **Deepgram (cloud mode)** requires a [Deepgram account](https://console.deepgram.com/). A free tier is available, but usage beyond the free quota will incur costs. See [Deepgram pricing](https://deepgram.com/pricing) for details.
 
-> **Terminal windows and clipboard:** When the focused window is a terminal (Windows Terminal, PowerShell, cmd, Warp, Alacritty, etc.), PureType automatically uses clipboard paste (Ctrl+V) instead of simulated keystrokes, because terminals do not reliably accept `SendInput`. This happens regardless of the "Clipboard mode" setting and will overwrite your current clipboard contents. The separate **Clipboard mode** option in Settings forces clipboard paste for *all* windows, not just terminals.
+> **Terminal windows and clipboard:** When the focused window is a terminal (Windows Terminal, PowerShell, cmd, Warp, Alacritty, etc.), PureType automatically uses clipboard paste (Ctrl+V) instead of simulated keystrokes, because terminals do not reliably accept `SendInput`. This happens regardless of the input mode setting. The *Paste* and *Copy* modes will also overwrite your current clipboard contents.
+>
+> **Windows 11 text suggestion popup:** If you see a floating white panel near the cursor while dictating, switch to *Paste* input mode in Settings. The default *Type* mode uses `SendInput` which can trigger the Windows 11 text prediction UI in some editors.
 
 ## Prerequisites
 

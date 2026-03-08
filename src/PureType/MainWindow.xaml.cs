@@ -176,6 +176,7 @@ public partial class MainWindow : Window
         PopulateMicrophones();
         _audio.StartDevicePolling();
         SelectMicrophoneByName(_settings.Audio.Microphone);
+        UiHelper.SelectComboByTag(InputModeComboMain, _settings.Audio.InputMode);
 
         // Enable settings persistence only after all controls are populated
         _isLoading = false;
@@ -290,6 +291,7 @@ public partial class MainWindow : Window
             Audio = _settings.Audio with
             {
                 Microphone = micItem?.Content?.ToString() ?? "",
+                InputMode = (string)((InputModeComboMain.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Type"),
             },
             Window = new WindowSettings
             {
@@ -391,9 +393,10 @@ public partial class MainWindow : Window
                 },
             };
 
-            // Sync MainWindow provider combo
+            // Sync MainWindow combos
             if (oldProvider != newProvider)
                 UiHelper.SelectComboByTag(ProviderCombo, newProvider);
+            UiHelper.SelectComboByTag(InputModeComboMain, _settings.Audio.InputMode);
 
             ApplySettings();
             _settingsService.Save(_settings);
@@ -460,6 +463,17 @@ public partial class MainWindow : Window
     {
         if (!_isLoading)
             SaveSettings();
+    }
+
+    // ── Input Mode ──────────────────────────────────────────────────────
+
+    private void InputModeComboMain_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!_isLoading)
+        {
+            SaveSettings();
+            ApplySettings();
+        }
     }
 
     // ── Window Closing ───────────────────────────────────────────────────

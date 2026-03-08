@@ -23,7 +23,9 @@
             <RowDefinition Height="8"/>
             <RowDefinition Height="Auto"/>  <!-- Row 6: Microphone -->
             <RowDefinition Height="8"/>
-            <RowDefinition Height="*"/>     <!-- Row 8: Transcript -->
+            <RowDefinition Height="Auto"/>  <!-- Row 8: Input Mode -->
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="*"/>     <!-- Row 10: Transcript -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
@@ -85,8 +87,21 @@
                       SelectionChanged="MicrophoneCombo_SelectionChanged"/>
         </StackPanel>
 
+        <!-- Input Mode -->
+        <StackPanel Grid.Row="8">
+            <TextBlock Text="INPUT MODE" Foreground="{DynamicResource LabelBrush}"
+                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <ComboBox x:Name="InputModeComboMain" Padding="10,7" FontSize="13"
+                      SelectionChanged="InputModeComboMain_SelectionChanged"
+                      ToolTip="Type = simulated keystrokes &#xA;Paste = clipboard + Ctrl+V &#xA;Copy = clipboard only">
+                <ComboBoxItem Content="Type (simulate keystrokes)" Tag="Type" IsSelected="True"/>
+                <ComboBoxItem Content="Paste (clipboard + Ctrl+V)" Tag="Paste"/>
+                <ComboBoxItem Content="Copy (clipboard only)" Tag="Copy"/>
+            </ComboBox>
+        </StackPanel>
+
         <!-- Transcript -->
-        <Border Grid.Row="8" Background="{DynamicResource DeepBrush}" CornerRadius="6">
+        <Border Grid.Row="10" Background="{DynamicResource DeepBrush}" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>

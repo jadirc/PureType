@@ -8,12 +8,12 @@ public class RecordingControllerTests
     private readonly AudioCaptureService _audio = new();
     private readonly ReplacementService _replacements = new(Path.GetTempFileName());
 
-    private RecordingController CreateController(bool llmEnabled = false, bool clipboardMode = false)
+    private RecordingController CreateController(bool llmEnabled = false, string inputMode = "Type")
     {
         var controller = new RecordingController(_audio, _replacements);
         controller.Configure(new AppSettings
         {
-            Audio = new AudioSettings { Vad = false, ClipboardMode = clipboardMode },
+            Audio = new AudioSettings { Vad = false, InputMode = inputMode },
             Llm = new LlmSettings { Enabled = llmEnabled },
         });
         return controller;

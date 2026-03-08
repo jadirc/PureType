@@ -115,6 +115,16 @@ public static class KeyboardInjector
         }
     }
 
+    public static async Task PasteTextAsync(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+
+        Log.Debug("PasteTextAsync: text={Text}", text);
+
+        var suffix = text.EndsWith('\n') ? "" : " ";
+        await PasteViaClipboardAsync(text + suffix);
+    }
+
     private static async Task PasteViaClipboardAsync(string text)
     {
         await ClipboardLock.WaitAsync();

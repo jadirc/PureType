@@ -71,7 +71,7 @@ public partial class SettingsWindow : Window
         // Audio
         UiHelper.SelectComboByTag(ToneCombo, settings.Audio.Tone);
         VadCheck.IsChecked = settings.Audio.Vad;
-        ClipboardModeCheck.IsChecked = settings.Audio.ClipboardMode;
+        UiHelper.SelectComboByTag(InputModeCombo, settings.Audio.InputMode);
         InputDelayBox.Text = settings.Audio.InputDelayMs.ToString();
 
         // AI Post-Processing
@@ -139,7 +139,7 @@ public partial class SettingsWindow : Window
             {
                 Tone = (string)(toneItem?.Tag ?? "Gentle"),
                 Vad = VadCheck.IsChecked == true,
-                ClipboardMode = ClipboardModeCheck.IsChecked == true,
+                InputMode = (string)((InputModeCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Type"),
                 InputDelayMs = int.TryParse(InputDelayBox.Text, out var delay) ? Math.Max(0, delay) : 0,
             },
             Llm = new LlmSettings

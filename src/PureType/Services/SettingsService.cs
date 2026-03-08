@@ -30,7 +30,10 @@ public record AudioSettings
     public string Tone { get; init; } = "Gentle";
     public bool Vad { get; init; }
     public int InputDelayMs { get; init; }
-    public bool ClipboardMode { get; init; }
+    /// <summary>
+    /// How transcribed text is delivered: "Type" (SendInput), "Paste" (Clipboard + Ctrl+V), "Copy" (Clipboard only).
+    /// </summary>
+    public string InputMode { get; init; } = "Type";
 }
 
 public record NamedPrompt

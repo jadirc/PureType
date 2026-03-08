@@ -235,12 +235,21 @@
                              PreviewTextInput="InputDelayBox_PreviewTextInput"/>
                 </StackPanel>
 
-                <!-- Clipboard Mode -->
-                <CheckBox x:Name="ClipboardModeCheck"
-                          Content="  Clipboard mode (copy instead of type)"
-                          ToolTip="Copy transcribed text to the clipboard instead of simulating keyboard input. Useful for applications that block simulated keystrokes."
-                          Foreground="{DynamicResource TextBrush}" FontSize="12"
-                          Margin="0,0,0,4"/>
+                <!-- Input Mode -->
+                <StackPanel Margin="0,0,0,6">
+                    <TextBlock Text="Input mode"
+                               Foreground="{DynamicResource SubtleBrush}"
+                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="InputModeCombo"
+                              Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                              Padding="10,5" FontSize="13"
+                              ToolTip="How transcribed text is delivered to the active window.&#x0a;&#x0a;Type — Simulates keystrokes via SendInput. Works in most apps but may trigger text suggestion popups on Windows 11.&#x0a;&#x0a;Paste — Copies text to clipboard and sends Ctrl+V. Avoids text suggestion popups. Overwrites clipboard contents.&#x0a;&#x0a;Copy — Copies text to clipboard only. You paste manually with Ctrl+V.">
+                        <ComboBoxItem Tag="Type" Content="Type (simulate keystrokes)"/>
+                        <ComboBoxItem Tag="Paste" Content="Paste (clipboard + Ctrl+V)"/>
+                        <ComboBoxItem Tag="Copy" Content="Copy (clipboard only)"/>
+                    </ComboBox>
+                </StackPanel>
 
                 <!-- VAD Auto-Stop -->
                 <CheckBox x:Name="VadCheck"

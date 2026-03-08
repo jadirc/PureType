@@ -30,7 +30,7 @@ public class RecordingController
     // ── Settings ───────────────────────────────────────────────────────
     private bool _vadEnabled;
     private bool _llmEnabled;
-    private bool _clipboardMode;
+    private string _inputMode = "Type";
     private List<NamedPrompt> _prompts = new();
 
     // ── Colors (resolved from theme resources) ─────────────────────────
@@ -83,7 +83,7 @@ public class RecordingController
     {
         _vadEnabled = settings.Audio.Vad;
         _llmEnabled = settings.Llm.Enabled;
-        _clipboardMode = settings.Audio.ClipboardMode;
+        _inputMode = settings.Audio.InputMode;
         _prompts = settings.Llm.Prompts;
     }
 
@@ -243,10 +243,18 @@ public class RecordingController
             {
                 try
                 {
-                    if (_clipboardMode)
-                        ClipboardRequested?.Invoke(processed);
-                    else
-                        await KeyboardInjector.TypeTextAsync(processed);
+                    switch (_inputMode)
+                    {
+                        case "Copy":
+                            ClipboardRequested?.Invoke(processed);
+                            break;
+                        case "Paste":
+                            await KeyboardInjector.PasteTextAsync(processed);
+                            break;
+                        default: // "Type"
+                            await KeyboardInjector.TypeTextAsync(processed);
+                            break;
+                    }
                 }
                 catch (Exception ex)
                 {
