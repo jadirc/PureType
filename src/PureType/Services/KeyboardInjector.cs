@@ -69,6 +69,7 @@ public static class KeyboardInjector
     private const uint KEYEVENTF_KEYUP  = 0x0002;
     private const ushort VK_CONTROL = 0x11;
     private const ushort VK_V = 0x56;
+    private const ushort VK_RETURN = 0x0D;
 
     #endregion
 
@@ -163,7 +164,46 @@ public static class KeyboardInjector
 
         foreach (char c in text)
         {
-            // Key Down
+            // Skip \r (handle \n as Enter, avoid double-Enter from \r\n)
+            if (c == '\r') continue;
+
+            if (c == '\n')
+            {
+                // Emit VK_RETURN key down + key up
+                list.Add(new INPUT
+                {
+                    Type = INPUT_KEYBOARD,
+                    Data = new INPUTUNION
+                    {
+                        ki = new KEYBDINPUT
+                        {
+                            wVk = VK_RETURN,
+                            wScan = 0,
+                            dwFlags = 0,
+                            time = 0,
+                            dwExtraInfo = IntPtr.Zero
+                        }
+                    }
+                });
+                list.Add(new INPUT
+                {
+                    Type = INPUT_KEYBOARD,
+                    Data = new INPUTUNION
+                    {
+                        ki = new KEYBDINPUT
+                        {
+                            wVk = VK_RETURN,
+                            wScan = 0,
+                            dwFlags = KEYEVENTF_KEYUP,
+                            time = 0,
+                            dwExtraInfo = IntPtr.Zero
+                        }
+                    }
+                });
+                continue;
+            }
+
+            // Key Down (Unicode)
             list.Add(new INPUT
             {
                 Type = INPUT_KEYBOARD,
@@ -180,7 +220,7 @@ public static class KeyboardInjector
                 }
             });
 
-            // Key Up
+            // Key Up (Unicode)
             list.Add(new INPUT
             {
                 Type = INPUT_KEYBOARD,
