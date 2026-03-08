@@ -22,6 +22,8 @@ public class RecordingController
     private readonly List<(DateTime Timestamp, string Text)> _transcriptLog = new();
     private NamedPrompt? _selectedPrompt;
     private string _interimText = "";
+    private bool _capitalizeNext = true;
+    private bool _autoCapitalize = true;
 
     // ── Provider ───────────────────────────────────────────────────────
     private ITranscriptionProvider? _provider;
@@ -84,6 +86,7 @@ public class RecordingController
         _vadEnabled = settings.Audio.Vad;
         _llmEnabled = settings.Llm.Enabled;
         _inputMode = settings.Audio.InputMode;
+        _autoCapitalize = settings.Audio.AutoCapitalize;
         _prompts = settings.Llm.Prompts;
     }
 
@@ -193,6 +196,7 @@ public class RecordingController
     {
         if (_recording || !_connected) return;
         _sessionChunks.Clear();
+        _capitalizeNext = true;
         _recording = true;
         SoundFeedback.PlayStart();
         _audio.Start();
@@ -266,6 +270,10 @@ public class RecordingController
             _interimText = "";
             InterimTextUpdated?.Invoke("");
             var processed = _replacements.Apply(text);
+            if (_autoCapitalize)
+            {
+                (processed, _capitalizeNext) = ApplyAutoCapitalize(processed, _capitalizeNext);
+            }
             TranscriptUpdated?.Invoke(processed);
             _sessionChunks.Add(processed);
             _transcriptLog.Add((DateTime.Now, processed));
