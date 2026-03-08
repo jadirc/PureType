@@ -75,17 +75,18 @@ public class KeyboardHookService : IDisposable
     /// Suppresses Win key and disables toggle/PTT event firing.</summary>
     public bool SuppressWinKey { get; set; }
 
-    // ── AI trigger key ──
-    private int _aiVk1;
-    private int _aiVk2;
-    private bool _aiKeyDown;
-    private long _aiKeyReleasedTick;
+    // ── Prompt keys ──
+    private HashSet<int> _promptVKeys = new();
+    private bool _promptKeyDetectionEnabled;
 
     // ── Events ──
-    /// <summary>Fired when the toggle shortcut is pressed. Bool = AI trigger key held.</summary>
-    public event Action<bool>? TogglePressed;
-    /// <summary>Fired when the PTT key goes down. Bool = AI trigger key held.</summary>
-    public event Action<bool>? PttKeyDown;
+    /// <summary>Fired when the toggle shortcut is pressed.</summary>
+    public event Action? TogglePressed;
+    /// <summary>Fired when the PTT key goes down.</summary>
+    public event Action? PttKeyDown;
+    /// <summary>Fired when a registered prompt key is pressed during recording.
+    /// Parameter is the virtual key code. The key is suppressed (not forwarded to the focused window).</summary>
+    public event Action<int>? PromptKeyPressed;
     public event Action? PttKeyUp;
     /// <summary>Fired when the mute shortcut is pressed.</summary>
     public event Action? MutePressed;
@@ -106,23 +107,16 @@ public class KeyboardHookService : IDisposable
         _toggleFired = false;
     }
 
-    /// <summary>Sets the virtual key codes for the AI trigger key.
-    /// Pass both L/R variants for modifier keys (e.g. VK_LSHIFT + VK_RSHIFT).</summary>
-    public void SetAiTriggerKey(int vk1, int vk2 = 0)
+    /// <summary>Registers the set of virtual key codes that trigger named prompts.</summary>
+    public void SetPromptKeys(HashSet<int> vKeys)
     {
-        _aiVk1 = vk1;
-        _aiVk2 = vk2;
+        _promptVKeys = vKeys;
     }
 
-    private const long AiKeyGracePeriodMs = 500;
-
-    /// <summary>Check if the AI trigger key is currently held (includes a brief grace period after release).</summary>
-    public bool IsAiKeyHeld()
+    /// <summary>Enable/disable prompt key detection (only active during recording).</summary>
+    public void SetPromptKeyDetection(bool enabled)
     {
-        if (_aiKeyDown) return true;
-        if (_aiKeyReleasedTick > 0 && Environment.TickCount64 - _aiKeyReleasedTick < AiKeyGracePeriodMs)
-            return true;
-        return false;
+        _promptKeyDetectionEnabled = enabled;
     }
 
     public void SetMuteShortcut(ModifierKeys modifiers, Key key)
@@ -159,7 +153,6 @@ public class KeyboardHookService : IDisposable
         IsWinDown = false;
         _pttDown = false;
         _toggleFired = false;
-        _aiKeyDown = false;
     }
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
@@ -202,15 +195,11 @@ public class KeyboardHookService : IDisposable
             if (SuppressWinKey)
                 return CallNextHookEx(_hookId, nCode, wParam, lParam);
 
-            // ── AI trigger key tracking ──
-            if (vkCode == _aiVk1 || vkCode == _aiVk2)
+            // ── Prompt key detection (only during recording) ──
+            if (_promptKeyDetectionEnabled && isDown && _promptVKeys.Contains(vkCode))
             {
-                if (isDown) _aiKeyDown = true;
-                else if (isUp)
-                {
-                    _aiKeyDown = false;
-                    _aiKeyReleasedTick = Environment.TickCount64;
-                }
+                PromptKeyPressed?.Invoke(vkCode);
+                return (IntPtr)1; // suppress key
             }
 
             // ── Toggle shortcut detection ──
@@ -219,7 +208,7 @@ public class KeyboardHookService : IDisposable
                 if (AreModifiersHeld(_toggleModifiers))
                 {
                     _toggleFired = true;
-                    TogglePressed?.Invoke(IsAiKeyHeld());
+                    TogglePressed?.Invoke();
                 }
             }
             // Reset toggle-fired when the main key is released
@@ -232,7 +221,7 @@ public class KeyboardHookService : IDisposable
                 if (isDown && !_pttDown && AreModifiersHeld(_pttModifiers))
                 {
                     _pttDown = true;
-                    PttKeyDown?.Invoke(IsAiKeyHeld());
+                    PttKeyDown?.Invoke();
                 }
                 else if (isUp && _pttDown)
                 {

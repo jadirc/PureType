@@ -261,18 +261,7 @@
                           Unchecked="LlmEnabledCheck_Changed"/>
 
                 <StackPanel x:Name="LlmSettingsPanel" Visibility="Collapsed" Margin="0,8,0,0">
-                    <StackPanel ToolTip="Hold this modifier key together with your shortcut to route the transcription through AI instead of typing it directly.">
-                        <TextBlock Text="AI TRIGGER KEY" Foreground="{DynamicResource LabelBrush}"
-                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                        <ComboBox x:Name="AiTriggerKeyCombo" Padding="10,7" FontSize="13">
-                            <ComboBoxItem Content="Shift" Tag="shift" IsSelected="True"/>
-                            <ComboBoxItem Content="Ctrl" Tag="ctrl"/>
-                            <ComboBoxItem Content="Alt" Tag="alt"/>
-                            <ComboBoxItem Content="Caps Lock" Tag="caps"/>
-                        </ComboBox>
-                    </StackPanel>
-
-                    <StackPanel Margin="0,8,0,0"
+                    <StackPanel Margin="0,0,0,12"
                                 ToolTip="Base URL of the OpenAI-compatible API. You can use OpenAI, Anthropic, OpenRouter, Google Gemini, or any compatible endpoint.">
                         <TextBlock Text="API ENDPOINT" Foreground="{DynamicResource LabelBrush}"
                                    FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -286,7 +275,7 @@
                         </ComboBox>
                     </StackPanel>
 
-                    <StackPanel Margin="0,8,0,0"
+                    <StackPanel Margin="0,0,0,12"
                                 ToolTip="API key for the selected AI endpoint. Required for authentication.">
                         <TextBlock Text="API KEY" Foreground="{DynamicResource LabelBrush}"
                                    FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -297,7 +286,7 @@
                                      PasswordChar="&#x25CF;"/>
                     </StackPanel>
 
-                    <StackPanel Margin="0,8,0,0"
+                    <StackPanel Margin="0,0,0,12"
                                 ToolTip="AI model to use for post-processing. Click the refresh button to fetch available models from the API.">
                         <TextBlock Text="MODEL" Foreground="{DynamicResource LabelBrush}"
                                    FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -319,27 +308,42 @@
                         </Grid>
                     </StackPanel>
 
-                    <StackPanel Margin="0,8,0,0"
-                                ToolTip="System prompt sent to the AI model. Choose a preset or write your own. The transcribed text will be appended as the user message.">
-                        <TextBlock Text="SYSTEM PROMPT" Foreground="{DynamicResource LabelBrush}"
-                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
-                        <ComboBox x:Name="PromptPresetCombo" Padding="10,7" FontSize="12"
-                                  SelectionChanged="PromptPresetCombo_SelectionChanged"
-                                  Margin="0,0,0,5">
-                            <ComboBoxItem Content="Custom" Tag="" IsSelected="True"/>
-                            <ComboBoxItem Content="Correction" Tag="Clean up the following dictated text. Fix punctuation, grammar, and formatting. Keep the meaning unchanged. Reply with only the corrected text."/>
-                            <ComboBoxItem Content="Summary" Tag="Summarize the following dictated text into a concise paragraph. Keep the key points. Reply with only the summary."/>
-                            <ComboBoxItem Content="Translation EN&#x2192;DE" Tag="Translate the following text from English to German. Reply with only the translation."/>
-                            <ComboBoxItem Content="Translation DE&#x2192;EN" Tag="Translate the following text from German to English. Reply with only the translation."/>
-                            <ComboBoxItem Content="Email" Tag="Rewrite the following dictated text as a professional email. Fix grammar and formatting. Reply with only the email text."/>
-                        </ComboBox>
-                        <TextBox x:Name="LlmPromptBox"
-                                 Text="Clean up the following dictated text. Fix punctuation, grammar, and formatting. Keep the meaning unchanged. Reply with only the corrected text."
-                                 Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
-                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                 Padding="10,5" FontSize="12"
-                                 TextWrapping="Wrap" AcceptsReturn="True"
-                                 Height="80" VerticalScrollBarVisibility="Auto"/>
+                    <StackPanel Margin="0,8,0,0">
+                        <TextBlock Text="PROMPTS" Foreground="{DynamicResource LabelBrush}"
+                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBlock Text="Press the assigned key during recording to activate AI with that prompt."
+                                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,0,0,5"
+                                   TextWrapping="Wrap"/>
+                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                Background="{DynamicResource SurfaceBrush}" CornerRadius="4"
+                                MinHeight="80" MaxHeight="200" Margin="0,0,0,5">
+                            <ListBox x:Name="PromptListBox"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="{DynamicResource TextBrush}" FontSize="12"
+                                     SelectionChanged="PromptListBox_SelectionChanged">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Key}" FontWeight="Bold" Width="50"
+                                                       Foreground="{DynamicResource AccentBrush}"/>
+                                            <TextBlock Text="{Binding Name}"
+                                                       Foreground="{DynamicResource TextBrush}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Add" Click="AddPrompt_Click" Padding="12,4" Margin="0,0,4,0"
+                                    Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" Cursor="Hand"/>
+                            <Button x:Name="EditPromptBtn" Content="Edit" Click="EditPrompt_Click" Padding="12,4" Margin="0,0,4,0"
+                                    Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" Cursor="Hand" IsEnabled="False"/>
+                            <Button x:Name="DeletePromptBtn" Content="Delete" Click="DeletePrompt_Click" Padding="12,4"
+                                    Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" Cursor="Hand" IsEnabled="False"/>
+                        </StackPanel>
                     </StackPanel>
                 </StackPanel>
 

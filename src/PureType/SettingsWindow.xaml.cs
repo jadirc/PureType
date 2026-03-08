@@ -22,6 +22,9 @@ public partial class SettingsWindow : Window
     private ModifierKeys _muteModifiers;
     private string? _shortcutBoxPreviousText;
 
+    // Prompt list
+    private List<NamedPrompt> _prompts = new();
+
     public AppSettings ResultSettings { get; private set; } = new();
 
     public SettingsWindow(AppSettings settings, string providerTag,
@@ -65,8 +68,6 @@ public partial class SettingsWindow : Window
             (_muteModifiers, _muteKey) = UiHelper.ParseShortcut(settings.Shortcuts.Mute, Key.None);
             MuteShortcutBox.Text = UiHelper.FormatShortcut(_muteModifiers, _muteKey);
         }
-        UiHelper.SelectComboByTag(AiTriggerKeyCombo, settings.Shortcuts.AiTriggerKey);
-
         // Audio
         UiHelper.SelectComboByTag(ToneCombo, settings.Audio.Tone);
         VadCheck.IsChecked = settings.Audio.Vad;
@@ -79,7 +80,8 @@ public partial class SettingsWindow : Window
         LlmApiKeyBox.Password = settings.Llm.ApiKey;
         LlmBaseUrlCombo.Text = settings.Llm.BaseUrl;
         LlmModelCombo.Text = settings.Llm.Model;
-        LlmPromptBox.Text = settings.Llm.Prompt;
+        _prompts = settings.Llm.Prompts.ToList();
+        PromptListBox.ItemsSource = _prompts;
 
         // General
         AutostartCheck.IsChecked = IsAutostartEnabled();
@@ -116,7 +118,6 @@ public partial class SettingsWindow : Window
         var langItem = LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var whisperModelItem = WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var toneItem = ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-        var aiTriggerItem = AiTriggerKeyCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
 
         ResultSettings = new AppSettings
         {
@@ -133,7 +134,6 @@ public partial class SettingsWindow : Window
                 Toggle = UiHelper.FormatShortcut(_toggleModifiers, _toggleKey),
                 Ptt = UiHelper.FormatShortcut(_pttModifiers, _pttKey),
                 Mute = _muteKey != Key.None ? UiHelper.FormatShortcut(_muteModifiers, _muteKey) : "",
-                AiTriggerKey = (string)(aiTriggerItem?.Tag ?? "shift"),
             },
             Audio = new AudioSettings
             {
@@ -148,7 +148,7 @@ public partial class SettingsWindow : Window
                 ApiKey = LlmApiKeyBox.Password.Trim(),
                 BaseUrl = LlmBaseUrlCombo.Text.Trim(),
                 Model = LlmModelCombo.Text.Trim(),
-                Prompt = LlmPromptBox.Text.Trim(),
+                Prompts = _prompts.ToList(),
             },
             Window = new WindowSettings
             {
@@ -429,13 +429,43 @@ public partial class SettingsWindow : Window
         ThemeManager.Apply((string)(item.Tag ?? "Dark"));
     }
 
-    private void PromptPresetCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void PromptListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (!IsLoaded) return;
-        if (PromptPresetCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
-        var prompt = (string)(item.Tag ?? "");
-        if (!string.IsNullOrEmpty(prompt))
-            LlmPromptBox.Text = prompt;
+        var hasSelection = PromptListBox.SelectedItem != null;
+        EditPromptBtn.IsEnabled = hasSelection;
+        DeletePromptBtn.IsEnabled = hasSelection;
+    }
+
+    private void AddPrompt_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new PromptEditDialog { Owner = this };
+        if (dialog.ShowDialog() == true)
+        {
+            _prompts.Add(dialog.Result);
+            PromptListBox.ItemsSource = null;
+            PromptListBox.ItemsSource = _prompts;
+        }
+    }
+
+    private void EditPrompt_Click(object sender, RoutedEventArgs e)
+    {
+        if (PromptListBox.SelectedItem is not NamedPrompt selected) return;
+        var index = _prompts.IndexOf(selected);
+        var dialog = new PromptEditDialog(selected) { Owner = this };
+        if (dialog.ShowDialog() == true)
+        {
+            _prompts[index] = dialog.Result;
+            PromptListBox.ItemsSource = null;
+            PromptListBox.ItemsSource = _prompts;
+        }
+    }
+
+    private void DeletePrompt_Click(object sender, RoutedEventArgs e)
+    {
+        if (PromptListBox.SelectedItem is not NamedPrompt selected) return;
+        _prompts.Remove(selected);
+        PromptListBox.ItemsSource = null;
+        PromptListBox.ItemsSource = _prompts;
     }
 
     private bool AssignShortcut(System.Windows.Controls.TextBox box, string displayText, ModifierKeys modifiers, Key key)

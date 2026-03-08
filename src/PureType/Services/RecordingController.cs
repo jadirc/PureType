@@ -1,6 +1,5 @@
 using System.Windows.Media;
 using Serilog;
-using PureType.Helpers;
 
 namespace PureType.Services;
 
@@ -12,7 +11,6 @@ namespace PureType.Services;
 public class RecordingController
 {
     private readonly AudioCaptureService _audio;
-    private readonly KeyboardHookService _keyboardHook;
     private readonly ReplacementService _replacements;
 
     // ── State ──────────────────────────────────────────────────────────
@@ -22,7 +20,7 @@ public class RecordingController
     private VadService? _vad;
     private readonly List<string> _sessionChunks = new();
     private readonly List<(DateTime Timestamp, string Text)> _transcriptLog = new();
-    private bool _aiPostProcessRequested;
+    private NamedPrompt? _selectedPrompt;
     private string _interimText = "";
 
     // ── Provider ───────────────────────────────────────────────────────
@@ -33,6 +31,7 @@ public class RecordingController
     private bool _vadEnabled;
     private bool _llmEnabled;
     private bool _clipboardMode;
+    private List<NamedPrompt> _prompts = new();
 
     // ── Colors (resolved from theme resources) ─────────────────────────
     private static Color Red    => ThemeColor("RedBrush");
@@ -54,8 +53,8 @@ public class RecordingController
     public event Action<double>? AudioLevelChanged;
     /// <summary>Recording stopped — reset VU meter.</summary>
     public event Action? RecordingStopped;
-    /// <summary>Request LLM post-processing with the given text.</summary>
-    public event Action<string>? LlmProcessingRequested;
+    /// <summary>Request LLM post-processing with (text, prompt).</summary>
+    public event Action<string, NamedPrompt>? LlmProcessingRequested;
     /// <summary>Request clipboard copy (clipboard mode).</summary>
     public event Action<string>? ClipboardRequested;
     /// <summary>(message, dotColor, autoClose) for toast notifications.</summary>
@@ -68,11 +67,9 @@ public class RecordingController
 
     public RecordingController(
         AudioCaptureService audio,
-        KeyboardHookService keyboardHook,
         ReplacementService replacements)
     {
         _audio = audio;
-        _keyboardHook = keyboardHook;
         _replacements = replacements;
 
         _audio.AudioDataAvailable += OnAudioData;
@@ -87,6 +84,7 @@ public class RecordingController
         _vadEnabled = settings.Audio.Vad;
         _llmEnabled = settings.Llm.Enabled;
         _clipboardMode = settings.Audio.ClipboardMode;
+        _prompts = settings.Llm.Prompts;
     }
 
     /// <summary>
@@ -105,28 +103,26 @@ public class RecordingController
             _provider.TranscriptReceived += OnTranscriptReceived;
     }
 
-    public void HandleToggle(bool aiKeyHeld)
+    public void HandleToggle()
     {
         if (_recording)
         {
             if (_recordingSource != RecordingSource.Toggle) return;
-            if (!_aiPostProcessRequested && _llmEnabled)
-                _aiPostProcessRequested = aiKeyHeld;
             _recordingSource = RecordingSource.None;
             StopRecording();
         }
         else
         {
-            _aiPostProcessRequested = aiKeyHeld && _llmEnabled;
+            _selectedPrompt = null;
             _recordingSource = RecordingSource.Toggle;
             StartRecording();
         }
     }
 
-    public void HandlePttDown(bool aiKeyHeld)
+    public void HandlePttDown()
     {
         if (!_connected || _recording) return;
-        _aiPostProcessRequested = aiKeyHeld && _llmEnabled;
+        _selectedPrompt = null;
         _recordingSource = RecordingSource.Ptt;
         StartRecording();
     }
@@ -134,10 +130,29 @@ public class RecordingController
     public void HandlePttUp()
     {
         if (_recordingSource != RecordingSource.Ptt) return;
-        if (!_aiPostProcessRequested && _llmEnabled)
-            _aiPostProcessRequested = _keyboardHook.IsAiKeyHeld();
         _recordingSource = RecordingSource.None;
         StopRecording();
+    }
+
+    public void HandlePromptKeyPressed(int vkCode)
+    {
+        if (!_recording || !_llmEnabled) return;
+        var prompt = _prompts.FirstOrDefault(p =>
+            VKeyFromString(p.Key) == vkCode);
+        if (prompt == null || prompt == _selectedPrompt) return;
+        _selectedPrompt = prompt;
+
+        StatusChanged?.Invoke($"\u25CF Recording + AI ({prompt.Name})", Red);
+        ToastRequested?.Invoke($"Recording + AI ({prompt.Name})", Red, false);
+    }
+
+    /// <summary>Converts a key name string (e.g. "T", "F1", "Shift") to a Win32 virtual key code.</summary>
+    internal static int VKeyFromString(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return 0;
+        if (Enum.TryParse<System.Windows.Input.Key>(key, ignoreCase: true, out var wpfKey))
+            return System.Windows.Input.KeyInterop.VirtualKeyFromKey(wpfKey);
+        return 0;
     }
 
     // ── Start / Stop ───────────────────────────────────────────────────
@@ -150,11 +165,8 @@ public class RecordingController
         SoundFeedback.PlayStart();
         _audio.Start();
 
-        var aiLabel = _aiPostProcessRequested ? " + AI" : "";
-        StatusChanged?.Invoke($"\u25CF Recording{aiLabel}", Red);
-        ToastRequested?.Invoke(
-            _aiPostProcessRequested ? "Recording + AI" : "Recording",
-            Red, false);
+        StatusChanged?.Invoke("\u25CF Recording", Red);
+        ToastRequested?.Invoke("Recording", Red, false);
 
         // Notify UI to add separator between recording sessions
         TranscriptUpdated?.Invoke("\0separator");
@@ -187,14 +199,15 @@ public class RecordingController
         await Task.Delay(50);
 
         SoundFeedback.PlayStop();
-        if (!_aiPostProcessRequested)
+        if (_selectedPrompt == null)
             ToastRequested?.Invoke("Recording stopped", Green, true);
 
-        if (_aiPostProcessRequested && _sessionChunks.Count > 0)
+        if (_selectedPrompt != null && _sessionChunks.Count > 0)
         {
-            _aiPostProcessRequested = false;
+            var prompt = _selectedPrompt;
+            _selectedPrompt = null;
             var fullText = string.Join("", _sessionChunks);
-            LlmProcessingRequested?.Invoke(fullText);
+            LlmProcessingRequested?.Invoke(fullText, prompt);
         }
 
         if (_connected)
@@ -226,7 +239,7 @@ public class RecordingController
             _transcriptLog.Add((DateTime.Now, processed));
 
             // When AI post-processing is pending, don't type yet — LLM will type the result
-            if (!_aiPostProcessRequested)
+            if (_selectedPrompt == null)
             {
                 try
                 {

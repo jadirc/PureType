@@ -123,7 +123,7 @@ public partial class MainWindow : Window
         SoundFeedback.Init(_settings.Audio.Tone);
         KeyboardInjector.InputDelayMs = _settings.Audio.InputDelayMs;
 
-        _controller = new RecordingController(_audio, _keyboardHook, _replacements);
+        _controller = new RecordingController(_audio, _replacements);
         _controller.StatusChanged += (text, color) => Dispatcher.Invoke(() => SetStatus(text, new SolidColorBrush(color)));
         _controller.TranscriptUpdated += text => Dispatcher.Invoke(() =>
         {
@@ -142,14 +142,17 @@ public partial class MainWindow : Window
             if (!string.IsNullOrEmpty(text)) TranscriptScroll.ScrollToBottom();
         });
         _controller.RecordingStateChanged += () => Dispatcher.Invoke(() =>
-            _tray.Update(_connected, _controller.IsRecording, _muted));
+        {
+            _tray.Update(_connected, _controller.IsRecording, _muted);
+            _keyboardHook.SetPromptKeyDetection(_controller.IsRecording);
+        });
         _controller.AudioLevelChanged += level => Dispatcher.BeginInvoke(() =>
         {
             var parent = (System.Windows.Controls.Border)VuMeterBar.Parent;
             VuMeterBar.Width = level * parent.ActualWidth;
         });
         _controller.RecordingStopped += () => Dispatcher.Invoke(() => VuMeterBar.Width = 0);
-        _controller.LlmProcessingRequested += text => Dispatcher.Invoke(() => _ = ProcessWithLlmAsync(text));
+        _controller.LlmProcessingRequested += (text, prompt) => Dispatcher.Invoke(() => _ = ProcessWithLlmAsync(text, prompt));
         _controller.ClipboardRequested += text => Dispatcher.Invoke(() =>
         {
             System.Windows.Clipboard.SetText(text);
@@ -181,9 +184,10 @@ public partial class MainWindow : Window
 
         _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
         _keyboardHook.SetPttShortcut(_pttModifiers, _pttKey);
-        ApplyAiTriggerKey();
-        _keyboardHook.TogglePressed += aiKeyHeld => Dispatcher.Invoke(() => _controller.HandleToggle(aiKeyHeld));
-        _keyboardHook.PttKeyDown += aiKeyHeld => Dispatcher.Invoke(() => _controller.HandlePttDown(aiKeyHeld));
+        ApplyPromptKeys();
+        _keyboardHook.TogglePressed += () => Dispatcher.Invoke(() => _controller.HandleToggle());
+        _keyboardHook.PttKeyDown += () => Dispatcher.Invoke(() => _controller.HandlePttDown());
+        _keyboardHook.PromptKeyPressed += vkCode => Dispatcher.Invoke(() => _controller.HandlePromptKeyPressed(vkCode));
         _keyboardHook.PttKeyUp += () => Dispatcher.Invoke(() => _controller.HandlePttUp());
         _keyboardHook.MutePressed += () => Dispatcher.Invoke(ToggleMute);
 
@@ -248,8 +252,8 @@ public partial class MainWindow : Window
                 _keyboardHook.SetMuteShortcut(_muteModifiers, _muteKey);
         }
 
-        // AI trigger key
-        ApplyAiTriggerKey();
+        // Prompt keys
+        ApplyPromptKeys();
 
         // Theme
         ThemeManager.Apply(_settings.Window.Theme);
@@ -261,18 +265,15 @@ public partial class MainWindow : Window
         _controller.Configure(_settings);
     }
 
-    private void ApplyAiTriggerKey()
+    private void ApplyPromptKeys()
     {
-        var tag = _settings.Shortcuts.AiTriggerKey;
-        var (vk1, vk2) = tag switch
+        var vkeys = new HashSet<int>();
+        foreach (var p in _settings.Llm.Prompts)
         {
-            "shift" => (KeyboardHookService.VK_LSHIFT, KeyboardHookService.VK_RSHIFT),
-            "ctrl"  => (KeyboardHookService.VK_LCONTROL, KeyboardHookService.VK_RCONTROL),
-            "alt"   => (KeyboardHookService.VK_LMENU, KeyboardHookService.VK_RMENU),
-            "caps"  => (KeyboardHookService.VK_CAPITAL, 0),
-            _       => (KeyboardHookService.VK_LSHIFT, KeyboardHookService.VK_RSHIFT)
-        };
-        _keyboardHook.SetAiTriggerKey(vk1, vk2);
+            var vk = RecordingController.VKeyFromString(p.Key);
+            if (vk != 0) vkeys.Add(vk);
+        }
+        _keyboardHook.SetPromptKeys(vkeys);
     }
 
     private void SaveSettings()
@@ -682,14 +683,13 @@ public partial class MainWindow : Window
 
     // ── LLM Post-Processing ────────────────────────────────────────────────
 
-    private async Task ProcessWithLlmAsync(string text)
+    private async Task ProcessWithLlmAsync(string text, NamedPrompt namedPrompt)
     {
         try
         {
             var baseUrl = _settings.Llm.BaseUrl;
             var apiKey = _settings.Llm.ApiKey;
             var model = _settings.Llm.Model;
-            var prompt = _settings.Llm.Prompt;
 
             if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(model))
             {
@@ -702,11 +702,12 @@ public partial class MainWindow : Window
                 ? new AnthropicLlmClient(apiKey, model)
                 : new OpenAiLlmClient(apiKey, baseUrl, model);
 
-            Log.Information("Sending {Length} chars to LLM ({BaseUrl}/{Model})", text.Length, baseUrl, model);
-            ToastWindow.ShowToast("Waiting for AI response \u2026",
+            Log.Information("Sending {Length} chars to LLM ({BaseUrl}/{Model}) with prompt '{PromptName}'",
+                text.Length, baseUrl, model, namedPrompt.Name);
+            ToastWindow.ShowToast($"AI: {namedPrompt.Name} \u2026",
                 Yellow.Color, autoClose: false);
 
-            var result = await client.ProcessAsync(prompt, text);
+            var result = await client.ProcessAsync(namedPrompt.Prompt, text);
             var processed = _replacements.Apply(result);
 
             Log.Information("LLM result: {Length} chars", processed.Length);

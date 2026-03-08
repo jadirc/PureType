@@ -44,8 +44,6 @@ public class SettingsServiceTests
         // Shortcuts
         Assert.Equal("Ctrl+Shift+D", result.Shortcuts.Toggle);
         Assert.Equal("Win+R-Ctrl", result.Shortcuts.Ptt);
-        Assert.Equal("ctrl", result.Shortcuts.AiTriggerKey);
-
         // Audio
         Assert.Equal("My USB Mic", result.Audio.Microphone);
         Assert.Equal("Gentle", result.Audio.Tone);   // migrated from "Sanft"
@@ -56,7 +54,9 @@ public class SettingsServiceTests
         Assert.Equal("sk-abc123", result.Llm.ApiKey);
         Assert.Equal("https://example.com/v1", result.Llm.BaseUrl);
         Assert.Equal("gpt-4", result.Llm.Model);
-        Assert.Equal("Fix grammar.\nKeep meaning.", result.Llm.Prompt); // \n converted
+        Assert.Equal("Fix grammar.\nKeep meaning.", result.Llm.Prompts[0].Prompt); // \n converted
+        Assert.Equal("Migrated", result.Llm.Prompts[0].Name);
+        Assert.Equal("Shift", result.Llm.Prompts[0].Key);
 
         // Window
         Assert.Equal(100d, result.Window.Left);
@@ -75,7 +75,6 @@ public class SettingsServiceTests
 
         Assert.Equal(defaults.Shortcuts.Toggle, result.Shortcuts.Toggle);
         Assert.Equal(defaults.Shortcuts.Ptt, result.Shortcuts.Ptt);
-        Assert.Equal(defaults.Shortcuts.AiTriggerKey, result.Shortcuts.AiTriggerKey);
         Assert.Equal(defaults.Transcription.ApiKey, result.Transcription.ApiKey);
         Assert.Equal(defaults.Transcription.Language, result.Transcription.Language);
         Assert.Equal(defaults.Transcription.Provider, result.Transcription.Provider);
@@ -108,8 +107,6 @@ public class SettingsServiceTests
         // Shortcuts
         Assert.Equal("Ctrl+Alt+X", settings.Shortcuts.Toggle);
         Assert.Equal("Win+L-Ctrl", settings.Shortcuts.Ptt);
-        Assert.Equal("shift", settings.Shortcuts.AiTriggerKey);
-
         // Transcription
         Assert.Equal("de", settings.Transcription.Language);
         Assert.Equal("deepgram", settings.Transcription.Provider);
@@ -127,7 +124,7 @@ public class SettingsServiceTests
         Assert.Equal("", settings.Llm.ApiKey);
         Assert.Equal("", settings.Llm.BaseUrl);
         Assert.Equal("", settings.Llm.Model);
-        Assert.Equal("", settings.Llm.Prompt);
+        Assert.Empty(settings.Llm.Prompts);
 
         // Window
         Assert.Null(settings.Window.Left);
@@ -165,7 +162,7 @@ public class SettingsServiceTests
                     ApiKey = "sk-test",
                     BaseUrl = "https://api.example.com/v1",
                     Model = "gpt-4",
-                    Prompt = "Fix grammar."
+                    Prompts = new List<NamedPrompt> { new() { Name = "Test", Key = "T", Prompt = "Fix grammar." } }
                 },
                 Window = new WindowSettings { Left = 100, Top = 200, Width = 800, Height = 600, StartMinimized = true },
             };
@@ -183,6 +180,10 @@ public class SettingsServiceTests
             Assert.True(loaded.Audio.Vad);
             Assert.True(loaded.Llm.Enabled);
             Assert.Equal(settings.Llm.ApiKey, loaded.Llm.ApiKey);
+            Assert.Single(loaded.Llm.Prompts);
+            Assert.Equal("Test", loaded.Llm.Prompts[0].Name);
+            Assert.Equal("T", loaded.Llm.Prompts[0].Key);
+            Assert.Equal("Fix grammar.", loaded.Llm.Prompts[0].Prompt);
             Assert.Equal(settings.Window.Left, loaded.Window.Left);
             Assert.Equal(settings.Window.Top, loaded.Window.Top);
             Assert.True(loaded.Window.StartMinimized);

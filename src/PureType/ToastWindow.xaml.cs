@@ -8,6 +8,7 @@ namespace PureType;
 public partial class ToastWindow : Window
 {
     private static ToastWindow? _current;
+    private static string? _currentMessage;
     private readonly DispatcherTimer _closeTimer;
 
     private static Color ThemeColor(string key) =>
@@ -34,7 +35,7 @@ public partial class ToastWindow : Window
             var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(300));
             fadeOut.Completed += (_, _) =>
             {
-                if (_current == this) _current = null;
+                if (_current == this) { _current = null; _currentMessage = null; }
                 Close();
             };
             BeginAnimation(OpacityProperty, fadeOut);
@@ -50,7 +51,12 @@ public partial class ToastWindow : Window
     {
         Application.Current.Dispatcher.Invoke(() =>
         {
+            // Skip if same message is already showing (prevents flicker on key repeat)
+            if (_current is not null && _currentMessage == message)
+                return;
+
             _current?.Close();
+            _currentMessage = message;
             _current = new ToastWindow(message, dotColor);
             _current.Show();
             if (autoClose)

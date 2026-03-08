@@ -13,7 +13,6 @@ public record ShortcutSettings
     public string Toggle { get; init; } = "Ctrl+Alt+X";
     public string Ptt { get; init; } = "Win+L-Ctrl";
     public string Mute { get; init; } = "";
-    public string AiTriggerKey { get; init; } = "shift";
 }
 
 public record TranscriptionSettings
@@ -34,13 +33,20 @@ public record AudioSettings
     public bool ClipboardMode { get; init; }
 }
 
+public record NamedPrompt
+{
+    public string Name { get; init; } = "";
+    public string Key { get; init; } = "";
+    public string Prompt { get; init; } = "";
+}
+
 public record LlmSettings
 {
     public bool Enabled { get; init; }
     public string ApiKey { get; init; } = "";
     public string BaseUrl { get; init; } = "";
     public string Model { get; init; } = "";
-    public string Prompt { get; init; } = "";
+    public List<NamedPrompt> Prompts { get; init; } = new();
 }
 
 public record WindowSettings
@@ -205,10 +211,6 @@ public class SettingsService
                 case "ptt":
                     shortcuts = shortcuts with { Ptt = value };
                     break;
-                case "ai_trigger_key":
-                    shortcuts = shortcuts with { AiTriggerKey = value };
-                    break;
-
                 case "language":
                     transcription = transcription with { Language = value };
                     break;
@@ -250,7 +252,10 @@ public class SettingsService
                     llm = llm with { Model = value };
                     break;
                 case "llm_prompt":
-                    llm = llm with { Prompt = value.Replace("\\n", "\n") };
+                    llm = llm with { Prompts = new List<NamedPrompt>
+                    {
+                        new() { Name = "Migrated", Key = "Shift", Prompt = value.Replace("\\n", "\n") }
+                    }};
                     break;
 
                 case "left":

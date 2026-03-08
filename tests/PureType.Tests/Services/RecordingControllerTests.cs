@@ -1,5 +1,4 @@
 using System.Windows.Media;
-using PureType.Helpers;
 using PureType.Services;
 
 namespace PureType.Tests.Services;
@@ -7,12 +6,11 @@ namespace PureType.Tests.Services;
 public class RecordingControllerTests
 {
     private readonly AudioCaptureService _audio = new();
-    private readonly KeyboardHookService _keyboardHook = new();
     private readonly ReplacementService _replacements = new(Path.GetTempFileName());
 
     private RecordingController CreateController(bool llmEnabled = false, bool clipboardMode = false)
     {
-        var controller = new RecordingController(_audio, _keyboardHook, _replacements);
+        var controller = new RecordingController(_audio, _replacements);
         controller.Configure(new AppSettings
         {
             Audio = new AudioSettings { Vad = false, ClipboardMode = clipboardMode },
@@ -40,7 +38,7 @@ public class RecordingControllerTests
     public void HandleToggle_without_provider_does_not_start()
     {
         var controller = CreateController();
-        controller.HandleToggle(aiKeyHeld: false);
+        controller.HandleToggle();
         Assert.False(controller.IsRecording);
     }
 
@@ -48,7 +46,7 @@ public class RecordingControllerTests
     public void HandlePttDown_without_connection_does_not_start()
     {
         var controller = CreateController();
-        controller.HandlePttDown(aiKeyHeld: false);
+        controller.HandlePttDown();
         Assert.False(controller.IsRecording);
     }
 
