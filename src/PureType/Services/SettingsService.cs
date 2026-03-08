@@ -68,6 +68,8 @@ public record WindowSettings
     public string Theme { get; init; } = "Auto";
     public string LogLevel { get; init; } = "Information";
     public bool ShowOverlay { get; init; } = true;
+    public double? OverlayLeft { get; init; }
+    public double? OverlayTop { get; init; }
 }
 
 public record AppSettings

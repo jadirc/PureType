@@ -274,6 +274,35 @@ public class SettingsServiceTests
     }
 
     [Fact]
+    public void OverlayPosition_defaults_to_null()
+    {
+        var settings = new AppSettings();
+        Assert.Null(settings.Window.OverlayLeft);
+        Assert.Null(settings.Window.OverlayTop);
+    }
+
+    [Fact]
+    public void OverlayPosition_roundtrips_through_json()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "settings.json");
+        try
+        {
+            var svc = new SettingsService(path);
+            var original = new AppSettings
+            {
+                Window = new WindowSettings { OverlayLeft = 100.5, OverlayTop = 50.0 }
+            };
+            svc.Save(original);
+            var loaded = svc.Load();
+            Assert.Equal(100.5, loaded.Window.OverlayLeft);
+            Assert.Equal(50.0, loaded.Window.OverlayTop);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void IsFirstRun_false_when_json_exists()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"PureType_Test_{Guid.NewGuid():N}");
