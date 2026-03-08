@@ -81,7 +81,8 @@ public static class KeyboardInjector
     {
         if (string.IsNullOrEmpty(text)) return;
 
-        var inputs = BuildInputs(text + " ");
+        var suffix = text.EndsWith('\n') ? "" : " ";
+        var inputs = BuildInputs(text + suffix);
         SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
     }
 
@@ -92,13 +93,15 @@ public static class KeyboardInjector
         var isTerminal = IsTerminalWindow();
         Log.Debug("TypeTextAsync: isTerminal={IsTerminal}, text={Text}", isTerminal, text);
 
+        var suffix = text.EndsWith('\n') ? "" : " ";
+
         if (isTerminal)
         {
-            await PasteViaClipboardAsync(text + " ");
+            await PasteViaClipboardAsync(text + suffix);
         }
         else if (InputDelayMs > 0)
         {
-            foreach (char c in text + " ")
+            foreach (char c in text + suffix)
             {
                 var inputs = BuildInputs(c.ToString());
                 SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
@@ -107,7 +110,7 @@ public static class KeyboardInjector
         }
         else
         {
-            var inputs = BuildInputs(text + " ");
+            var inputs = BuildInputs(text + suffix);
             SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
         }
     }
