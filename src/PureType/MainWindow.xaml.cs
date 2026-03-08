@@ -394,6 +394,7 @@ public partial class MainWindow : Window
                 Window = _settings.Window with
                 {
                     StartMinimized = dialog.ResultSettings.Window.StartMinimized,
+                    ShowOverlay = dialog.ResultSettings.Window.ShowOverlay,
                     SettingsWidth = dialog.ResultSettings.Window.SettingsWidth,
                     SettingsHeight = dialog.ResultSettings.Window.SettingsHeight,
                     Theme = dialog.ResultSettings.Window.Theme,
@@ -408,6 +409,18 @@ public partial class MainWindow : Window
 
             ApplySettings();
             _settingsService.Save(_settings);
+
+            // Toggle overlay based on setting
+            if (_settings.Window.ShowOverlay && _overlay is null)
+            {
+                _overlay = new StatusOverlayWindow();
+                if (_connected) { _overlay.Show(); UpdateOverlay(); }
+            }
+            else if (!_settings.Window.ShowOverlay && _overlay is not null)
+            {
+                _overlay.Close();
+                _overlay = null;
+            }
 
             // Reconnect if provider changed while connected
             if (oldProvider != newProvider && _connected)
