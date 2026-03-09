@@ -36,6 +36,8 @@ public partial class MainWindow : Window
     private ModifierKeys _pttModifiers = ModifierKeys.Windows;
     private Key _muteKey = Key.None;
     private ModifierKeys _muteModifiers = ModifierKeys.None;
+    private Key _langSwitchKey = Key.None;
+    private ModifierKeys _langSwitchModifiers = ModifierKeys.None;
 
     // ── State ────────────────────────────────────────────────────────────
     private bool _connected;
@@ -197,6 +199,7 @@ public partial class MainWindow : Window
         _keyboardHook.PromptKeyPressed += vkCode => Dispatcher.Invoke(() => _controller.HandlePromptKeyPressed(vkCode));
         _keyboardHook.PttKeyUp += () => Dispatcher.Invoke(() => _controller.HandlePttUp());
         _keyboardHook.MutePressed += () => Dispatcher.Invoke(ToggleMute);
+        _keyboardHook.LanguageSwitchPressed += () => Dispatcher.Invoke(CycleLanguage);
 
         if (_settings.Window.ShowOverlay)
         {
@@ -224,6 +227,8 @@ public partial class MainWindow : Window
         (_pttModifiers, _pttKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Ptt, _pttKey);
         if (!string.IsNullOrEmpty(_settings.Shortcuts.Mute))
             (_muteModifiers, _muteKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Mute, Key.None);
+        if (!string.IsNullOrEmpty(_settings.Shortcuts.LanguageSwitch))
+            (_langSwitchModifiers, _langSwitchKey) = UiHelper.ParseShortcut(_settings.Shortcuts.LanguageSwitch, Key.None);
 
         // Provider combo
         UiHelper.SelectComboByTag(ProviderCombo, _settings.Transcription.Provider);
@@ -256,12 +261,21 @@ public partial class MainWindow : Window
         else
             _muteKey = Key.None;
 
+        if (!string.IsNullOrEmpty(_settings.Shortcuts.LanguageSwitch))
+        {
+            (_langSwitchModifiers, _langSwitchKey) = UiHelper.ParseShortcut(_settings.Shortcuts.LanguageSwitch, Key.None);
+        }
+        else
+            _langSwitchKey = Key.None;
+
         if (_connected)
         {
             _keyboardHook.SetToggleShortcut(_toggleModifiers, _toggleKey);
             _keyboardHook.SetPttShortcut(_pttModifiers, _pttKey);
             if (_muteKey != Key.None)
                 _keyboardHook.SetMuteShortcut(_muteModifiers, _muteKey);
+            if (_langSwitchKey != Key.None)
+                _keyboardHook.SetLanguageSwitchShortcut(_langSwitchModifiers, _langSwitchKey);
         }
 
         // Prompt keys
@@ -632,6 +646,8 @@ public partial class MainWindow : Window
         _keyboardHook.SetPttShortcut(_pttModifiers, _pttKey);
         if (_muteKey != Key.None)
             _keyboardHook.SetMuteShortcut(_muteModifiers, _muteKey);
+        if (_langSwitchKey != Key.None)
+            _keyboardHook.SetLanguageSwitchShortcut(_langSwitchModifiers, _langSwitchKey);
         _keyboardHook.Install();
     }
 
@@ -702,6 +718,45 @@ public partial class MainWindow : Window
         Log.Information("Mute {State}", _muted ? "enabled" : "disabled");
         _tray.Update(_connected, _controller.IsRecording, _muted);
         UpdateOverlay();
+    }
+
+    private async void CycleLanguage()
+    {
+        if (!_connected || _controller.IsRecording) return;
+
+        // Rotate: de → en → (auto) → de
+        var languages = new[] { "de", "en", "" };
+        var current = _settings.Transcription.Language;
+        var index = Array.IndexOf(languages, current);
+        var next = languages[(index + 1) % languages.Length];
+
+        _settings = _settings with
+        {
+            Transcription = _settings.Transcription with { Language = next }
+        };
+        _settingsService.Save(_settings);
+
+        var displayName = next switch
+        {
+            "de" => "German (de)",
+            "en" => "English (en)",
+            _ => "Automatic"
+        };
+
+        if (_provider is WhisperService whisper)
+        {
+            await whisper.SetLanguageAsync(next);
+            ToastWindow.ShowToast($"Language: {displayName}", Green.Color, autoClose: true);
+            Log.Information("Language switched to {Language} (Whisper, instant)", displayName);
+        }
+        else
+        {
+            // Deepgram: must reconnect (language is in WebSocket URL)
+            ToastWindow.ShowToast($"Language: {displayName} (reconnecting\u2026)", Yellow.Color, autoClose: false);
+            Log.Information("Language switched to {Language} (Deepgram, reconnecting)", displayName);
+            await DisconnectAsync();
+            await ConnectAsync();
+        }
     }
 
     private void ShowFromTray()
