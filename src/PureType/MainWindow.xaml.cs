@@ -737,6 +737,7 @@ public partial class MainWindow : Window
         if (!_connected || _controller.IsRecording) return;
 
         // Rotate: de → en → (auto) → de
+        // Note: must match the language tags in SettingsWindow.xaml LanguageCombo
         var languages = new[] { "de", "en", "" };
         var current = _settings.Transcription.Language;
         var index = Array.IndexOf(languages, current);
@@ -755,19 +756,27 @@ public partial class MainWindow : Window
             _ => "Automatic"
         };
 
-        if (_provider is WhisperService whisper)
+        try
         {
-            await whisper.SetLanguageAsync(next);
-            ToastWindow.ShowToast($"Language: {displayName}", Green.Color, autoClose: true);
-            Log.Information("Language switched to {Language} (Whisper, instant)", displayName);
+            if (_provider is WhisperService whisper)
+            {
+                await whisper.SetLanguageAsync(next);
+                ToastWindow.ShowToast($"Language: {displayName}", Green.Color, autoClose: true);
+                Log.Information("Language switched to {Language} (Whisper, instant)", displayName);
+            }
+            else
+            {
+                // Deepgram: must reconnect (language is in WebSocket URL)
+                ToastWindow.ShowToast($"Language: {displayName} (reconnecting\u2026)", Yellow.Color, autoClose: false);
+                Log.Information("Language switched to {Language} (Deepgram, reconnecting)", displayName);
+                await DisconnectAsync();
+                await ConnectAsync();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            // Deepgram: must reconnect (language is in WebSocket URL)
-            ToastWindow.ShowToast($"Language: {displayName} (reconnecting\u2026)", Yellow.Color, autoClose: false);
-            Log.Information("Language switched to {Language} (Deepgram, reconnecting)", displayName);
-            await DisconnectAsync();
-            await ConnectAsync();
+            Log.Error(ex, "Language switch failed");
+            ToastWindow.ShowToast("Language switch failed", Red.Color, autoClose: true);
         }
     }
 

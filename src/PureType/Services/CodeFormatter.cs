@@ -6,7 +6,7 @@ namespace PureType.Services;
 /// Detects voice formatting commands (e.g. "camel case foo bar") and transforms
 /// the following words into the requested code format.
 /// </summary>
-public static partial class CodeFormatter
+public static class CodeFormatter
 {
     private static readonly string[] CommandNames =
     {

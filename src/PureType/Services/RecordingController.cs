@@ -232,6 +232,7 @@ public class RecordingController
         _audio.Stop();
         _recording = false;
         _vad = null;
+        var recordingStopTime = DateTime.UtcNow;
 
         _interimText = "";
         InterimTextUpdated?.Invoke("");
@@ -259,9 +260,9 @@ public class RecordingController
         // Track stats
         if (_stats != null && _sessionChunks.Count > 0)
         {
-            var allText = string.Join(" ", _sessionChunks);
+            var allText = string.Join("", _sessionChunks);
             var wordCount = allText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
-            var duration = (int)(DateTime.UtcNow - _recordingStartTime).TotalSeconds;
+            var duration = (int)(recordingStopTime - _recordingStartTime).TotalSeconds;
             _stats.RecordSession(wordCount, duration);
             StatsUpdated?.Invoke();
         }

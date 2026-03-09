@@ -75,7 +75,19 @@
                   Foreground="{DynamicResource TextBrush}"
                   RowBackground="{DynamicResource SurfaceBrush}"
                   AlternatingRowBackground="{DynamicResource DeepBrush}"
-                  FontSize="12">
+                  FontSize="12"
+                  HorizontalGridLinesBrush="{DynamicResource BorderBrush}">
+            <DataGrid.ColumnHeaderStyle>
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="{DynamicResource DeepBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                    <Setter Property="FontSize" Value="11"/>
+                    <Setter Property="Padding" Value="8,6"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                </Style>
+            </DataGrid.ColumnHeaderStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="*"/>
                 <DataGridTextColumn Header="Words" Binding="{Binding Words}" Width="70"/>

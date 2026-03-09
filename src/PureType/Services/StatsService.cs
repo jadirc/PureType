@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Serilog;
 
 namespace PureType.Services;
 
@@ -50,6 +51,7 @@ public class StatsService
     {
         _filePath = filePath;
         _data = Load();
+        Prune();
     }
 
     /// <summary>
@@ -117,12 +119,19 @@ public class StatsService
 
     private void Save()
     {
-        var dir = Path.GetDirectoryName(_filePath);
-        if (!string.IsNullOrEmpty(dir))
-            Directory.CreateDirectory(dir);
+        try
+        {
+            var dir = Path.GetDirectoryName(_filePath);
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
 
-        var json = JsonSerializer.Serialize(_data, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(_filePath, json);
+            var json = JsonSerializer.Serialize(_data, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(_filePath, json);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to save stats");
+        }
     }
 
     private void Prune()

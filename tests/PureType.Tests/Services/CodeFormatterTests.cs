@@ -118,4 +118,23 @@ public class CodeFormatterTests
     {
         Assert.Equal(expected, CodeFormatter.Apply(input));
     }
+
+    // ── Single-character words ──────────────────────────────────────
+
+    [Theory]
+    [InlineData("camel case a b c", "aBC")]
+    [InlineData("pascal case a b", "AB")]
+    [InlineData("snake case a b c", "a_b_c")]
+    public void Single_char_words_handled(string input, string expected)
+    {
+        Assert.Equal(expected, CodeFormatter.Apply(input));
+    }
+
+    // ── Null input ──────────────────────────────────────────────────
+
+    [Fact]
+    public void Null_input_returns_null()
+    {
+        Assert.Null(CodeFormatter.Apply(null!));
+    }
 }

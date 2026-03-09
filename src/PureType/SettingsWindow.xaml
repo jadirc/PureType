@@ -273,6 +273,13 @@
                     </ComboBox>
                 </StackPanel>
 
+                <!-- Auto-Capitalize -->
+                <CheckBox x:Name="AutoCapitalizeCheck"
+                          Content="  Auto-capitalize after sentences"
+                          ToolTip="Capitalize the first letter after sentence-ending punctuation (. ? ! and newlines)."
+                          Foreground="{DynamicResource TextBrush}" FontSize="12"
+                          Margin="0,4,0,4"/>
+
                 <!-- VAD Auto-Stop -->
                 <CheckBox x:Name="VadCheck"
                           Content="  Auto-stop on silence (3s)"

@@ -97,6 +97,18 @@ public class StatsServiceTests : IDisposable
     }
 
     [Fact]
+    public void Corrupted_file_starts_fresh()
+    {
+        File.WriteAllText(_tempFile, "NOT VALID JSON {{{");
+
+        var svc = new StatsService(_tempFile);
+        var snap = svc.GetStats();
+
+        Assert.Equal(0, snap.TotalWords);
+        Assert.Equal(0, snap.TotalSessions);
+    }
+
+    [Fact]
     public void DayHistory_limited_to_30_entries()
     {
         // Pre-populate with 35 days of data

@@ -78,6 +78,7 @@ public partial class SettingsWindow : Window
         // Audio
         UiHelper.SelectComboByTag(ToneCombo, settings.Audio.Tone);
         VadCheck.IsChecked = settings.Audio.Vad;
+        AutoCapitalizeCheck.IsChecked = settings.Audio.AutoCapitalize;
         UiHelper.SelectComboByTag(InputModeCombo, settings.Audio.InputMode);
         InputDelayBox.Text = settings.Audio.InputDelayMs.ToString();
 
@@ -148,6 +149,7 @@ public partial class SettingsWindow : Window
             {
                 Tone = (string)(toneItem?.Tag ?? "Gentle"),
                 Vad = VadCheck.IsChecked == true,
+                AutoCapitalize = AutoCapitalizeCheck.IsChecked == true,
                 InputMode = (string)((InputModeCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Type"),
                 InputDelayMs = int.TryParse(InputDelayBox.Text, out var delay) ? Math.Max(0, delay) : 0,
             },

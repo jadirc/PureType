@@ -137,6 +137,7 @@ public class WhisperService : ITranscriptionProvider
     /// <summary>
     /// Changes the transcription language and rebuilds the Whisper processor.
     /// Does NOT require a full reconnect — the model stays loaded.
+    /// Must NOT be called while transcription is in progress (caller guards with IsRecording check).
     /// </summary>
     public async Task SetLanguageAsync(string language)
     {
