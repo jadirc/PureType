@@ -15,7 +15,7 @@ public class WhisperService : ITranscriptionProvider
     private WhisperProcessor? _processor;
     private readonly MemoryStream _audioBuffer = new();
     private readonly string _modelName;
-    private readonly string _language;
+    private string _language;
     private bool _connected;
 
     public event Action<string, bool>? TranscriptReceived;
@@ -132,6 +132,27 @@ public class WhisperService : ITranscriptionProvider
             Log.Error(ex, "Whisper transcription failed");
             ErrorOccurred?.Invoke($"Whisper error: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Changes the transcription language and rebuilds the Whisper processor.
+    /// Does NOT require a full reconnect — the model stays loaded.
+    /// </summary>
+    public async Task SetLanguageAsync(string language)
+    {
+        _language = string.IsNullOrEmpty(language) ? "auto" : language;
+
+        if (_factory is null) return;
+
+        await Task.Run(() =>
+        {
+            _processor?.Dispose();
+            var builder = _factory.CreateBuilder()
+                .WithLanguage(_language == "auto" ? "auto" : _language);
+            _processor = builder.Build();
+        });
+
+        Log.Information("Whisper language changed to {Language}", _language);
     }
 
     public async ValueTask DisposeAsync()
