@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.1.0](https://github.com/jadirc/PureType/compare/v1.0.0...v1.1.0) (2026-03-09)
+
+
+### Features
+
+* add 'Show floating status overlay' checkbox to settings ([36ace72](https://github.com/jadirc/PureType/commit/36ace72bfa24f52e26840ef0977797f45f8a0006))
+* add ApplyAutoCapitalize static helper with tests ([d1b6704](https://github.com/jadirc/PureType/commit/d1b670423775cef875499d651345cf80039c903a))
+* add AutoCapitalize setting to AudioSettings (default: true) ([ad9d9c9](https://github.com/jadirc/PureType/commit/ad9d9c9c633810c918306f243ed437530b61f208))
+* add CodeFormatter with camelCase support and tests ([7dcefd9](https://github.com/jadirc/PureType/commit/7dcefd9829be67def844f916baec3023ec8e1055))
+* add Language combo to MainWindow, document all new features in README ([08f2810](https://github.com/jadirc/PureType/commit/08f281070f8a9649e78197bf4fee4b6be2b487bb))
+* add Language Switch shortcut recorder to Settings UI ([08aa525](https://github.com/jadirc/PureType/commit/08aa5253cbbb125f285e61586fce85cc9c84ce81))
+* add LanguageSwitch shortcut setting (default: empty/disabled) ([d5f0a47](https://github.com/jadirc/PureType/commit/d5f0a474657fdb7fe375520dfd8de433b66f4d47))
+* add LanguageSwitchPressed event to KeyboardHookService ([bec760b](https://github.com/jadirc/PureType/commit/bec760bff237000beff6b2255b32b60c51b1d1bb))
+* add OverlayLeft/OverlayTop settings to WindowSettings ([7fc4199](https://github.com/jadirc/PureType/commit/7fc41997a872f37cae381b572374fe58f3c57c12))
+* add SetLanguageAsync default method to ITranscriptionProvider ([18baf12](https://github.com/jadirc/PureType/commit/18baf12566da8c2674de4a3b53ac6f54e8170a15))
+* add SetLanguageAsync to WhisperService for instant language switching ([f1d0ff4](https://github.com/jadirc/PureType/commit/f1d0ff4f063b040bbc98f528b2f4edb64ba8f0fb))
+* add ShowOverlay setting to WindowSettings (default: true) ([1369398](https://github.com/jadirc/PureType/commit/1369398c75d0a4ebfe7d4151fd8f87345e20f4ec))
+* add Statistics button to MainWindow and tray menu ([7679240](https://github.com/jadirc/PureType/commit/76792409c5f9a1ab5d038d42cebc2e974203d3e4))
+* add stats summary line to MainWindow ([500729c](https://github.com/jadirc/PureType/commit/500729c992e83956a3cd987ca9be96f17ab61a15))
+* add StatsService with daily tracking and persistence ([cf07239](https://github.com/jadirc/PureType/commit/cf072390d00c56d551c23bf6af971ef565591249))
+* add StatsWindow with today/all-time summary and 30-day history ([ecfb7ca](https://github.com/jadirc/PureType/commit/ecfb7caade9acc8b5835cdb4d9e8d7772dd28a6e))
+* add StatusOverlayWindow with non-activating top-center pill ([cb3f109](https://github.com/jadirc/PureType/commit/cb3f1090ce45c2cbd9f37badfa2432071815a792))
+* integrate StatusOverlayWindow into MainWindow lifecycle ([f9ac0ab](https://github.com/jadirc/PureType/commit/f9ac0ab91e42166ee549903964718534bbd5ea64))
+* make overlay draggable with double-click reset and middle-click hide ([3b840d9](https://github.com/jadirc/PureType/commit/3b840d90f259a8a0e8e8d5c8e82e4ff76955c701))
+* toggle overlay at runtime when setting changes ([b6f04c5](https://github.com/jadirc/PureType/commit/b6f04c57c11821fb03e37ed7455d8317bb7b0a21))
+* wire auto-capitalize into transcript pipeline ([6c7ddc3](https://github.com/jadirc/PureType/commit/6c7ddc39bd27eeb2858fdad3a45c04eb17e67667))
+* wire CodeFormatter into transcript pipeline ([72eb58a](https://github.com/jadirc/PureType/commit/72eb58ae9b270c22db87cea0a15b2bace2aa25f6))
+* wire language quick-switch hotkey into MainWindow ([3108242](https://github.com/jadirc/PureType/commit/3108242c5bb905286201b42e2597b216ae47f093))
+* wire overlay drag/hide events into MainWindow with position persistence ([536a784](https://github.com/jadirc/PureType/commit/536a7847e21efae06dc093afe711397cfd0be80d))
+* wire StatsService into RecordingController with StatsUpdated event ([d45284f](https://github.com/jadirc/PureType/commit/d45284fa9be8051931c8089f92402538a9092507))
+
+
+### Bug Fixes
+
+* apply code review improvements across features 1-5 ([7f2a62a](https://github.com/jadirc/PureType/commit/7f2a62a3a785cd9392e9c7f9d9e9282be6e2bdcf))
+
 ## 1.0.0 (2026-03-08)
 
 
