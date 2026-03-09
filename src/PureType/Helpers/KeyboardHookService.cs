@@ -67,6 +67,11 @@ public class KeyboardHookService : IDisposable
     private ModifierKeys _muteModifiers = ModifierKeys.None;
     private bool _muteFired;
 
+    // ── Language switch shortcut config ──
+    private int _langSwitchVKey;
+    private ModifierKeys _langSwitchModifiers = ModifierKeys.None;
+    private bool _langSwitchFired;
+
     // ── State ──
     /// <summary>True while any Win key is physically held down.</summary>
     public bool IsWinDown { get; private set; }
@@ -90,6 +95,8 @@ public class KeyboardHookService : IDisposable
     public event Action? PttKeyUp;
     /// <summary>Fired when the mute shortcut is pressed.</summary>
     public event Action? MutePressed;
+    /// <summary>Fired when the language switch shortcut is pressed.</summary>
+    public event Action? LanguageSwitchPressed;
 
     /// <summary>Fired during shortcut recording when Win is pressed while a modifier key is already held.
     /// The parameter is the VK code of the held modifier key.</summary>
@@ -124,6 +131,13 @@ public class KeyboardHookService : IDisposable
         _muteModifiers = modifiers;
         _muteVKey = KeyInterop.VirtualKeyFromKey(key);
         _muteFired = false;
+    }
+
+    public void SetLanguageSwitchShortcut(ModifierKeys modifiers, Key key)
+    {
+        _langSwitchModifiers = modifiers;
+        _langSwitchVKey = KeyInterop.VirtualKeyFromKey(key);
+        _langSwitchFired = false;
     }
 
     public void SetPttShortcut(ModifierKeys modifiers, Key key)
@@ -241,6 +255,18 @@ public class KeyboardHookService : IDisposable
             }
             if (vkCode == _muteVKey && isUp)
                 _muteFired = false;
+
+            // ── Language switch shortcut detection ──
+            if (vkCode == _langSwitchVKey && _langSwitchVKey != 0 && isDown && !_langSwitchFired)
+            {
+                if (AreModifiersHeld(_langSwitchModifiers))
+                {
+                    _langSwitchFired = true;
+                    LanguageSwitchPressed?.Invoke();
+                }
+            }
+            if (vkCode == _langSwitchVKey && isUp)
+                _langSwitchFired = false;
 
         }
 
