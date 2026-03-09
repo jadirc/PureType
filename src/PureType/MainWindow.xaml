@@ -26,6 +26,7 @@
             <RowDefinition Height="Auto"/>  <!-- Row 8: Input Mode -->
             <RowDefinition Height="8"/>
             <RowDefinition Height="*"/>     <!-- Row 10: Transcript -->
+            <RowDefinition Height="Auto"/>  <!-- Row 11: Stats -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
@@ -144,5 +145,13 @@
                 </ScrollViewer>
             </Grid>
         </Border>
+
+        <!-- Stats Summary -->
+        <TextBlock Grid.Row="11" x:Name="StatsLine"
+                   Text=""
+                   Foreground="{DynamicResource TextDimBrush}"
+                   FontSize="11" FontFamily="Segoe UI"
+                   HorizontalAlignment="Center"
+                   Margin="0,4,0,0"/>
     </Grid>
 </Window>

@@ -46,6 +46,7 @@ public partial class MainWindow : Window
 
     // Settings
     private readonly SettingsService _settingsService = new();
+    private readonly StatsService _stats = new();
     private AppSettings _settings = new();
 
     // ── Colors (resolved from theme resources) ────────────────────────────
@@ -167,6 +168,8 @@ public partial class MainWindow : Window
         });
         _controller.ToastRequested += (message, color, autoClose) =>
             ToastWindow.ShowToast(message, color, autoClose);
+        _controller.SetStatsService(_stats);
+        _controller.StatsUpdated += () => Dispatcher.Invoke(UpdateStatsLine);
 
         _audio.DevicesChanged += devices => Dispatcher.Invoke(() =>
         {
@@ -188,6 +191,7 @@ public partial class MainWindow : Window
 
         // Enable settings persistence only after all controls are populated
         _isLoading = false;
+        UpdateStatsLine();
 
         Loaded += (_, _) => ConnectButton.Focus();
 
@@ -888,6 +892,13 @@ public partial class MainWindow : Window
         {
             _overlay.UpdateState(false, false, "Connected \u2013 ready", Green.Color);
         }
+    }
+
+    private void UpdateStatsLine()
+    {
+        var s = _stats.GetStats();
+        var minutes = s.TodaySeconds / 60;
+        StatsLine.Text = $"{s.TodayWords} words today  |  {s.TodaySessions} sessions  |  {minutes} min";
     }
 
     private void SetStatus(string text, SolidColorBrush color)
