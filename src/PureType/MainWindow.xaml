@@ -121,6 +121,10 @@
                                 Background="Transparent" Foreground="{DynamicResource TextDimBrush}"
                                 FontSize="11" BorderThickness="0"
                                 Padding="6,2" Cursor="Hand"/>
+                        <Button Content="Stats" Click="StatsButton_Click"
+                                Background="Transparent" Foreground="{DynamicResource TextDimBrush}"
+                                FontSize="11" BorderThickness="0"
+                                Padding="6,2" Cursor="Hand"/>
                         <Button Content="Log" Click="LogButton_Click"
                                 Background="Transparent" Foreground="{DynamicResource TextDimBrush}"
                                 FontSize="11" BorderThickness="0"

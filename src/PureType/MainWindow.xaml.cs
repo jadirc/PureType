@@ -76,6 +76,7 @@ public partial class MainWindow : Window
         _tray.SettingsRequested += () => Dispatcher.Invoke(() => SettingsButton_Click(this, new RoutedEventArgs()));
         _tray.ExportRequested += () => Dispatcher.Invoke(ExportTranscript);
         _tray.HistoryRequested += () => Dispatcher.Invoke(ShowTranscriptHistory);
+        _tray.StatsRequested += () => Dispatcher.Invoke(ShowStats);
         _tray.AboutRequested += () => Dispatcher.BeginInvoke(ShowAbout);
         _tray.ShowRequested += () => Dispatcher.Invoke(ShowFromTray);
         _tray.ExitRequested += () =>
@@ -338,6 +339,7 @@ public partial class MainWindow : Window
 
     private void ExportButton_Click(object sender, RoutedEventArgs e) => ExportTranscript();
     private void HistoryButton_Click(object sender, RoutedEventArgs e) => ShowTranscriptHistory();
+    private void StatsButton_Click(object sender, RoutedEventArgs e) => ShowStats();
 
     private void ExportTranscript()
     {
@@ -372,6 +374,12 @@ public partial class MainWindow : Window
     {
         var history = new TranscriptHistoryWindow { Owner = this };
         history.Show();
+    }
+
+    private void ShowStats()
+    {
+        var statsWindow = new StatsWindow(_stats) { Owner = this };
+        statsWindow.Show();
     }
 
     private void ShowAbout()

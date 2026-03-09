@@ -19,6 +19,7 @@ public partial class TrayMenuWindow : Window
     public event Action? ExportRequested;
     public event Action? HistoryRequested;
     public event Action? AboutRequested;
+    public event Action? StatsRequested;
     public event Action? ShowRequested;
     public event Action? ExitRequested;
 
@@ -93,6 +94,7 @@ public partial class TrayMenuWindow : Window
         AddClickItem("Settings", () => SettingsRequested?.Invoke());
         AddClickItem("Export Transcript", () => ExportRequested?.Invoke());
         AddClickItem("Transcript History", () => HistoryRequested?.Invoke());
+        AddClickItem("Statistics", () => StatsRequested?.Invoke());
         AddClickItem("About", () => AboutRequested?.Invoke());
         AddClickItem("Open", () => ShowRequested?.Invoke());
         AddSeparator();

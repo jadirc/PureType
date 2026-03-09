@@ -17,6 +17,7 @@ internal class TrayIconManager : IDisposable
     public event Action? ExportRequested;
     public event Action? HistoryRequested;
     public event Action? AboutRequested;
+    public event Action? StatsRequested;
     public event Action? ShowRequested;
     public event Action? ExitRequested;
 
@@ -51,6 +52,7 @@ internal class TrayIconManager : IDisposable
             menu.SettingsRequested += () => SettingsRequested?.Invoke();
             menu.ExportRequested += () => ExportRequested?.Invoke();
             menu.HistoryRequested += () => HistoryRequested?.Invoke();
+            menu.StatsRequested += () => StatsRequested?.Invoke();
             menu.AboutRequested += () => AboutRequested?.Invoke();
             menu.ShowRequested += () => ShowRequested?.Invoke();
             menu.ExitRequested += () => ExitRequested?.Invoke();
