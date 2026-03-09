@@ -303,6 +303,33 @@ public class SettingsServiceTests
     }
 
     [Fact]
+    public void LanguageSwitch_defaults_to_empty()
+    {
+        var settings = new AppSettings();
+        Assert.Equal("", settings.Shortcuts.LanguageSwitch);
+    }
+
+    [Fact]
+    public void LanguageSwitch_roundtrips_through_json()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "settings.json");
+        try
+        {
+            var svc = new SettingsService(path);
+            var original = new AppSettings
+            {
+                Shortcuts = new ShortcutSettings { LanguageSwitch = "Ctrl+Alt+L" }
+            };
+            svc.Save(original);
+            var loaded = svc.Load();
+            Assert.Equal("Ctrl+Alt+L", loaded.Shortcuts.LanguageSwitch);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void IsFirstRun_false_when_json_exists()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"PureType_Test_{Guid.NewGuid():N}");
