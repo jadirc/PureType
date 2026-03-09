@@ -210,6 +210,22 @@
                              PreviewKeyDown="ShortcutBox_PreviewKeyDown"/>
                 </StackPanel>
 
+                <!-- Language Switch Shortcut -->
+                <StackPanel Margin="0,0,0,12"
+                            ToolTip="Optional hotkey to cycle the transcription language (German → English → Automatic). Press Delete or Backspace to clear. Leave empty to disable.">
+                    <TextBlock Text="LANGUAGE SWITCH" Foreground="{DynamicResource LabelBrush}"
+                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBox x:Name="LangSwitchShortcutBox"
+                             Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
+                             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                             Padding="10,5" FontSize="13"
+                             IsReadOnly="True" Cursor="Hand"
+                             Text=""
+                             GotFocus="ShortcutBox_GotFocus"
+                             LostFocus="ShortcutBox_LostFocus"
+                             PreviewKeyDown="ShortcutBox_PreviewKeyDown"/>
+                </StackPanel>
+
                 <!-- ── AUDIO ── -->
                 <TextBlock Text="AUDIO" Foreground="{DynamicResource AccentBrush}"
                            FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>

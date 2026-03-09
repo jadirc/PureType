@@ -20,6 +20,8 @@ public partial class SettingsWindow : Window
     private ModifierKeys _pttModifiers;
     private Key _muteKey;
     private ModifierKeys _muteModifiers;
+    private Key _langSwitchKey;
+    private ModifierKeys _langSwitchModifiers;
     private string? _shortcutBoxPreviousText;
 
     // Prompt list
@@ -67,6 +69,11 @@ public partial class SettingsWindow : Window
         {
             (_muteModifiers, _muteKey) = UiHelper.ParseShortcut(settings.Shortcuts.Mute, Key.None);
             MuteShortcutBox.Text = UiHelper.FormatShortcut(_muteModifiers, _muteKey);
+        }
+        if (!string.IsNullOrEmpty(settings.Shortcuts.LanguageSwitch))
+        {
+            (_langSwitchModifiers, _langSwitchKey) = UiHelper.ParseShortcut(settings.Shortcuts.LanguageSwitch, Key.None);
+            LangSwitchShortcutBox.Text = UiHelper.FormatShortcut(_langSwitchModifiers, _langSwitchKey);
         }
         // Audio
         UiHelper.SelectComboByTag(ToneCombo, settings.Audio.Tone);
@@ -135,6 +142,7 @@ public partial class SettingsWindow : Window
                 Toggle = UiHelper.FormatShortcut(_toggleModifiers, _toggleKey),
                 Ptt = UiHelper.FormatShortcut(_pttModifiers, _pttKey),
                 Mute = _muteKey != Key.None ? UiHelper.FormatShortcut(_muteModifiers, _muteKey) : "",
+                LanguageSwitch = _langSwitchKey != Key.None ? UiHelper.FormatShortcut(_langSwitchModifiers, _langSwitchKey) : "",
             },
             Audio = new AudioSettings
             {
@@ -361,6 +369,15 @@ public partial class SettingsWindow : Window
                 Keyboard.ClearFocus();
                 return;
             }
+            if (box == LangSwitchShortcutBox)
+            {
+                _langSwitchKey = Key.None;
+                _langSwitchModifiers = ModifierKeys.None;
+                box.Text = "";
+                box.Foreground = (SolidColorBrush)FindResource("TextBrush");
+                Keyboard.ClearFocus();
+                return;
+            }
         }
 
         if (!AssignShortcut(box, displayText, modifiers, key))
@@ -375,7 +392,7 @@ public partial class SettingsWindow : Window
     {
         var focused = Keyboard.FocusedElement as System.Windows.Controls.TextBox;
         if (focused is not (var box and not null) ||
-            (box != ToggleShortcutBox && box != PttShortcutBox && box != MuteShortcutBox))
+            (box != ToggleShortcutBox && box != PttShortcutBox && box != MuteShortcutBox && box != LangSwitchShortcutBox))
             return;
 
         var key = KeyInterop.KeyFromVirtualKey(heldVk);
@@ -472,7 +489,7 @@ public partial class SettingsWindow : Window
 
     private bool AssignShortcut(System.Windows.Controls.TextBox box, string displayText, ModifierKeys modifiers, Key key)
     {
-        var otherBoxes = new[] { ToggleShortcutBox, PttShortcutBox, MuteShortcutBox }
+        var otherBoxes = new[] { ToggleShortcutBox, PttShortcutBox, MuteShortcutBox, LangSwitchShortcutBox }
             .Where(b => b != box);
         if (otherBoxes.Any(b => !string.IsNullOrEmpty(b.Text) && b.Text == displayText))
         {
@@ -484,6 +501,7 @@ public partial class SettingsWindow : Window
         if (box == ToggleShortcutBox) { _toggleKey = key; _toggleModifiers = modifiers; }
         else if (box == PttShortcutBox) { _pttKey = key; _pttModifiers = modifiers; }
         else if (box == MuteShortcutBox) { _muteKey = key; _muteModifiers = modifiers; }
+        else if (box == LangSwitchShortcutBox) { _langSwitchKey = key; _langSwitchModifiers = modifiers; }
         return true;
     }
 
