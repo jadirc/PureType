@@ -514,6 +514,16 @@ public partial class SettingsWindow : Window
 
     // ── Settings Search ──────────────────────────────────────────────────
 
+    private void SearchBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            SearchBox.Text = "";
+            Keyboard.ClearFocus();
+            e.Handled = true;
+        }
+    }
+
     private void SearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
         if (SearchPlaceholder != null)

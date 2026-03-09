@@ -25,7 +25,8 @@
                      BorderBrush="{DynamicResource BorderBrush}"
                      BorderThickness="1"
                      ToolTip="Type to filter settings"
-                     TextChanged="SearchBox_TextChanged"/>
+                     TextChanged="SearchBox_TextChanged"
+                     PreviewKeyDown="SearchBox_PreviewKeyDown"/>
             <TextBlock x:Name="SearchPlaceholder"
                        Text="Search settings..."
                        IsHitTestVisible="False"
