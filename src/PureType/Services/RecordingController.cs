@@ -24,6 +24,8 @@ public class RecordingController
     private string _interimText = "";
     private bool _capitalizeNext = true;
     private bool _autoCapitalize = true;
+    private StatsService? _stats;
+    private DateTime _recordingStartTime;
 
     // ── Provider ───────────────────────────────────────────────────────
     private ITranscriptionProvider? _provider;
@@ -61,6 +63,8 @@ public class RecordingController
     public event Action<string>? ClipboardRequested;
     /// <summary>(message, dotColor, autoClose) for toast notifications.</summary>
     public event Action<string, Color, bool>? ToastRequested;
+    /// <summary>Fired after a recording session is tracked in stats.</summary>
+    public event Action? StatsUpdated;
 
     // ── Public API ─────────────────────────────────────────────────────
     public bool IsRecording => _recording;
@@ -88,6 +92,11 @@ public class RecordingController
         _inputMode = settings.Audio.InputMode;
         _autoCapitalize = settings.Audio.AutoCapitalize;
         _prompts = settings.Llm.Prompts;
+    }
+
+    public void SetStatsService(StatsService stats)
+    {
+        _stats = stats;
     }
 
     /// <summary>
@@ -197,6 +206,7 @@ public class RecordingController
         if (_recording || !_connected) return;
         _sessionChunks.Clear();
         _capitalizeNext = true;
+        _recordingStartTime = DateTime.UtcNow;
         _recording = true;
         SoundFeedback.PlayStart();
         _audio.Start();
@@ -244,6 +254,16 @@ public class RecordingController
             _selectedPrompt = null;
             var fullText = string.Join("", _sessionChunks);
             LlmProcessingRequested?.Invoke(fullText, prompt);
+        }
+
+        // Track stats
+        if (_stats != null && _sessionChunks.Count > 0)
+        {
+            var allText = string.Join(" ", _sessionChunks);
+            var wordCount = allText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
+            var duration = (int)(DateTime.UtcNow - _recordingStartTime).TotalSeconds;
+            _stats.RecordSession(wordCount, duration);
+            StatsUpdated?.Invoke();
         }
 
         if (_connected)

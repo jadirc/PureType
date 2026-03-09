@@ -113,4 +113,14 @@ public class RecordingControllerTests
         var (_, nextFlag) = RecordingController.ApplyAutoCapitalize("hello\n", false);
         Assert.True(nextFlag);
     }
+
+    [Fact]
+    public void StatsUpdated_event_exists()
+    {
+        var controller = CreateController();
+        bool fired = false;
+        controller.StatsUpdated += () => fired = true;
+        // Event should exist and be subscribable without error
+        Assert.False(fired);
+    }
 }
