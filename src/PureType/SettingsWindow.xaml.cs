@@ -512,6 +512,100 @@ public partial class SettingsWindow : Window
         e.Handled = !e.Text.All(char.IsDigit);
     }
 
+    // ── Settings Search ──────────────────────────────────────────────────
+
+    private void SearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (SearchPlaceholder != null)
+            SearchPlaceholder.Visibility = string.IsNullOrEmpty(SearchBox.Text)
+                ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!IsLoaded) return;
+
+        var query = SearchBox.Text.Trim().ToLowerInvariant();
+        FilterSettings(query);
+    }
+
+    private void FilterSettings(string query)
+    {
+        var mainGrid = (System.Windows.Controls.Grid)Content;
+        var scrollViewer = mainGrid.Children.OfType<System.Windows.Controls.ScrollViewer>().First();
+        var stackPanel = (System.Windows.Controls.StackPanel)scrollViewer.Content;
+
+        bool isEmpty = string.IsNullOrEmpty(query);
+
+        System.Windows.Controls.TextBlock? currentSectionHeader = null;
+        bool anySectionChildVisible = false;
+
+        foreach (UIElement child in stackPanel.Children)
+        {
+            if (child is System.Windows.Controls.TextBlock tb
+                && tb.Tag is string tag && tag == "section")
+            {
+                if (currentSectionHeader != null)
+                {
+                    currentSectionHeader.Visibility = (isEmpty || anySectionChildVisible)
+                        ? Visibility.Visible : Visibility.Collapsed;
+                }
+
+                currentSectionHeader = tb;
+                anySectionChildVisible = false;
+                continue;
+            }
+
+            if (isEmpty)
+            {
+                RestoreDefaultVisibility(child);
+                anySectionChildVisible = true;
+            }
+            else
+            {
+                bool matches = MatchesSearch(child, query);
+                child.Visibility = matches ? Visibility.Visible : Visibility.Collapsed;
+                if (matches) anySectionChildVisible = true;
+            }
+        }
+
+        if (currentSectionHeader != null)
+        {
+            currentSectionHeader.Visibility = (isEmpty || anySectionChildVisible)
+                ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    private static bool MatchesSearch(UIElement element, string query)
+    {
+        if (element is FrameworkElement fe && fe.Tag is string tag)
+            return tag.Contains(query, StringComparison.OrdinalIgnoreCase);
+        return false;
+    }
+
+    private void RestoreDefaultVisibility(UIElement child)
+    {
+        if (child is FrameworkElement fe)
+        {
+            if (fe == WhisperModelPanel || fe == ApiKeyPanel || fe == KeywordsPanel)
+            {
+                var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+                var isWhisper = (string)(providerItem?.Tag ?? "deepgram") == "whisper";
+                if (fe == WhisperModelPanel)
+                    fe.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
+                else
+                    fe.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
+                return;
+            }
+
+            if (fe == LlmSettingsPanel)
+            {
+                fe.Visibility = LlmEnabledCheck.IsChecked == true
+                    ? Visibility.Visible : Visibility.Collapsed;
+                return;
+            }
+        }
+
+        child.Visibility = Visibility.Visible;
+    }
+
     // ── Autostart ─────────────────────────────────────────────────────────
 
     private const string AutostartRegistryKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";

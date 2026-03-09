@@ -11,36 +11,60 @@
 
     <Grid Margin="16">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
+        <!-- Search Box -->
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+            <TextBox x:Name="SearchBox"
+                     Padding="10,7" FontSize="13"
+                     Background="{DynamicResource SurfaceBrush}"
+                     Foreground="{DynamicResource TextBrush}"
+                     BorderBrush="{DynamicResource BorderBrush}"
+                     BorderThickness="1"
+                     ToolTip="Type to filter settings"
+                     TextChanged="SearchBox_TextChanged"/>
+            <TextBlock x:Name="SearchPlaceholder"
+                       Text="Search settings..."
+                       IsHitTestVisible="False"
+                       Padding="12,8"
+                       FontSize="13"
+                       Foreground="{DynamicResource MutedTextBrush}"/>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
             <StackPanel>
 
                 <!-- ── GENERAL ── -->
                 <TextBlock Text="GENERAL" Foreground="{DynamicResource AccentBrush}"
-                           FontSize="12" FontWeight="Bold" Margin="0,4,0,8"/>
+                           FontSize="12" FontWeight="Bold" Margin="0,4,0,8"
+                           Tag="section"/>
 
                 <CheckBox x:Name="AutostartCheck"
                           Content="  Start with Windows"
                           ToolTip="Automatically launch PureType when you log in to Windows."
-                          Foreground="{DynamicResource TextBrush}" FontSize="12"/>
+                          Foreground="{DynamicResource TextBrush}" FontSize="12"
+                          Tag="autostart start windows boot launch"/>
 
                 <CheckBox x:Name="StartMinimizedCheck"
                           Content="  Start minimized"
                           ToolTip="Start the app minimized to the system tray instead of showing the main window."
                           Foreground="{DynamicResource TextBrush}" FontSize="12"
-                          Margin="0,4,0,0"/>
+                          Margin="0,4,0,0"
+                          Tag="start minimized tray hidden"/>
 
                 <CheckBox x:Name="ShowOverlayCheck"
                           Content="  Show floating status overlay"
                           ToolTip="Display a small always-on-top indicator showing the current recording state. Useful for multi-window workflows."
                           Foreground="{DynamicResource TextBrush}" FontSize="12"
-                          Margin="0,4,0,0"/>
+                          Margin="0,4,0,0"
+                          Tag="overlay floating status indicator badge"/>
 
                 <!-- Theme -->
                 <StackPanel Margin="0,8,0,0"
+                            Tag="theme dark light auto color appearance"
                             ToolTip="Choose a color theme. Auto follows your Windows dark/light setting and switches automatically.">
                     <TextBlock Text="THEME" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -54,6 +78,7 @@
 
                 <!-- Log Level -->
                 <StackPanel Margin="0,8,0,0"
+                            Tag="log level debug information warning verbose"
                             ToolTip="Controls the verbosity of log output. Debug shows everything, Warning shows only important messages.">
                     <TextBlock Text="LOG LEVEL" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -67,6 +92,7 @@
                 <!-- Text Replacements -->
                 <Button Content="Text Replacements &#x2026;"
                         Click="ReplacementsButton_Click"
+                        Tag="text replacements substitution"
                         ToolTip="Define automatic text replacements that are applied to every transcription. Useful for abbreviations or frequently misrecognized words."
                         Background="Transparent" Foreground="{DynamicResource AccentBrush}"
                         FontSize="12" BorderThickness="0"
@@ -77,6 +103,7 @@
                 <!-- Open Settings File -->
                 <Button Content="Open Settings File &#x2026;"
                         Click="OpenSettingsFileButton_Click"
+                        Tag="settings file json open editor"
                         ToolTip="Open the settings JSON file in your default text editor for advanced editing."
                         Background="Transparent" Foreground="{DynamicResource AccentBrush}"
                         FontSize="12" BorderThickness="0"
@@ -86,10 +113,12 @@
 
                 <!-- ── TRANSCRIPTION ── -->
                 <TextBlock Text="TRANSCRIPTION" Foreground="{DynamicResource AccentBrush}"
-                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>
+                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"
+                           Tag="section"/>
 
                 <!-- Provider -->
                 <StackPanel Margin="0,0,0,12"
+                            Tag="provider engine deepgram whisper cloud local"
                             ToolTip="Select the speech recognition engine. Deepgram requires an internet connection and API key. Whisper runs locally on your machine.">
                     <TextBlock Text="PROVIDER" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -102,6 +131,7 @@
 
                 <!-- API Key (Deepgram only) -->
                 <StackPanel x:Name="ApiKeyPanel" Margin="0,0,0,12"
+                            Tag="api key deepgram authentication"
                             ToolTip="Your Deepgram API key for cloud-based speech recognition. Get one at console.deepgram.com.">
                     <TextBlock Text="DEEPGRAM API KEY" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -114,6 +144,7 @@
 
                 <!-- Whisper Model (Whisper only) -->
                 <StackPanel x:Name="WhisperModelPanel" Visibility="Collapsed" Margin="0,0,0,12"
+                            Tag="whisper model download local"
                             ToolTip="Choose a Whisper model. Larger models are more accurate but slower. Download the model before first use.">
                     <TextBlock Text="WHISPER MODEL" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -137,6 +168,7 @@
 
                 <!-- Keywords (Deepgram only) -->
                 <StackPanel x:Name="KeywordsPanel" Margin="0,0,0,12"
+                            Tag="keywords boost vocabulary recognition"
                             ToolTip="Comma-separated terms to boost recognition accuracy. Useful for technical terms, proper names, or domain-specific vocabulary.">
                     <TextBlock Text="KEYWORDS (Boost)" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -148,6 +180,7 @@
 
                 <!-- Language -->
                 <StackPanel Margin="0,0,0,12"
+                            Tag="language german english automatic speech"
                             ToolTip="Primary language for speech recognition. Choose Automatic to let the engine detect the language, though this may reduce accuracy.">
                     <TextBlock Text="LANGUAGE" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -160,10 +193,12 @@
 
                 <!-- ── SHORTCUTS ── -->
                 <TextBlock Text="SHORTCUTS" Foreground="{DynamicResource AccentBrush}"
-                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>
+                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"
+                           Tag="section"/>
 
                 <!-- Toggle Shortcut -->
                 <StackPanel Margin="0,0,0,12"
+                            Tag="toggle shortcut hotkey start stop recording"
                             ToolTip="Global hotkey to start and stop recording. Click the field, then press your desired key combination.">
                     <TextBlock Text="TOGGLE SHORTCUT" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -180,6 +215,7 @@
 
                 <!-- PTT Shortcut -->
                 <StackPanel Margin="0,0,0,12"
+                            Tag="push to talk ptt shortcut hotkey hold"
                             ToolTip="Push-to-talk hotkey. Hold to record, release to stop. Works simultaneously with the toggle shortcut.">
                     <TextBlock Text="PTT SHORTCUT" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -196,6 +232,7 @@
 
                 <!-- Mute Shortcut -->
                 <StackPanel Margin="0,0,0,12"
+                            Tag="mute shortcut hotkey microphone"
                             ToolTip="Optional hotkey to mute/unmute the microphone while connected. Press Delete or Backspace to clear. Leave empty to disable.">
                     <TextBlock Text="MUTE SHORTCUT" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -212,6 +249,7 @@
 
                 <!-- Language Switch Shortcut -->
                 <StackPanel Margin="0,0,0,12"
+                            Tag="language switch shortcut hotkey cycle"
                             ToolTip="Optional hotkey to cycle the transcription language (German → English → Automatic). Press Delete or Backspace to clear. Leave empty to disable.">
                     <TextBlock Text="LANGUAGE SWITCH" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -228,10 +266,12 @@
 
                 <!-- ── AUDIO ── -->
                 <TextBlock Text="AUDIO" Foreground="{DynamicResource AccentBrush}"
-                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>
+                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"
+                           Tag="section"/>
 
                 <!-- Signal Tone -->
                 <StackPanel Margin="0,0,0,12"
+                            Tag="signal tone sound audio feedback beep"
                             ToolTip="Audio feedback sound played when recording starts and stops. Choose None to disable.">
                     <TextBlock Text="SIGNAL TONE" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -247,6 +287,7 @@
 
                 <!-- Input Delay -->
                 <StackPanel Margin="0,0,0,12"
+                            Tag="input delay milliseconds keystroke speed"
                             ToolTip="Delay in milliseconds between each simulated keystroke. Increase this if target applications drop characters. Set to 0 for instant typing.">
                     <TextBlock Text="INPUT DELAY (MS)" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -258,7 +299,8 @@
                 </StackPanel>
 
                 <!-- Input Mode -->
-                <StackPanel Margin="0,0,0,6">
+                <StackPanel Margin="0,0,0,6"
+                            Tag="input mode type paste clipboard copy">
                     <TextBlock Text="Input mode"
                                Foreground="{DynamicResource SubtleBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -278,27 +320,32 @@
                           Content="  Auto-capitalize after sentences"
                           ToolTip="Capitalize the first letter after sentence-ending punctuation (. ? ! and newlines)."
                           Foreground="{DynamicResource TextBrush}" FontSize="12"
-                          Margin="0,4,0,4"/>
+                          Margin="0,4,0,4"
+                          Tag="auto capitalize sentence uppercase"/>
 
                 <!-- VAD Auto-Stop -->
                 <CheckBox x:Name="VadCheck"
                           Content="  Auto-stop on silence (3s)"
                           ToolTip="Automatically stop recording after 3 seconds of silence. Useful for hands-free dictation."
                           Foreground="{DynamicResource TextBrush}" FontSize="12"
-                          Margin="0,0,0,4"/>
+                          Margin="0,0,0,4"
+                          Tag="vad silence auto stop voice activity detection"/>
 
                 <!-- ── AI POST-PROCESSING ── -->
                 <TextBlock Text="AI POST-PROCESSING" Foreground="{DynamicResource AccentBrush}"
-                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"/>
+                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"
+                           Tag="section"/>
 
                 <CheckBox x:Name="LlmEnabledCheck"
                           Content="  AI Post-Processing"
                           ToolTip="Send transcribed text to an AI model for cleanup, translation, or formatting before typing it. Hold the AI trigger key with your shortcut to activate."
                           Foreground="{DynamicResource TextBrush}" FontSize="12"
+                          Tag="ai post processing llm enabled"
                           Checked="LlmEnabledCheck_Changed"
                           Unchecked="LlmEnabledCheck_Changed"/>
 
-                <StackPanel x:Name="LlmSettingsPanel" Visibility="Collapsed" Margin="0,8,0,0">
+                <StackPanel x:Name="LlmSettingsPanel" Visibility="Collapsed" Margin="0,8,0,0"
+                            Tag="ai llm api endpoint key model prompts">
                     <StackPanel Margin="0,0,0,12"
                                 ToolTip="Base URL of the OpenAI-compatible API. You can use OpenAI, Anthropic, OpenRouter, Google Gemini, or any compatible endpoint.">
                         <TextBlock Text="API ENDPOINT" Foreground="{DynamicResource LabelBrush}"
@@ -389,7 +436,7 @@
         </ScrollViewer>
 
         <!-- Footer -->
-        <Grid Grid.Row="1" Margin="0,12,0,0">
+        <Grid Grid.Row="2" Margin="0,12,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
