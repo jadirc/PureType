@@ -189,6 +189,7 @@ public partial class MainWindow : Window
         _audio.StartDevicePolling();
         SelectMicrophoneByName(_settings.Audio.Microphone);
         UiHelper.SelectComboByTag(InputModeComboMain, _settings.Audio.InputMode);
+        UiHelper.SelectComboByTag(LanguageComboMain, _settings.Transcription.Language);
 
         // Enable settings persistence only after all controls are populated
         _isLoading = false;
@@ -317,6 +318,7 @@ public partial class MainWindow : Window
             Transcription = _settings.Transcription with
             {
                 Provider = (string)(providerItem?.Tag ?? "deepgram"),
+                Language = (string)((LanguageComboMain.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "de"),
             },
             Audio = _settings.Audio with
             {
@@ -432,6 +434,7 @@ public partial class MainWindow : Window
             if (oldProvider != newProvider)
                 UiHelper.SelectComboByTag(ProviderCombo, newProvider);
             UiHelper.SelectComboByTag(InputModeComboMain, _settings.Audio.InputMode);
+            UiHelper.SelectComboByTag(LanguageComboMain, _settings.Transcription.Language);
 
             ApplySettings();
             _settingsService.Save(_settings);
@@ -520,6 +523,52 @@ public partial class MainWindow : Window
         {
             SaveSettings();
             ApplySettings();
+        }
+    }
+
+    // ── Language ────────────────────────────────────────────────────────
+
+    private async void LanguageComboMain_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isLoading) return;
+        var tag = (string)((LanguageComboMain.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "de");
+
+        // Skip if unchanged
+        if (tag == _settings.Transcription.Language) return;
+
+        _settings = _settings with
+        {
+            Transcription = _settings.Transcription with { Language = tag }
+        };
+        _settingsService.Save(_settings);
+
+        if (!_connected) return;
+
+        var displayName = tag switch
+        {
+            "de" => "German (de)",
+            "en" => "English (en)",
+            _ => "Automatic"
+        };
+
+        try
+        {
+            if (_provider is WhisperService whisper)
+            {
+                await whisper.SetLanguageAsync(tag);
+                ToastWindow.ShowToast($"Language: {displayName}", Green.Color, autoClose: true);
+            }
+            else
+            {
+                ToastWindow.ShowToast($"Language: {displayName} (reconnecting\u2026)", Yellow.Color, autoClose: false);
+                await DisconnectAsync();
+                await ConnectAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Language switch failed");
+            ToastWindow.ShowToast("Language switch failed", Red.Color, autoClose: true);
         }
     }
 
@@ -748,6 +797,7 @@ public partial class MainWindow : Window
             Transcription = _settings.Transcription with { Language = next }
         };
         _settingsService.Save(_settings);
+        UiHelper.SelectComboByTag(LanguageComboMain, next);
 
         var displayName = next switch
         {

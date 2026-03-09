@@ -27,6 +27,11 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
   - **Toggle** — Press a hotkey to start/stop recording
   - **Push-to-Talk** — Hold a key to record, release to stop
 - **AI post-processing** — Optionally send transcribed text through an LLM (OpenAI, Anthropic, OpenRouter, Google Gemini) for cleanup, formatting, or transformation
+- **Floating status overlay** — Always-on-top pill showing recording state, draggable to any position (double-click to reset, middle-click to hide). Essential for multi-window workflows
+- **Auto-capitalization** — Automatically capitalizes the first letter after sentence-ending punctuation (`.` `?` `!`) and newlines
+- **Code formatter voice commands** — Say "camel case foo bar" to get `fooBar`, "snake case" for `foo_bar`, "kebab case" for `foo-bar`, "pascal case" for `FooBar`, plus "upper case", "lower case", and "no space". Say "stop" to end formatting and continue with normal text
+- **Language quick-switch** — Cycle between German, English, and Automatic with a configurable hotkey. Whisper switches instantly; Deepgram reconnects automatically. Also available as a combo box in the main window
+- **Usage statistics** — Track words dictated, sessions, and recording duration (today and all-time) with a 30-day history chart. Stats shown in the main window footer and in a dedicated Statistics window
 - **Voice activity detection (VAD)** — Automatically stops recording after silence
 - **Text replacements** — Define custom text substitutions applied to transcribed text
 - **Transcript export** — Export the current session transcript as a timestamped `.txt` file
@@ -87,13 +92,31 @@ On first launch, a setup wizard guides you through selecting a transcription pro
 |---|---|
 | Start/stop recording (toggle mode) | `Ctrl+Alt+X` |
 | Record while held (push-to-talk mode) | `Win+L-Ctrl` |
+| Mute/unmute microphone | *(not set)* |
+| Cycle language (DE → EN → Auto) | *(not set)* |
 
-Both input modes are always active simultaneously.
+Both input modes are always active simultaneously. Mute and language switch shortcuts can be assigned in Settings.
 
 1. **Connect** — Enter your API key in Settings and click *Connect*
 2. **Speak** — Press your hotkey and start talking. The transcript appears in the preview panel and is simultaneously typed into the focused window.
 3. **Customize shortcuts** — Open Settings and click the shortcut field to record a new key combination
 4. **Export transcript** — Click *Export* in the transcript panel or use the tray menu to save the session as a timestamped `.txt` file
+
+### Code Formatter Voice Commands
+
+While dictating, say a format command followed by the words to format:
+
+| Voice Command | Output |
+|---|---|
+| "camel case foo bar" | `fooBar` |
+| "snake case foo bar" | `foo_bar` |
+| "kebab case foo bar" | `foo-bar` |
+| "pascal case foo bar" | `FooBar` |
+| "upper case foo bar" | `FOO BAR` |
+| "lower case foo bar" | `foo bar` |
+| "no space foo bar" | `foobar` |
+
+Say **"stop"** after the words to end formatting and continue with normal text: "camel case my variable stop is assigned here" → `myVariable is assigned here`.
 
 Settings are persisted automatically to `%LOCALAPPDATA%\PureType\settings.json`.
 
@@ -109,6 +132,8 @@ PureType/
 ├── TrayMenuWindow.xaml(.cs)          # Themed tray context menu
 ├── WelcomeWindow.xaml(.cs)           # First-run setup wizard
 ├── TranscriptHistoryWindow.xaml(.cs) # Transcript history with search
+├── StatsWindow.xaml(.cs)            # Usage statistics (today/all-time/30-day history)
+├── StatusOverlayWindow.xaml(.cs)    # Floating always-on-top status pill
 ├── Services/
 │   ├── ITranscriptionProvider.cs     # Common interface for transcription engines
 │   ├── DeepgramService.cs            # WebSocket streaming to Deepgram Nova-3 (auto-reconnect)
@@ -120,6 +145,8 @@ PureType/
 │   ├── KeyboardInjector.cs           # Win32 SendInput / clipboard paste (configurable delay)
 │   ├── ReplacementService.cs         # User-defined text substitutions
 │   ├── SettingsService.cs            # JSON settings persistence & migration
+│   ├── StatsService.cs              # Usage statistics tracking & daily persistence
+│   ├── CodeFormatter.cs             # Voice-triggered code formatting commands
 │   ├── SoundFeedback.cs              # Synthesized WAV tone presets
 │   ├── UpdateChecker.cs              # GitHub release update checking
 │   └── LogWindowSink.cs              # Serilog sink for the log viewer
@@ -143,7 +170,7 @@ The app follows a simple code-behind architecture — no DI container or MVVM fr
                                                     ┌─ DeepgramService (WebSocket, cloud)
 Microphone → AudioCaptureService → RecordingController ─┤                                      → transcript
                                                     └─ WhisperService (local, offline)            ↓
-                                                                               ReplacementService → KeyboardInjector → active window
+                                                          AutoCapitalize → CodeFormatter → ReplacementService → KeyboardInjector → active window
 ```
 
 ## Dependencies
