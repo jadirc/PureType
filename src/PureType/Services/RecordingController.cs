@@ -274,6 +274,7 @@ public class RecordingController
             {
                 (processed, _capitalizeNext) = ApplyAutoCapitalize(processed, _capitalizeNext);
             }
+            processed = CodeFormatter.Apply(processed);
             TranscriptUpdated?.Invoke(processed);
             _sessionChunks.Add(processed);
             _transcriptLog.Add((DateTime.Now, processed));
