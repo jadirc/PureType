@@ -14,4 +14,10 @@ public interface ITranscriptionProvider : IAsyncDisposable
     Task ConnectAsync();
     Task SendAudioAsync(byte[] audioData);
     Task SendFinalizeAsync();
+
+    /// <summary>
+    /// Changes the transcription language at runtime if supported.
+    /// Default: no-op (provider requires reconnect).
+    /// </summary>
+    Task SetLanguageAsync(string language) => Task.CompletedTask;
 }
