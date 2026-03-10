@@ -17,22 +17,36 @@
         </Grid.RowDefinitions>
 
         <!-- Search Box -->
-        <Grid Grid.Row="0" Margin="0,0,0,10">
+        <Grid Grid.Row="0" Margin="0,0,0,8">
             <TextBox x:Name="SearchBox"
-                     Padding="10,7" FontSize="13"
+                     Padding="6,4,24,4" FontSize="12"
                      Background="{DynamicResource SurfaceBrush}"
                      Foreground="{DynamicResource TextBrush}"
                      BorderBrush="{DynamicResource BorderBrush}"
                      BorderThickness="1"
-                     ToolTip="Type to filter settings"
+                     ToolTip="Type to filter settings (Escape to clear)"
                      TextChanged="SearchBox_TextChanged"
                      PreviewKeyDown="SearchBox_PreviewKeyDown"/>
             <TextBlock x:Name="SearchPlaceholder"
                        Text="Search settings..."
                        IsHitTestVisible="False"
-                       Padding="12,8"
-                       FontSize="13"
+                       Padding="8,5"
+                       FontSize="12"
                        Foreground="{DynamicResource MutedTextBrush}"/>
+            <Button x:Name="SearchClearButton"
+                    Content="&#x2715;"
+                    Visibility="Collapsed"
+                    Click="SearchClearButton_Click"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Background="Transparent"
+                    Foreground="{DynamicResource RedBrush}"
+                    BorderThickness="0"
+                    FontSize="11" FontWeight="Bold"
+                    Padding="4,2" Margin="0,0,4,0"
+                    Cursor="Hand"
+                    ToolTip="Clear search"
+                    IsTabStop="False"/>
         </Grid>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">

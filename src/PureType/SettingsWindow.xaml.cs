@@ -524,11 +524,19 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private void SearchClearButton_Click(object sender, RoutedEventArgs e)
+    {
+        SearchBox.Text = "";
+        SearchBox.Focus();
+    }
+
     private void SearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
+        var hasText = !string.IsNullOrEmpty(SearchBox.Text);
         if (SearchPlaceholder != null)
-            SearchPlaceholder.Visibility = string.IsNullOrEmpty(SearchBox.Text)
-                ? Visibility.Visible : Visibility.Collapsed;
+            SearchPlaceholder.Visibility = hasText ? Visibility.Collapsed : Visibility.Visible;
+        if (SearchClearButton != null)
+            SearchClearButton.Visibility = hasText ? Visibility.Visible : Visibility.Collapsed;
 
         if (!IsLoaded) return;
 
