@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0](https://github.com/jadirc/PureType/compare/v1.1.0...v1.2.0) (2026-03-11)
+
+
+### Features
+
+* add real-time search box to settings dialog ([6f9b405](https://github.com/jadirc/PureType/commit/6f9b4058c9e650d854ba391f492eac61f48624c8))
+* add search tests, escape-to-clear, LLM panel searchable ([c2d518b](https://github.com/jadirc/PureType/commit/c2d518ba2220ba8e9701a8a8fa529b384ede64b1))
+* add Whisper keyword prompting, LLM profile switcher, fix INPUT MODE styling ([9cc9029](https://github.com/jadirc/PureType/commit/9cc9029d442e6986345af90b31f09b9487d628c3))
+* smaller search box with red clear button ([95f49d3](https://github.com/jadirc/PureType/commit/95f49d30c25cce805f07b284acb2482afdd9bb29))
+
 ## [1.1.0](https://github.com/jadirc/PureType/compare/v1.0.0...v1.1.0) (2026-03-09)
 
 
