@@ -16,6 +16,7 @@ public class WhisperService : ITranscriptionProvider
     private readonly MemoryStream _audioBuffer = new();
     private readonly string _modelName;
     private string _language;
+    private readonly string _prompt;
     private bool _connected;
 
     public event Action<string, bool>? TranscriptReceived;
@@ -24,10 +25,11 @@ public class WhisperService : ITranscriptionProvider
 
     public bool IsConnected => _connected;
 
-    public WhisperService(string modelName, string language = "de")
+    public WhisperService(string modelName, string language = "de", string? keywords = null)
     {
         _modelName = modelName;
         _language = string.IsNullOrEmpty(language) ? "auto" : language;
+        _prompt = keywords?.Trim() ?? "";
     }
 
     public async Task ConnectAsync()
@@ -50,14 +52,17 @@ public class WhisperService : ITranscriptionProvider
             var builder = _factory.CreateBuilder()
                 .WithLanguage(_language == "auto" ? "auto" : _language);
 
+            if (!string.IsNullOrEmpty(_prompt))
+                builder = builder.WithPrompt(_prompt);
+
             _processor = builder.Build();
         });
 
         _connected = true;
         var runtimeInfo = WhisperFactory.GetRuntimeInfo();
         var loadedLib = RuntimeOptions.LoadedLibrary;
-        Log.Information("Whisper engine loaded: Model={Model}, Language={Language}, LoadedLibrary={Lib}, Runtime={Runtime}",
-            _modelName, _language, loadedLib, runtimeInfo);
+        Log.Information("Whisper engine loaded: Model={Model}, Language={Language}, Prompt={Prompt}, LoadedLibrary={Lib}, Runtime={Runtime}",
+            _modelName, _language, _prompt, loadedLib, runtimeInfo);
     }
 
     public Task SendAudioAsync(byte[] audioData)
@@ -150,6 +155,8 @@ public class WhisperService : ITranscriptionProvider
             _processor?.Dispose();
             var builder = _factory.CreateBuilder()
                 .WithLanguage(_language == "auto" ? "auto" : _language);
+            if (!string.IsNullOrEmpty(_prompt))
+                builder = builder.WithPrompt(_prompt);
             _processor = builder.Build();
         });
 

@@ -617,7 +617,9 @@ public partial class MainWindow : Window
                     return;
                 }
 
-                _provider = new WhisperService(modelName, language);
+                var whisperKeywords = _settings.Transcription.Keywords;
+                Log.Information("Creating WhisperService with keywords={Keywords}", whisperKeywords);
+                _provider = new WhisperService(modelName, language, whisperKeywords);
             }
             else
             {

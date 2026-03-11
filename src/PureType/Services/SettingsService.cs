@@ -48,6 +48,37 @@ public record NamedPrompt
     public string Prompt { get; init; } = "";
 }
 
+public record LlmProfile
+{
+    public string BaseUrl { get; init; } = "";
+    public string Model { get; init; } = "";
+
+    /// <summary>
+    /// Display name derived from Model and provider hostname, e.g. "gpt-4o-mini @ OpenAI".
+    /// </summary>
+    public string DisplayName
+    {
+        get
+        {
+            var provider = BaseUrl switch
+            {
+                var u when u.Contains("api.openai.com", StringComparison.OrdinalIgnoreCase) => "OpenAI",
+                var u when u.Contains("api.anthropic.com", StringComparison.OrdinalIgnoreCase) => "Anthropic",
+                var u when u.Contains("openrouter.ai", StringComparison.OrdinalIgnoreCase) => "OpenRouter",
+                var u when u.Contains("generativelanguage.googleapis.com", StringComparison.OrdinalIgnoreCase) => "Google Gemini",
+                var u when Uri.TryCreate(u, UriKind.Absolute, out var uri) => uri.Host + (uri.Port is not (80 or 443) ? $":{uri.Port}" : ""),
+                _ => "Unknown"
+            };
+            return string.IsNullOrWhiteSpace(Model) ? provider : $"{Model} @ {provider}";
+        }
+    }
+
+    /// <summary>Identity key for deduplication: same BaseUrl + Model = same profile.</summary>
+    public bool IsSameAs(LlmProfile other) =>
+        string.Equals(BaseUrl?.TrimEnd('/'), other.BaseUrl?.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)
+        && string.Equals(Model, other.Model, StringComparison.OrdinalIgnoreCase);
+}
+
 public record LlmSettings
 {
     public bool Enabled { get; init; }
@@ -55,6 +86,9 @@ public record LlmSettings
     public string BaseUrl { get; init; } = "";
     public string Model { get; init; } = "";
     public List<NamedPrompt> Prompts { get; init; } = new();
+    public List<LlmProfile> RecentProfiles { get; init; } = new();
+    /// <summary>API keys stored per endpoint URL (normalized, trimmed of trailing slash).</summary>
+    public Dictionary<string, string> EndpointKeys { get; init; } = new();
 }
 
 public record WindowSettings

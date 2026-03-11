@@ -27,6 +27,11 @@ public partial class SettingsWindow : Window
     // Prompt list
     private List<NamedPrompt> _prompts = new();
 
+    // Recent LLM profiles
+    private List<LlmProfile> _recentProfiles = new();
+    private Dictionary<string, string> _endpointKeys = new();
+    private bool _suppressProfileSelection;
+
     public AppSettings ResultSettings { get; private set; } = new();
 
     public SettingsWindow(AppSettings settings, string providerTag,
@@ -91,6 +96,22 @@ public partial class SettingsWindow : Window
         _prompts = settings.Llm.Prompts.ToList();
         PromptListBox.ItemsSource = _prompts;
 
+        // Recent LLM Profiles
+        _recentProfiles = settings.Llm.RecentProfiles.ToList();
+        _endpointKeys = new Dictionary<string, string>(settings.Llm.EndpointKeys, StringComparer.OrdinalIgnoreCase);
+        PopulateProfileCombo();
+        _lastBaseUrl = settings.Llm.BaseUrl;
+
+        // Hook into the editable TextBox inside the ComboBox for typing detection
+        LlmBaseUrlCombo.Loaded += (_, _) =>
+        {
+            if (LlmBaseUrlCombo.Template.FindName("PART_EditableTextBox", LlmBaseUrlCombo)
+                is System.Windows.Controls.TextBox editBox)
+            {
+                editBox.TextChanged += LlmBaseUrlCombo_TextChanged;
+            }
+        };
+
         // General
         AutostartCheck.IsChecked = IsAutostartEnabled();
         StartMinimizedCheck.IsChecked = settings.Window.StartMinimized;
@@ -104,7 +125,7 @@ public partial class SettingsWindow : Window
         var isWhisper = providerTag == "whisper";
         WhisperModelPanel.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
         ApiKeyPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
-        KeywordsPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
+        KeywordsPanel.Visibility = Visibility.Visible;
     }
 
     private void ProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -153,14 +174,7 @@ public partial class SettingsWindow : Window
                 InputMode = (string)((InputModeCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "Type"),
                 InputDelayMs = int.TryParse(InputDelayBox.Text, out var delay) ? Math.Max(0, delay) : 0,
             },
-            Llm = new LlmSettings
-            {
-                Enabled = LlmEnabledCheck.IsChecked == true,
-                ApiKey = LlmApiKeyBox.Password.Trim(),
-                BaseUrl = LlmBaseUrlCombo.Text.Trim(),
-                Model = LlmModelCombo.Text.Trim(),
-                Prompts = _prompts.ToList(),
-            },
+            Llm = BuildLlmSettings(),
             Window = new WindowSettings
             {
                 StartMinimized = StartMinimizedCheck.IsChecked == true,
@@ -182,6 +196,132 @@ public partial class SettingsWindow : Window
         _keyboardHook.RecordingWinPlusModifier -= OnRecordingWinPlusModifier;
         _keyboardHook.SuppressWinKey = false;
         base.OnClosing(e);
+    }
+
+    // ── LLM Profiles ───────────────────────────────────────────────────────
+
+    private LlmSettings BuildLlmSettings()
+    {
+        var apiKey = LlmApiKeyBox.Password.Trim();
+        var baseUrl = LlmBaseUrlCombo.Text.Trim();
+        var model = LlmModelCombo.Text.Trim();
+
+        // Save API key per endpoint
+        if (!string.IsNullOrEmpty(baseUrl) && !string.IsNullOrEmpty(apiKey))
+            _endpointKeys[NormalizeUrl(baseUrl)] = apiKey;
+
+        // Auto-save current config as a recent profile (MRU)
+        if (!string.IsNullOrEmpty(baseUrl) && !string.IsNullOrEmpty(model))
+        {
+            var current = new LlmProfile { BaseUrl = baseUrl, Model = model };
+            _recentProfiles.RemoveAll(p => p.IsSameAs(current));
+            _recentProfiles.Insert(0, current);
+            if (_recentProfiles.Count > 10)
+                _recentProfiles.RemoveRange(10, _recentProfiles.Count - 10);
+        }
+
+        return new LlmSettings
+        {
+            Enabled = LlmEnabledCheck.IsChecked == true,
+            ApiKey = apiKey,
+            BaseUrl = baseUrl,
+            Model = model,
+            Prompts = _prompts.ToList(),
+            RecentProfiles = _recentProfiles.ToList(),
+            EndpointKeys = new Dictionary<string, string>(_endpointKeys),
+        };
+    }
+
+    private void PopulateProfileCombo()
+    {
+        _suppressProfileSelection = true;
+        LlmProfileCombo.Items.Clear();
+        foreach (var profile in _recentProfiles)
+            LlmProfileCombo.Items.Add(profile.DisplayName);
+        _suppressProfileSelection = false;
+
+        LlmProfilePanel.Visibility = _recentProfiles.Count > 0
+            ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void LlmProfileCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_suppressProfileSelection) return;
+        var index = LlmProfileCombo.SelectedIndex;
+        if (index < 0 || index >= _recentProfiles.Count) return;
+
+        // Snapshot current fields into MRU before switching
+        SnapshotCurrentProfile();
+
+        var profile = _recentProfiles[index];
+        _suppressProfileSelection = true;
+        LlmBaseUrlCombo.Text = profile.BaseUrl;
+        _suppressProfileSelection = false;
+        _lastBaseUrl = profile.BaseUrl;
+        _endpointKeys.TryGetValue(NormalizeUrl(profile.BaseUrl), out var key);
+        LlmApiKeyBox.Password = key ?? "";
+        LlmModelCombo.Text = profile.Model;
+    }
+
+    /// <summary>
+    /// Saves the current field values back into the MRU list so nothing is lost on switch.
+    /// </summary>
+    private void SnapshotCurrentProfile()
+    {
+        var baseUrl = LlmBaseUrlCombo.Text.Trim();
+        var model = LlmModelCombo.Text.Trim();
+        if (string.IsNullOrEmpty(baseUrl) || string.IsNullOrEmpty(model)) return;
+
+        // Save key per endpoint
+        var apiKey = LlmApiKeyBox.Password.Trim();
+        if (!string.IsNullOrEmpty(apiKey))
+            _endpointKeys[NormalizeUrl(baseUrl)] = apiKey;
+
+        var current = new LlmProfile { BaseUrl = baseUrl, Model = model };
+        var existing = _recentProfiles.FindIndex(p => p.IsSameAs(current));
+        if (existing >= 0)
+            _recentProfiles[existing] = current;
+        else
+        {
+            _recentProfiles.Insert(0, current);
+            if (_recentProfiles.Count > 10)
+                _recentProfiles.RemoveRange(10, _recentProfiles.Count - 10);
+            PopulateProfileCombo();
+        }
+    }
+
+    private static string NormalizeUrl(string url) => url.TrimEnd('/');
+
+    private string? _lastBaseUrl;
+
+    private void LlmBaseUrlCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || _suppressProfileSelection) return;
+
+        // Snapshot old profile, then clear fields for the new provider URL
+        SnapshotCurrentProfile();
+        _lastBaseUrl = LlmBaseUrlCombo.Text.Trim();
+        LlmApiKeyBox.Password = "";
+        LlmModelCombo.Text = "";
+    }
+
+    private void LlmBaseUrlCombo_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (!IsLoaded || _suppressProfileSelection) return;
+
+        // When the URL is cleared completely, save key for the old endpoint, then clear fields
+        if (string.IsNullOrWhiteSpace(LlmBaseUrlCombo.Text))
+        {
+            if (!string.IsNullOrEmpty(_lastBaseUrl))
+            {
+                var apiKey = LlmApiKeyBox.Password.Trim();
+                if (!string.IsNullOrEmpty(apiKey))
+                    _endpointKeys[NormalizeUrl(_lastBaseUrl)] = apiKey;
+                _lastBaseUrl = null;
+            }
+            LlmApiKeyBox.Password = "";
+            LlmModelCombo.Text = "";
+        }
     }
 
     // ── LLM Enabled Toggle ────────────────────────────────────────────────
@@ -237,12 +377,6 @@ public partial class SettingsWindow : Window
     private async void FetchModelsButton_Click(object sender, RoutedEventArgs e)
     {
         var apiKey = LlmApiKeyBox.Password.Trim();
-        if (string.IsNullOrEmpty(apiKey))
-        {
-            Log.Warning("Cannot fetch models: no API key");
-            return;
-        }
-
         var baseUrl = LlmBaseUrlCombo.Text.Trim();
         var previousModel = LlmModelCombo.Text;
 
@@ -273,14 +407,17 @@ public partial class SettingsWindow : Window
             ? "https://api.openai.com/v1" : baseUrl.TrimEnd('/');
         var url = $"{trimmedBase}/models";
 
-        if (trimmedBase.Contains("anthropic.com", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(apiKey))
         {
-            http.DefaultRequestHeaders.Add("x-api-key", apiKey);
-            http.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-        }
-        else
-        {
-            http.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+            if (trimmedBase.Contains("anthropic.com", StringComparison.OrdinalIgnoreCase))
+            {
+                http.DefaultRequestHeaders.Add("x-api-key", apiKey);
+                http.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+            }
+            else
+            {
+                http.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+            }
         }
 
         var response = await http.GetAsync(url);
@@ -602,7 +739,7 @@ public partial class SettingsWindow : Window
     {
         if (child is FrameworkElement fe)
         {
-            if (fe == WhisperModelPanel || fe == ApiKeyPanel || fe == KeywordsPanel)
+            if (fe == WhisperModelPanel || fe == ApiKeyPanel)
             {
                 var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
                 var isWhisper = (string)(providerItem?.Tag ?? "deepgram") == "whisper";

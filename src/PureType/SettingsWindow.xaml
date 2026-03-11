@@ -316,8 +316,8 @@
                 <!-- Input Mode -->
                 <StackPanel Margin="0,0,0,6"
                             Tag="input mode type paste clipboard copy">
-                    <TextBlock Text="Input mode"
-                               Foreground="{DynamicResource SubtleBrush}"
+                    <TextBlock Text="INPUT MODE"
+                               Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
                     <ComboBox x:Name="InputModeCombo"
                               Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
@@ -360,14 +360,25 @@
                           Unchecked="LlmEnabledCheck_Changed"/>
 
                 <StackPanel x:Name="LlmSettingsPanel" Visibility="Collapsed" Margin="0,8,0,0"
-                            Tag="ai llm api endpoint key model prompts">
+                            Tag="ai llm api endpoint key model prompts profile recent">
+
+                    <!-- Recent Profiles -->
+                    <StackPanel x:Name="LlmProfilePanel" Visibility="Collapsed" Margin="0,0,0,12"
+                                ToolTip="Quickly switch between recently used AI model configurations. Your last 10 configurations are saved automatically.">
+                        <TextBlock Text="RECENT PROFILES" Foreground="{DynamicResource LabelBrush}"
+                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <ComboBox x:Name="LlmProfileCombo" Padding="10,7" FontSize="12"
+                                  SelectionChanged="LlmProfileCombo_SelectionChanged"/>
+                    </StackPanel>
+
                     <StackPanel Margin="0,0,0,12"
                                 ToolTip="Base URL of the OpenAI-compatible API. You can use OpenAI, Anthropic, OpenRouter, Google Gemini, or any compatible endpoint.">
                         <TextBlock Text="API ENDPOINT" Foreground="{DynamicResource LabelBrush}"
                                    FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
                         <ComboBox x:Name="LlmBaseUrlCombo" IsEditable="True"
                                   Text="https://api.openai.com/v1"
-                                  Padding="10,7" FontFamily="Consolas" FontSize="12">
+                                  Padding="10,7" FontFamily="Consolas" FontSize="12"
+                                  SelectionChanged="LlmBaseUrlCombo_SelectionChanged">
                             <ComboBoxItem Content="https://api.openai.com/v1" ToolTip="OpenAI"/>
                             <ComboBoxItem Content="https://api.anthropic.com/v1" ToolTip="Anthropic Claude"/>
                             <ComboBoxItem Content="https://openrouter.ai/api/v1" ToolTip="OpenRouter"/>
