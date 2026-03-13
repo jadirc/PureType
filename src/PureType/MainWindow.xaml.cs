@@ -38,6 +38,8 @@ public partial class MainWindow : Window
     private ModifierKeys _muteModifiers = ModifierKeys.None;
     private Key _langSwitchKey = Key.None;
     private ModifierKeys _langSwitchModifiers = ModifierKeys.None;
+    private Key _clipboardAiKey = Key.None;
+    private ModifierKeys _clipboardAiModifiers = ModifierKeys.None;
 
     // ── State ────────────────────────────────────────────────────────────
     private bool _connected;
@@ -206,6 +208,12 @@ public partial class MainWindow : Window
         _keyboardHook.PttKeyUp += () => Dispatcher.Invoke(() => _controller.HandlePttUp());
         _keyboardHook.MutePressed += () => Dispatcher.Invoke(ToggleMute);
         _keyboardHook.LanguageSwitchPressed += () => Dispatcher.Invoke(CycleLanguage);
+        _keyboardHook.ClipboardAiPressed += () => Dispatcher.Invoke(() => _ = HandleClipboardAiAsync());
+
+        if (_clipboardAiKey != Key.None)
+            _keyboardHook.SetClipboardAiShortcut(_clipboardAiModifiers, _clipboardAiKey);
+
+        _keyboardHook.Install();
 
         if (_settings.Window.ShowOverlay)
         {
@@ -235,6 +243,8 @@ public partial class MainWindow : Window
             (_muteModifiers, _muteKey) = UiHelper.ParseShortcut(_settings.Shortcuts.Mute, Key.None);
         if (!string.IsNullOrEmpty(_settings.Shortcuts.LanguageSwitch))
             (_langSwitchModifiers, _langSwitchKey) = UiHelper.ParseShortcut(_settings.Shortcuts.LanguageSwitch, Key.None);
+        if (!string.IsNullOrEmpty(_settings.Shortcuts.ClipboardAi))
+            (_clipboardAiModifiers, _clipboardAiKey) = UiHelper.ParseShortcut(_settings.Shortcuts.ClipboardAi, Key.None);
 
         // Provider combo
         UiHelper.SelectComboByTag(ProviderCombo, _settings.Transcription.Provider);
@@ -283,6 +293,17 @@ public partial class MainWindow : Window
             if (_langSwitchKey != Key.None)
                 _keyboardHook.SetLanguageSwitchShortcut(_langSwitchModifiers, _langSwitchKey);
         }
+
+        if (!string.IsNullOrEmpty(_settings.Shortcuts.ClipboardAi))
+        {
+            (_clipboardAiModifiers, _clipboardAiKey) = UiHelper.ParseShortcut(_settings.Shortcuts.ClipboardAi, Key.None);
+        }
+        else
+            _clipboardAiKey = Key.None;
+
+        // ClipboardAi works regardless of connection state
+        if (_clipboardAiKey != Key.None)
+            _keyboardHook.SetClipboardAiShortcut(_clipboardAiModifiers, _clipboardAiKey);
 
         // Prompt keys
         ApplyPromptKeys();
@@ -685,7 +706,6 @@ public partial class MainWindow : Window
         _connected = false;
 
         _controller.StopRecording();
-        _keyboardHook.Uninstall();
 
         if (_provider is not null)
         {
@@ -711,7 +731,6 @@ public partial class MainWindow : Window
             _keyboardHook.SetMuteShortcut(_muteModifiers, _muteKey);
         if (_langSwitchKey != Key.None)
             _keyboardHook.SetLanguageSwitchShortcut(_langSwitchModifiers, _langSwitchKey);
-        _keyboardHook.Install();
     }
 
     // ── Transcript Display ────────────────────────────────────────────────
@@ -853,7 +872,7 @@ public partial class MainWindow : Window
 
     // ── LLM Post-Processing ────────────────────────────────────────────────
 
-    private async Task ProcessWithLlmAsync(string text, NamedPrompt namedPrompt)
+    private async Task ProcessWithLlmAsync(string text, NamedPrompt namedPrompt, bool clipboardOnly = false)
     {
         try
         {
@@ -883,15 +902,24 @@ public partial class MainWindow : Window
             Log.Information("LLM result: {Length} chars", processed.Length);
             ToastWindow.ShowToast("AI processing complete", false);
 
-            try
+            if (clipboardOnly)
             {
-                await KeyboardInjector.TypeTextAsync(processed);
-                Log.Information("LLM result typed at cursor");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "LLM result typing failed, copying to clipboard");
                 System.Windows.Clipboard.SetText(processed);
+                Log.Information("LLM result copied to clipboard");
+                ToastWindow.ShowToast("Copied to clipboard", Green.Color, autoClose: true);
+            }
+            else
+            {
+                try
+                {
+                    await KeyboardInjector.TypeTextAsync(processed);
+                    Log.Information("LLM result typed at cursor");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "LLM result typing failed, copying to clipboard");
+                    System.Windows.Clipboard.SetText(processed);
+                }
             }
         }
         catch (Exception ex)
@@ -899,6 +927,43 @@ public partial class MainWindow : Window
             Log.Error(ex, "LLM post-processing failed");
             ToastWindow.ShowToast("AI processing failed", true);
         }
+    }
+
+    private async Task HandleClipboardAiAsync()
+    {
+        // 1. Read clipboard
+        var clipboardText = System.Windows.Clipboard.GetText();
+        if (string.IsNullOrWhiteSpace(clipboardText))
+        {
+            ToastWindow.ShowToast("Clipboard is empty", Yellow.Color, autoClose: true);
+            return;
+        }
+
+        // 2. Check LLM configured
+        if (!_settings.Llm.Enabled || string.IsNullOrEmpty(_settings.Llm.ApiKey) || string.IsNullOrEmpty(_settings.Llm.Model))
+        {
+            ToastWindow.ShowToast("LLM not configured", Yellow.Color, autoClose: true);
+            return;
+        }
+
+        // 3. Show prompt picker
+        var prompts = _settings.Llm.Prompts;
+        if (prompts.Count == 0)
+        {
+            ToastWindow.ShowToast("No prompts configured", Yellow.Color, autoClose: true);
+            return;
+        }
+
+        var picker = new PromptPickerWindow(prompts.ToList());
+        if (picker.ShowDialog() != true || picker.SelectedPrompt is null)
+            return;
+
+        // 4. Immediate feedback + focus restore delay
+        ToastWindow.ShowToast($"AI: {picker.SelectedPrompt.Name} \u2026", Yellow.Color, autoClose: false);
+        await Task.Delay(200);
+
+        // 5. Process with LLM
+        await ProcessWithLlmAsync(clipboardText, picker.SelectedPrompt, picker.ShiftHeld);
     }
 
     // ── Update Check ──────────────────────────────────────────────────────
