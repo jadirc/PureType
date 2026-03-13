@@ -304,6 +304,8 @@ public partial class MainWindow : Window
         // ClipboardAi works regardless of connection state
         if (_clipboardAiKey != Key.None)
             _keyboardHook.SetClipboardAiShortcut(_clipboardAiModifiers, _clipboardAiKey);
+        else
+            _keyboardHook.SetClipboardAiShortcut(ModifierKeys.None, Key.None);
 
         // Prompt keys
         ApplyPromptKeys();
@@ -958,8 +960,7 @@ public partial class MainWindow : Window
         if (picker.ShowDialog() != true || picker.SelectedPrompt is null)
             return;
 
-        // 4. Immediate feedback + focus restore delay
-        ToastWindow.ShowToast($"AI: {picker.SelectedPrompt.Name} \u2026", Yellow.Color, autoClose: false);
+        // 4. Focus restore delay
         await Task.Delay(200);
 
         // 5. Process with LLM
