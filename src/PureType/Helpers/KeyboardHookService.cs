@@ -72,6 +72,11 @@ public class KeyboardHookService : IDisposable
     private ModifierKeys _langSwitchModifiers = ModifierKeys.None;
     private bool _langSwitchFired;
 
+    // ── Clipboard AI shortcut config ──
+    private int _clipboardAiVKey;
+    private ModifierKeys _clipboardAiModifiers = ModifierKeys.None;
+    private bool _clipboardAiFired;
+
     // ── State ──
     /// <summary>True while any Win key is physically held down.</summary>
     public bool IsWinDown { get; private set; }
@@ -97,6 +102,8 @@ public class KeyboardHookService : IDisposable
     public event Action? MutePressed;
     /// <summary>Fired when the language switch shortcut is pressed.</summary>
     public event Action? LanguageSwitchPressed;
+    /// <summary>Fired when the clipboard AI shortcut is pressed.</summary>
+    public event Action? ClipboardAiPressed;
 
     /// <summary>Fired during shortcut recording when Win is pressed while a modifier key is already held.
     /// The parameter is the VK code of the held modifier key.</summary>
@@ -138,6 +145,13 @@ public class KeyboardHookService : IDisposable
         _langSwitchModifiers = modifiers;
         _langSwitchVKey = KeyInterop.VirtualKeyFromKey(key);
         _langSwitchFired = false;
+    }
+
+    public void SetClipboardAiShortcut(ModifierKeys modifiers, Key key)
+    {
+        _clipboardAiModifiers = modifiers;
+        _clipboardAiVKey = KeyInterop.VirtualKeyFromKey(key);
+        _clipboardAiFired = false;
     }
 
     public void SetPttShortcut(ModifierKeys modifiers, Key key)
@@ -267,6 +281,18 @@ public class KeyboardHookService : IDisposable
             }
             if (vkCode == _langSwitchVKey && isUp)
                 _langSwitchFired = false;
+
+            // ── Clipboard AI shortcut detection ──
+            if (vkCode == _clipboardAiVKey && _clipboardAiVKey != 0 && isDown && !_clipboardAiFired)
+            {
+                if (AreModifiersHeld(_clipboardAiModifiers))
+                {
+                    _clipboardAiFired = true;
+                    ClipboardAiPressed?.Invoke();
+                }
+            }
+            if (vkCode == _clipboardAiVKey && isUp)
+                _clipboardAiFired = false;
 
         }
 
