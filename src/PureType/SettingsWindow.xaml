@@ -279,6 +279,23 @@
                              PreviewKeyDown="ShortcutBox_PreviewKeyDown"/>
                 </StackPanel>
 
+                <!-- Clipboard AI Shortcut -->
+                <StackPanel Margin="0,0,0,12"
+                            Tag="clipboard ai shortcut hotkey process llm"
+                            ToolTip="Optional hotkey to apply AI post-processing to clipboard text. Opens a prompt picker. Press Delete or Backspace to clear.">
+                    <TextBlock Text="CLIPBOARD AI" Foreground="{DynamicResource LabelBrush}"
+                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBox x:Name="ClipboardAiShortcutBox"
+                             Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
+                             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                             Padding="10,5" FontSize="13"
+                             IsReadOnly="True" Cursor="Hand"
+                             Text=""
+                             GotFocus="ShortcutBox_GotFocus"
+                             LostFocus="ShortcutBox_LostFocus"
+                             PreviewKeyDown="ShortcutBox_PreviewKeyDown"/>
+                </StackPanel>
+
                 <!-- ── AUDIO ── -->
                 <TextBlock Text="AUDIO" Foreground="{DynamicResource AccentBrush}"
                            FontSize="12" FontWeight="Bold" Margin="0,16,0,8"
