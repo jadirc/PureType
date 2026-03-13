@@ -330,6 +330,33 @@ public class SettingsServiceTests
     }
 
     [Fact]
+    public void ClipboardAi_defaults_to_empty()
+    {
+        var settings = new AppSettings();
+        Assert.Equal("", settings.Shortcuts.ClipboardAi);
+    }
+
+    [Fact]
+    public void ClipboardAi_roundtrips_through_json()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "settings.json");
+        try
+        {
+            var svc = new SettingsService(path);
+            var original = new AppSettings
+            {
+                Shortcuts = new ShortcutSettings { ClipboardAi = "Ctrl+Alt+C" }
+            };
+            svc.Save(original);
+            var loaded = svc.Load();
+            Assert.Equal("Ctrl+Alt+C", loaded.Shortcuts.ClipboardAi);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void IsFirstRun_false_when_json_exists()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"PureType_Test_{Guid.NewGuid():N}");

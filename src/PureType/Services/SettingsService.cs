@@ -14,6 +14,7 @@ public record ShortcutSettings
     public string Ptt { get; init; } = "Win+L-Ctrl";
     public string Mute { get; init; } = "";
     public string LanguageSwitch { get; init; } = "";
+    public string ClipboardAi { get; init; } = "";
 }
 
 public record TranscriptionSettings
