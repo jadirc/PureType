@@ -88,6 +88,12 @@ public static class SoundFeedback
 
     public static void PlayStart() => Task.Run(() => _startPlayer?.Play());
 
+    /// <summary>
+    /// Plays the start tone and returns a Task that completes when playback finishes.
+    /// Use this to delay microphone capture until the tone is no longer audible.
+    /// </summary>
+    public static Task PlayStartAsync() => Task.Run(() => _startPlayer?.Play());
+
     public static void PlayStop() => Task.Run(() => _stopPlayer?.Play());
 
     public static void PlayReconnect() => Task.Run(() => _reconnectPlayer?.Play());

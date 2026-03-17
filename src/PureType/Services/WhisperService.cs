@@ -117,6 +117,14 @@ public class WhisperService : ITranscriptionProvider
             Log.Debug("Whisper audio stats: peak={Peak:F4}, rms={Rms:F4}, samples={Samples}",
                 maxAmp, rms, sampleCount);
 
+            // Skip transcription if audio is silence — Whisper hallucinates on quiet input
+            const float SilenceRmsThreshold = 0.02f;
+            if (rms < SilenceRmsThreshold)
+            {
+                Log.Debug("Whisper: skipping silent audio (rms={Rms:F4} < {Threshold:F2})", rms, SilenceRmsThreshold);
+                return;
+            }
+
             var result = new System.Text.StringBuilder();
             int segCount = 0;
             await foreach (var segment in _processor.ProcessAsync(samples))

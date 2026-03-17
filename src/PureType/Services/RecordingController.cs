@@ -201,14 +201,15 @@ public class RecordingController
 
     // ── Start / Stop ───────────────────────────────────────────────────
 
-    private void StartRecording()
+    private async void StartRecording()
     {
         if (_recording || !_connected) return;
         _sessionChunks.Clear();
         _capitalizeNext = true;
         _recordingStartTime = DateTime.UtcNow;
         _recording = true;
-        SoundFeedback.PlayStart();
+        await SoundFeedback.PlayStartAsync();
+        await Task.Delay(50); // allow speaker decay so mic doesn't pick up the tail
         _audio.Start();
 
         StatusChanged?.Invoke("\u25CF Recording", Red);
