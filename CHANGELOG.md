@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.3.0](https://github.com/jadirc/PureType/compare/v1.2.0...v1.3.0) (2026-03-17)
+
+
+### Features
+
+* add Clipboard AI shortcut to settings UI ([124ca66](https://github.com/jadirc/PureType/commit/124ca667fab85f49f108c204511e64440f9a09ac))
+* add ClipboardAi channel to KeyboardHookService ([2d3289b](https://github.com/jadirc/PureType/commit/2d3289ba52fa3816782d9bba114a651a7fd643b3))
+* add ClipboardAi shortcut setting ([c89caa8](https://github.com/jadirc/PureType/commit/c89caa832d22d0e0d476c308d1befc9715513fbb))
+* add PromptPickerWindow for clipboard AI prompt selection ([0560df5](https://github.com/jadirc/PureType/commit/0560df52728fe00d21270df4762bcf7bed6221bc))
+* integrate clipboard AI processing in MainWindow ([dcb505f](https://github.com/jadirc/PureType/commit/dcb505f60bc7f1c46fda12a6f562433598cdb880))
+
+
+### Bug Fixes
+
+* prevent LLM from treating dictated text as instructions, fix prompt picker focus ([49fb2f0](https://github.com/jadirc/PureType/commit/49fb2f01d3fa5274d6e55b89eeaebdb93d49f02e))
+* prevent phantom recording after sleep by checking real Win key state ([65da7fb](https://github.com/jadirc/PureType/commit/65da7fb93014823fdf93fe3358ceb12760784868))
+* prevent start tone capture and Whisper silence hallucinations ([1f09e50](https://github.com/jadirc/PureType/commit/1f09e505eb44464aaf4293b59c5c6fdb95e8ba38))
+* reset hook when ClipboardAi shortcut cleared, remove duplicate toast ([a479c71](https://github.com/jadirc/PureType/commit/a479c7141d9d7c35c150ce33aaa39a67b7f21349))
+
 ## [1.2.0](https://github.com/jadirc/PureType/compare/v1.1.0...v1.2.0) (2026-03-11)
 
 
