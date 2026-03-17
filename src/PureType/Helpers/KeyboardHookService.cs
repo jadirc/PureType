@@ -191,6 +191,14 @@ public class KeyboardHookService : IDisposable
             bool isDown = wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN;
             bool isUp   = wParam == WM_KEYUP   || wParam == WM_SYSKEYUP;
 
+            // ── Self-healing: reset stale IsWinDown after sleep/standby ──
+            if (IsWinDown && vkCode is not (VK_LWIN or VK_RWIN)
+                && (GetAsyncKeyState(VK_LWIN) & 0x8000) == 0
+                && (GetAsyncKeyState(VK_RWIN) & 0x8000) == 0)
+            {
+                IsWinDown = false;
+            }
+
             // ── Win key tracking ──
             if (vkCode is VK_LWIN or VK_RWIN)
             {
@@ -301,7 +309,9 @@ public class KeyboardHookService : IDisposable
 
     private bool AreModifiersHeld(ModifierKeys required)
     {
-        if (required.HasFlag(ModifierKeys.Windows) && !IsWinDown)
+        if (required.HasFlag(ModifierKeys.Windows)
+            && (GetAsyncKeyState(VK_LWIN) & 0x8000) == 0
+            && (GetAsyncKeyState(VK_RWIN) & 0x8000) == 0)
             return false;
         if (required.HasFlag(ModifierKeys.Control)
             && (GetAsyncKeyState(VK_LCONTROL) & 0x8000) == 0
