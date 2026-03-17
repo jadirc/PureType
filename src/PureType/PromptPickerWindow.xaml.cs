@@ -44,6 +44,8 @@ public partial class PromptPickerWindow : Window
             PositionNearCursor();
             SearchBox.Focus();
         };
+
+        Activated += (_, _) => SearchBox.Focus();
     }
 
     private void PositionNearCursor()
@@ -111,6 +113,12 @@ public partial class PromptPickerWindow : Window
                 e.Handled = true;
                 break;
         }
+    }
+
+    private void PromptList_PreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        // Let the click select the item, then refocus SearchBox so arrow keys keep working
+        Dispatcher.InvokeAsync(() => SearchBox.Focus(), System.Windows.Threading.DispatcherPriority.Input);
     }
 
     private void PromptList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)

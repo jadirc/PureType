@@ -38,7 +38,8 @@
                      BorderThickness="0"
                      Foreground="{DynamicResource TextBrush}"
                      FontSize="13"
-                     MouseDoubleClick="PromptList_MouseDoubleClick">
+                     MouseDoubleClick="PromptList_MouseDoubleClick"
+                     PreviewMouseDown="PromptList_PreviewMouseDown">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding Name}" Padding="4,3"/>
