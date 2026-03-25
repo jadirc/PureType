@@ -24,6 +24,15 @@ public record TranscriptionSettings
     public string ApiKey { get; init; } = "";
     public string Keywords { get; init; } = "";
     public string WhisperModel { get; init; } = "tiny";
+    public WhisperTuningSettings WhisperTuning { get; init; } = new();
+}
+
+public record WhisperTuningSettings
+{
+    /// <summary>"greedy" or "beam"</summary>
+    public string SamplingStrategy { get; init; } = "greedy";
+    public int BeamSize { get; init; } = 5;
+    public float EntropyThreshold { get; init; } = 3.0f;
 }
 
 public record AudioSettings

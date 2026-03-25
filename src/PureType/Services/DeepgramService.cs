@@ -220,7 +220,7 @@ public class DeepgramService : ITranscriptionProvider
         foreach (var kw in _keywords)
         {
             if (!string.IsNullOrWhiteSpace(kw))
-                uriBuilder += $"&keywords={Uri.EscapeDataString(kw.Trim())}";
+                uriBuilder += $"&keywords={Uri.EscapeDataString(kw.Trim())}:5";
         }
 
         return new Uri(uriBuilder);

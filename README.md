@@ -37,7 +37,7 @@ Built with WPF (.NET 8). Supports two transcription engines: [Deepgram](https://
 - **Transcript export** — Export the current session transcript as a timestamped `.txt` file
 - **Configurable shortcuts** — Assign any key or key combination (including Win+key chords) for toggle and PTT
 - **Microphone selection** — Choose from available input devices with a live VU meter
-- **Keyword boosting** — Improve recognition accuracy for domain-specific terms (Deepgram)
+- **Keyword boosting** — Improve recognition accuracy for domain-specific terms (both engines, see [Keyword Boosting](#keyword-boosting))
 - **Multi-language** — Supports German, English, and automatic language detection
 - **Audio feedback** — Choose from 5 signal tone presets (or silence) for recording start/stop
 - **System tray** — Minimizes to tray with dynamic status icon, toast notifications for recording and connection state
@@ -119,6 +119,34 @@ While dictating, say a format command followed by the words to format:
 Say **"stop"** after the words to end formatting and continue with normal text: "camel case my variable stop is assigned here" → `myVariable is assigned here`.
 
 Settings are persisted automatically to `%LOCALAPPDATA%\PureType\settings.json`.
+
+### Keyword Boosting
+
+Both transcription engines support keyword boosting to improve recognition of technical terms, proper names, or domain-specific vocabulary. Enter comma-separated terms in the **KEYWORDS (Boost)** field in Settings.
+
+**How it works per engine:**
+
+| | Deepgram (cloud) | Whisper (local) |
+|---|---|---|
+| **Mechanism** | `keywords` URL parameter with intensifier `:5` | Initial prompt (`WithPrompt`) conditioning the decoder |
+| **Effect** | API boosts probability of matching these terms during decoding | Terms are prepended as context, biasing the model toward this vocabulary |
+| **Strength** | Strong — intensifier value of 5 on a scale of -10 to 10 | Depends on model size (see below) |
+
+**Example:** Entering `Claude, PureType, CUDA, NAudio` in the keywords field will:
+- **Deepgram:** Append `&keywords=Claude:5&keywords=PureType:5&keywords=CUDA:5&keywords=NAudio:5` to the WebSocket URL
+- **Whisper:** Set the initial prompt to `"Terms: Claude, PureType, CUDA, NAudio."`
+
+**Whisper model size matters for keywords:**
+
+| Model | Parameters | Keyword effectiveness |
+|---|---|---|
+| tiny | 39M | Weak — limited capacity to leverage prompt context |
+| base | 74M | Weak to moderate |
+| small | 244M | Moderate — noticeable improvement |
+| medium | 769M | Good — recommended for serious keyword boosting |
+| large | 1.55B | Best — fully leverages prompt context |
+
+> **Tip:** Keep the keyword list focused on terms that are actually misrecognized. Adding too many generic words dilutes the effect. Whisper's prompt is limited to ~224 tokens (~800 characters) — put the most important terms first.
 
 ## Architecture
 

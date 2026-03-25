@@ -67,6 +67,14 @@ public partial class SettingsWindow : Window
         KeywordsBox.Text = settings.Transcription.Keywords;
         UiHelper.SelectComboByTag(LanguageCombo, settings.Transcription.Language);
 
+        // Whisper Tuning
+        UiHelper.SelectComboByTag(SamplingStrategyCombo, settings.Transcription.WhisperTuning.SamplingStrategy);
+        BeamSizeBox.Text = settings.Transcription.WhisperTuning.BeamSize.ToString();
+        EntropyThresholdBox.Text = settings.Transcription.WhisperTuning.EntropyThreshold.ToString("F1",
+            System.Globalization.CultureInfo.InvariantCulture);
+        BeamSizePanel.Visibility = settings.Transcription.WhisperTuning.SamplingStrategy == "beam"
+            ? Visibility.Visible : Visibility.Collapsed;
+
         // Shortcuts
         (_toggleModifiers, _toggleKey) = UiHelper.ParseShortcut(settings.Shortcuts.Toggle, Key.X);
         (_pttModifiers, _pttKey) = UiHelper.ParseShortcut(settings.Shortcuts.Ptt, Key.LeftCtrl);
@@ -133,6 +141,8 @@ public partial class SettingsWindow : Window
         WhisperModelPanel.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
         ApiKeyPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
         KeywordsPanel.Visibility = Visibility.Visible;
+        WhisperTuningHeader.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
+        WhisperTuningPanel.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -165,6 +175,14 @@ public partial class SettingsWindow : Window
                 Provider = (string)(providerItem?.Tag ?? _providerTag),
                 WhisperModel = (string)(whisperModelItem?.Tag ?? "tiny"),
                 Keywords = KeywordsBox.Text.Trim(),
+                WhisperTuning = new WhisperTuningSettings
+                {
+                    SamplingStrategy = (string)((SamplingStrategyCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "greedy"),
+                    BeamSize = int.TryParse(BeamSizeBox.Text, out var beam) ? Math.Clamp(beam, 1, 16) : 5,
+                    EntropyThreshold = float.TryParse(EntropyThresholdBox.Text,
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var ent) ? Math.Clamp(ent, 1.0f, 5.0f) : 3.0f,
+                },
             },
             Shortcuts = new ShortcutSettings
             {
@@ -662,6 +680,14 @@ public partial class SettingsWindow : Window
         return true;
     }
 
+    private void SamplingStrategyCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        var item = SamplingStrategyCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var isBeam = (string)(item?.Tag ?? "greedy") == "beam";
+        BeamSizePanel.Visibility = isBeam ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void InputDelayBox_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
     {
         e.Handled = !e.Text.All(char.IsDigit);
@@ -757,11 +783,11 @@ public partial class SettingsWindow : Window
     {
         if (child is FrameworkElement fe)
         {
-            if (fe == WhisperModelPanel || fe == ApiKeyPanel)
+            if (fe == WhisperModelPanel || fe == ApiKeyPanel || fe == WhisperTuningPanel)
             {
                 var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
                 var isWhisper = (string)(providerItem?.Tag ?? "deepgram") == "whisper";
-                if (fe == WhisperModelPanel)
+                if (fe == WhisperModelPanel || fe == WhisperTuningPanel)
                     fe.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
                 else
                     fe.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;

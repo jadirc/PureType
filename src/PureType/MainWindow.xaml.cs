@@ -641,8 +641,10 @@ public partial class MainWindow : Window
                 }
 
                 var whisperKeywords = _settings.Transcription.Keywords;
-                Log.Information("Creating WhisperService with keywords={Keywords}", whisperKeywords);
-                _provider = new WhisperService(modelName, language, whisperKeywords);
+                var tuning = _settings.Transcription.WhisperTuning;
+                Log.Information("Creating WhisperService with keywords={Keywords}, sampling={Sampling}, beamSize={BeamSize}, entropy={Entropy}",
+                    whisperKeywords, tuning.SamplingStrategy, tuning.BeamSize, tuning.EntropyThreshold);
+                _provider = new WhisperService(modelName, language, whisperKeywords, tuning);
             }
             else
             {
