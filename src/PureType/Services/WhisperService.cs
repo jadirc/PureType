@@ -17,6 +17,7 @@ public class WhisperService : ITranscriptionProvider
     private readonly string _modelName;
     private string _language;
     private readonly string _prompt;
+    private readonly WhisperTuningSettings _tuning;
     private bool _connected;
 
     public event Action<string, bool>? TranscriptReceived;
@@ -25,11 +26,13 @@ public class WhisperService : ITranscriptionProvider
 
     public bool IsConnected => _connected;
 
-    public WhisperService(string modelName, string language = "de", string? keywords = null)
+    public WhisperService(string modelName, string language = "de", string? keywords = null,
+                          WhisperTuningSettings? tuning = null)
     {
         _modelName = modelName;
         _language = string.IsNullOrEmpty(language) ? "auto" : language;
-        _prompt = keywords?.Trim() ?? "";
+        _prompt = FormatKeywordsPrompt(keywords?.Trim() ?? "");
+        _tuning = tuning ?? new WhisperTuningSettings();
     }
 
     public async Task ConnectAsync()
@@ -48,14 +51,7 @@ public class WhisperService : ITranscriptionProvider
         await Task.Run(() =>
         {
             _factory = WhisperFactory.FromPath(modelPath);
-
-            var builder = _factory.CreateBuilder()
-                .WithLanguage(_language == "auto" ? "auto" : _language);
-
-            if (!string.IsNullOrEmpty(_prompt))
-                builder = builder.WithPrompt(_prompt);
-
-            _processor = builder.Build();
+            _processor = BuildProcessor(_factory);
         });
 
         _connected = true;
@@ -117,11 +113,27 @@ public class WhisperService : ITranscriptionProvider
             Log.Debug("Whisper audio stats: peak={Peak:F4}, rms={Rms:F4}, samples={Samples}",
                 maxAmp, rms, sampleCount);
 
-            // Skip transcription if audio is silence — Whisper hallucinates on quiet input
+            // Skip transcription if audio is silence — Whisper hallucinates on quiet input.
+            // Check per-chunk RMS (100ms windows) instead of global RMS so that short
+            // speech segments buried in surrounding silence are not discarded.
             const float SilenceRmsThreshold = 0.02f;
-            if (rms < SilenceRmsThreshold)
+            const int chunkSamples = 1600; // 100ms at 16kHz
+            bool speechDetected = false;
+            for (int offset = 0; offset < sampleCount && !speechDetected; offset += chunkSamples)
             {
-                Log.Debug("Whisper: skipping silent audio (rms={Rms:F4} < {Threshold:F2})", rms, SilenceRmsThreshold);
+                int end = Math.Min(offset + chunkSamples, sampleCount);
+                float chunkSumSq = 0;
+                for (int k = offset; k < end; k++)
+                    chunkSumSq += samples[k] * samples[k];
+                float chunkRms = (float)Math.Sqrt(chunkSumSq / (end - offset));
+                if (chunkRms >= SilenceRmsThreshold)
+                    speechDetected = true;
+            }
+
+            if (!speechDetected)
+            {
+                Log.Debug("Whisper: skipping silent audio (no chunk rms >= {Threshold:F2}, global rms={Rms:F4})",
+                    SilenceRmsThreshold, rms);
                 return;
             }
 
@@ -161,14 +173,46 @@ public class WhisperService : ITranscriptionProvider
         await Task.Run(() =>
         {
             _processor?.Dispose();
-            var builder = _factory.CreateBuilder()
-                .WithLanguage(_language == "auto" ? "auto" : _language);
-            if (!string.IsNullOrEmpty(_prompt))
-                builder = builder.WithPrompt(_prompt);
-            _processor = builder.Build();
+            _processor = BuildProcessor(_factory);
         });
 
         Log.Information("Whisper language changed to {Language}", _language);
+    }
+
+    private WhisperProcessor BuildProcessor(WhisperFactory factory)
+    {
+        var builder = factory.CreateBuilder()
+            .WithLanguage(_language == "auto" ? "auto" : _language)
+            .WithTemperature(0f)
+            .WithEntropyThreshold(_tuning.EntropyThreshold)
+            .WithSingleSegment();
+
+        if (_tuning.SamplingStrategy == "beam")
+        {
+            var beamBuilder = (BeamSearchSamplingStrategyBuilder)builder.WithBeamSearchSamplingStrategy();
+            beamBuilder.WithBeamSize(_tuning.BeamSize);
+            builder = beamBuilder.ParentBuilder;
+        }
+
+        if (!string.IsNullOrEmpty(_prompt))
+            builder = builder.WithPrompt(_prompt);
+
+        return builder.Build();
+    }
+
+    private static string FormatKeywordsPrompt(string keywords)
+    {
+        if (string.IsNullOrWhiteSpace(keywords))
+            return "";
+
+        var terms = keywords
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .ToArray();
+
+        return terms.Length > 0
+            ? "Terms: " + string.Join(", ", terms) + "."
+            : "";
     }
 
     public async ValueTask DisposeAsync()
