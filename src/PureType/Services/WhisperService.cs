@@ -114,26 +114,30 @@ public class WhisperService : ITranscriptionProvider
                 maxAmp, rms, sampleCount);
 
             // Skip transcription if audio is silence — Whisper hallucinates on quiet input.
-            // Check per-chunk RMS (100ms windows) instead of global RMS so that short
-            // speech segments buried in surrounding silence are not discarded.
-            const float SilenceRmsThreshold = 0.02f;
+            // Use per-chunk RMS (100ms windows) with a threshold above typical background
+            // noise (~0.02 RMS), requiring multiple speech chunks so that transient noise
+            // spikes alone don't trigger transcription.
+            const float SpeechRmsThreshold = 0.035f;
             const int chunkSamples = 1600; // 100ms at 16kHz
-            bool speechDetected = false;
-            for (int offset = 0; offset < sampleCount && !speechDetected; offset += chunkSamples)
+            const int minSpeechChunks = 2;  // need at least 200ms of speech-level audio
+            int speechChunkCount = 0;
+            for (int offset = 0; offset < sampleCount; offset += chunkSamples)
             {
                 int end = Math.Min(offset + chunkSamples, sampleCount);
                 float chunkSumSq = 0;
                 for (int k = offset; k < end; k++)
                     chunkSumSq += samples[k] * samples[k];
                 float chunkRms = (float)Math.Sqrt(chunkSumSq / (end - offset));
-                if (chunkRms >= SilenceRmsThreshold)
-                    speechDetected = true;
+                if (chunkRms >= SpeechRmsThreshold)
+                    speechChunkCount++;
+                if (speechChunkCount >= minSpeechChunks)
+                    break; // enough evidence — skip remaining chunks
             }
 
-            if (!speechDetected)
+            if (speechChunkCount < minSpeechChunks)
             {
-                Log.Debug("Whisper: skipping silent audio (no chunk rms >= {Threshold:F2}, global rms={Rms:F4})",
-                    SilenceRmsThreshold, rms);
+                Log.Debug("Whisper: skipping likely silence (speechChunks={SpeechChunks} < {Min}, threshold={Threshold:F3}, global rms={Rms:F4})",
+                    speechChunkCount, minSpeechChunks, SpeechRmsThreshold, rms);
                 return;
             }
 
