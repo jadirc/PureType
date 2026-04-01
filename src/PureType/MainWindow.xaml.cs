@@ -187,6 +187,12 @@ public partial class MainWindow : Window
             ToastWindow.ShowToast("Microphone disconnected", Colors.Red, true);
         });
 
+        _audio.ZeroAudioDetected += () => Dispatcher.Invoke(() =>
+        {
+            Log.Warning("Microphone delivering zero audio data — reinitializing device");
+            ToastWindow.ShowToast("Microphone silent — reinitializing\u2026", Colors.Orange, true);
+        });
+
         PopulateMicrophones();
         _audio.StartDevicePolling();
         SelectMicrophoneByName(_settings.Audio.Microphone);
@@ -666,6 +672,12 @@ public partial class MainWindow : Window
 
             _provider.ErrorOccurred += OnError;
             _provider.Disconnected += OnDisconnected;
+
+            if (_provider is WhisperService whisper)
+            {
+                whisper.SilenceSkipped += () => Dispatcher.Invoke(() =>
+                    ToastWindow.ShowToast("No speech detected", Colors.Orange, true));
+            }
 
             if (_provider is DeepgramService deepgram)
             {

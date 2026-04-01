@@ -24,6 +24,9 @@ public class WhisperService : ITranscriptionProvider
     public event Action<string>? ErrorOccurred;
     public event Action? Disconnected;
 
+    /// <summary>Fired when a recording is skipped because no speech was detected.</summary>
+    public event Action? SilenceSkipped;
+
     public bool IsConnected => _connected;
 
     public WhisperService(string modelName, string language = "de", string? keywords = null,
@@ -138,6 +141,7 @@ public class WhisperService : ITranscriptionProvider
             {
                 Log.Debug("Whisper: skipping likely silence (speechChunks={SpeechChunks} < {Min}, threshold={Threshold:F3}, global rms={Rms:F4})",
                     speechChunkCount, minSpeechChunks, SpeechRmsThreshold, rms);
+                SilenceSkipped?.Invoke();
                 return;
             }
 

@@ -15,6 +15,10 @@ public class AudioCaptureService : IDisposable
     private int _deviceNumber;
     private System.Timers.Timer? _devicePollTimer;
     private int _lastDeviceCount;
+    private int _consecutiveZeroBuffers;
+    private int _reinitAttempts;
+    private const int ZeroBufferThreshold = 50; // 5 seconds at 100ms buffers
+    private const int MaxReinitAttempts = 3;
 
     /// <summary>Fired when new audio data is available.</summary>
     public event Action<byte[]>? AudioDataAvailable;
@@ -27,6 +31,9 @@ public class AudioCaptureService : IDisposable
 
     /// <summary>Fired when a device error occurs (e.g. device unplugged while recording).</summary>
     public event Action<string>? DeviceError;
+
+    /// <summary>Fired when the microphone delivers only silence (zero data), e.g. after a PC restart.</summary>
+    public event Action? ZeroAudioDetected;
 
     public bool IsRunning => _isRunning;
 
@@ -125,6 +132,35 @@ public class AudioCaptureService : IDisposable
         double rms = Math.Sqrt(sumSquares / sampleCount);
         double level = Math.Min(1.0, rms * 3.0);
         AudioLevelChanged?.Invoke(level);
+
+        // Detect microphone delivering all-zero data (common after PC restart)
+        if (rms < 0.0001)
+        {
+            _consecutiveZeroBuffers++;
+            if (_consecutiveZeroBuffers == ZeroBufferThreshold && _reinitAttempts < MaxReinitAttempts)
+            {
+                _reinitAttempts++;
+                ZeroAudioDetected?.Invoke();
+                // Re-open the device — this often kicks the driver awake
+                _ = Task.Run(() =>
+                {
+                    try
+                    {
+                        Stop();
+                        _waveIn?.Dispose();
+                        _waveIn = null;
+                        _initialized = false;
+                        Start();
+                    }
+                    catch { /* best-effort recovery */ }
+                });
+            }
+        }
+        else
+        {
+            _consecutiveZeroBuffers = 0;
+            _reinitAttempts = 0;
+        }
     }
 
     /// <summary>
