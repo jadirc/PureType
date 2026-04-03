@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using Serilog;
 using Whisper.net;
@@ -40,6 +41,22 @@ public class WhisperService : ITranscriptionProvider
         var modelPath = WhisperModelManager.GetModelPath(_modelName);
         if (!File.Exists(modelPath))
             throw new FileNotFoundException($"Whisper model not found: {modelPath}. Please download it first.");
+
+        // Single-file publish: native DLLs are extracted to a temp directory,
+        // but Whisper.net only searches AppDomain.BaseDirectory.
+        // Detect extraction directory and point Whisper.net's loader there.
+        if (string.IsNullOrEmpty(RuntimeOptions.LibraryPath))
+        {
+            var extractDir = GetSingleFileExtractionDir();
+            if (extractDir != null)
+            {
+                // LibraryPath is treated as a file path — Whisper.net calls
+                // Path.GetDirectoryName() on it to derive the search directory.
+                // Append a dummy filename so the extraction dir itself is searched.
+                RuntimeOptions.LibraryPath = Path.Combine(extractDir, "_");
+                Log.Information("Single-file mode: Whisper library path set to {Path}", extractDir);
+            }
+        }
 
         // Prefer CUDA GPU acceleration, fall back to CPU
         RuntimeOptions.RuntimeLibraryOrder =
@@ -217,6 +234,32 @@ public class WhisperService : ITranscriptionProvider
         return terms.Length > 0
             ? "Terms: " + string.Join(", ", terms) + "."
             : "";
+    }
+
+    /// <summary>
+    /// Finds the .NET single-file bundle extraction directory where native DLLs are unpacked.
+    /// Returns null when running outside single-file publish (e.g. during development).
+    /// </summary>
+    private static string? GetSingleFileExtractionDir()
+    {
+        // Single-file detection: embedded assemblies have an empty Location
+        if (!string.IsNullOrEmpty(typeof(WhisperFactory).Assembly.Location))
+            return null;
+
+        // .NET extracts native DLLs (e.g. wpfgfx_cor3.dll) into a temp directory.
+        // Find that directory via already-loaded native modules.
+        var appName = Path.GetFileNameWithoutExtension(Environment.ProcessPath);
+        if (string.IsNullOrEmpty(appName))
+            return null;
+
+        var marker = Path.Combine(".net", appName);
+        var extractedModule = Process.GetCurrentProcess().Modules
+            .Cast<ProcessModule>()
+            .FirstOrDefault(m => m.FileName?.Contains(marker, StringComparison.OrdinalIgnoreCase) == true);
+
+        return extractedModule != null
+            ? Path.GetDirectoryName(extractedModule.FileName)
+            : null;
     }
 
     public async ValueTask DisposeAsync()
