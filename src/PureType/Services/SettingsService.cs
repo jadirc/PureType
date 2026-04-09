@@ -101,6 +101,15 @@ public record LlmSettings
     public Dictionary<string, string> EndpointKeys { get; init; } = new();
 }
 
+public record AutoCorrectionSettings
+{
+    public bool Enabled { get; init; }
+    public string BaseUrl { get; init; } = "";
+    public string ApiKey { get; init; } = "";
+    public string Model { get; init; } = "";
+    public string StyleInstructions { get; init; } = "";
+}
+
 public record WindowSettings
 {
     public double? Left { get; init; }
@@ -123,6 +132,7 @@ public record AppSettings
     public TranscriptionSettings Transcription { get; init; } = new();
     public AudioSettings Audio { get; init; } = new();
     public LlmSettings Llm { get; init; } = new();
+    public AutoCorrectionSettings AutoCorrection { get; init; } = new();
     public WindowSettings Window { get; init; } = new();
 }
 
@@ -243,6 +253,7 @@ public class SettingsService
         var transcription = new TranscriptionSettings();
         var audio = new AudioSettings();
         var llm = new LlmSettings();
+        var autoCorrection = new AutoCorrectionSettings();
         var window = new WindowSettings();
 
         // Line 0 is the API key (raw, no key= prefix)
@@ -345,6 +356,7 @@ public class SettingsService
             Transcription = transcription,
             Audio = audio,
             Llm = llm,
+            AutoCorrection = autoCorrection,
             Window = window,
         };
     }
