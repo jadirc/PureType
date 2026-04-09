@@ -927,16 +927,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                try
-                {
-                    await KeyboardInjector.TypeTextAsync(processed);
-                    Log.Information("LLM result typed at cursor");
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "LLM result typing failed, copying to clipboard");
-                    System.Windows.Clipboard.SetText(processed);
-                }
+                await OutputText(processed);
             }
         }
         catch (Exception ex)
