@@ -142,4 +142,27 @@ public class RecordingControllerTests
         });
         // Should not throw — flag is stored internally
     }
+
+    [Fact]
+    public void AutoCorrectionRequested_event_exists()
+    {
+        var controller = CreateController(autoCorrectionEnabled: true);
+        bool fired = false;
+        controller.AutoCorrectionRequested += _ => fired = true;
+        Assert.False(fired);
+    }
+
+    [Fact]
+    public void Configure_auto_correction_does_not_affect_llm()
+    {
+        var controller = CreateController(llmEnabled: true, autoCorrectionEnabled: true);
+        // Both flags can coexist — prompt key overrides auto-correction at runtime
+        controller.Configure(new AppSettings
+        {
+            Audio = new AudioSettings(),
+            Llm = new LlmSettings { Enabled = true },
+            AutoCorrection = new AutoCorrectionSettings { Enabled = true },
+        });
+        // Should not throw
+    }
 }
