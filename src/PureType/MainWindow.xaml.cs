@@ -165,6 +165,7 @@ public partial class MainWindow : Window
         });
         _controller.RecordingStopped += () => Dispatcher.Invoke(() => VuMeterBar.Width = 0);
         _controller.LlmProcessingRequested += (text, prompt) => Dispatcher.Invoke(() => _ = ProcessWithLlmAsync(text, prompt));
+        _controller.AutoCorrectionRequested += text => Dispatcher.Invoke(() => _ = ProcessAutoCorrectAsync(text));
         _controller.ClipboardRequested += text => Dispatcher.Invoke(() =>
         {
             System.Windows.Clipboard.SetText(text);
@@ -945,6 +946,83 @@ public partial class MainWindow : Window
         }
     }
 
+    // ── Auto-Correction ───────────────────────────────────────────────────
+
+    private static readonly string AutoCorrectionBasePrompt =
+        "Fix grammar, punctuation and spelling errors in the following dictated text. "
+        + "Keep the original meaning, language and content unchanged. "
+        + "Do not add, remove or rephrase content. "
+        + "Reply with ONLY the corrected text — no preamble, no explanation.";
+
+    private async Task ProcessAutoCorrectAsync(string text)
+    {
+        try
+        {
+            // Resolve provider: own config or fallback to LLM settings
+            var ac = _settings.AutoCorrection;
+            var baseUrl = !string.IsNullOrEmpty(ac.BaseUrl) ? ac.BaseUrl : _settings.Llm.BaseUrl;
+            var apiKey = !string.IsNullOrEmpty(ac.ApiKey) ? ac.ApiKey : _settings.Llm.ApiKey;
+            var model = !string.IsNullOrEmpty(ac.Model) ? ac.Model : _settings.Llm.Model;
+
+            if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(model))
+            {
+                Log.Warning("Auto-correction skipped: no provider configured");
+                await OutputText(text);
+                return;
+            }
+
+            bool isAnthropic = baseUrl.Contains("anthropic.com", StringComparison.OrdinalIgnoreCase);
+            ILlmClient client = isAnthropic
+                ? new AnthropicLlmClient(apiKey, model)
+                : new OpenAiLlmClient(apiKey, baseUrl, model);
+
+            var systemPrompt = string.IsNullOrWhiteSpace(ac.StyleInstructions)
+                ? AutoCorrectionBasePrompt
+                : AutoCorrectionBasePrompt + "\n\n" + ac.StyleInstructions.Trim();
+
+            Log.Information("Auto-correcting {Length} chars via {BaseUrl}/{Model}", text.Length, baseUrl, model);
+            ToastWindow.ShowToast("AI correcting\u2026", Yellow.Color, autoClose: false);
+
+            var result = await client.ProcessAsync(systemPrompt, text);
+            var processed = _replacements.Apply(result);
+
+            Log.Information("Auto-correction result: {Length} chars", processed.Length);
+            ToastWindow.ShowToast("AI correction complete", Green.Color, autoClose: true);
+
+            await OutputText(processed);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Auto-correction failed, outputting raw text");
+            ToastWindow.ShowToast("AI correction failed \u2014 raw text used", Yellow.Color, autoClose: true);
+            await OutputText(text);
+        }
+    }
+
+    private async Task OutputText(string text)
+    {
+        try
+        {
+            switch (_settings.Audio.InputMode)
+            {
+                case "Copy":
+                    System.Windows.Clipboard.SetText(text);
+                    break;
+                case "Paste":
+                    await KeyboardInjector.PasteTextAsync(text);
+                    break;
+                default: // "Type"
+                    await KeyboardInjector.TypeTextAsync(text);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Text output failed, copying to clipboard");
+            System.Windows.Clipboard.SetText(text);
+        }
+    }
+
     private async Task HandleClipboardAiAsync()
     {
         // 1. Read clipboard
@@ -1035,11 +1113,13 @@ public partial class MainWindow : Window
         }
         else if (_controller.IsRecording)
         {
-            _overlay.UpdateState(true, false, "Recording", Red.Color);
+            var label = _settings.AutoCorrection.Enabled ? "Recording (AI)" : "Recording";
+            _overlay.UpdateState(true, false, label, Red.Color);
         }
         else if (_connected)
         {
-            _overlay.UpdateState(false, false, "Connected \u2013 ready", Green.Color);
+            var label = _settings.AutoCorrection.Enabled ? "Connected \u2013 ready (AI)" : "Connected \u2013 ready";
+            _overlay.UpdateState(false, false, label, Green.Color);
         }
     }
 
