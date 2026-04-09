@@ -520,6 +520,72 @@
                     </StackPanel>
                 </StackPanel>
 
+                <!-- ── AUTO-CORRECTION ── -->
+                <TextBlock Text="AUTO-CORRECTION" Foreground="{DynamicResource AccentBrush}"
+                           FontSize="12" FontWeight="Bold" Margin="0,16,0,8"
+                           Tag="section"/>
+
+                <CheckBox x:Name="AutoCorrectionEnabledCheck"
+                          Content="  Auto-correct transcription (LLM)"
+                          ToolTip="Automatically send each recording session through an LLM for grammar, punctuation and style correction before typing the result."
+                          Foreground="{DynamicResource TextBrush}" FontSize="12"
+                          Tag="auto correction grammar llm"
+                          Checked="AutoCorrectionEnabledCheck_Changed"
+                          Unchecked="AutoCorrectionEnabledCheck_Changed"/>
+
+                <StackPanel x:Name="AutoCorrectionSettingsPanel" Visibility="Collapsed" Margin="0,8,0,0"
+                            Tag="auto correction api endpoint key model style">
+
+                    <TextBlock Text="Leave provider fields empty to use the AI Post-Processing provider above."
+                               Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,0,0,8"
+                               TextWrapping="Wrap"/>
+
+                    <StackPanel Margin="0,0,0,12"
+                                ToolTip="Optional separate API endpoint for auto-correction. Leave empty to use the AI Post-Processing endpoint.">
+                        <TextBlock Text="API ENDPOINT (OPTIONAL)" Foreground="{DynamicResource LabelBrush}"
+                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <ComboBox x:Name="AcBaseUrlCombo" IsEditable="True" Text=""
+                                  Padding="10,7" FontFamily="Consolas" FontSize="12">
+                            <ComboBoxItem Content="https://api.openai.com/v1" ToolTip="OpenAI"/>
+                            <ComboBoxItem Content="https://api.anthropic.com/v1" ToolTip="Anthropic Claude"/>
+                            <ComboBoxItem Content="https://openrouter.ai/api/v1" ToolTip="OpenRouter"/>
+                            <ComboBoxItem Content="https://generativelanguage.googleapis.com/v1beta/openai" ToolTip="Google Gemini"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,12"
+                                ToolTip="Optional separate API key for auto-correction. Leave empty to use the AI Post-Processing key.">
+                        <TextBlock Text="API KEY (OPTIONAL)" Foreground="{DynamicResource LabelBrush}"
+                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <PasswordBox x:Name="AcApiKeyBox"
+                                     Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
+                                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                     Padding="10,5" FontFamily="Consolas" FontSize="13"
+                                     PasswordChar="&#x25CF;"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,12"
+                                ToolTip="Optional separate model for auto-correction. Leave empty to use the AI Post-Processing model.">
+                        <TextBlock Text="MODEL (OPTIONAL)" Foreground="{DynamicResource LabelBrush}"
+                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <ComboBox x:Name="AcModelCombo" IsEditable="True" Text=""
+                                  Padding="10,7" FontFamily="Consolas" FontSize="13"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,12"
+                                ToolTip="Optional additional instructions appended to the grammar correction prompt. Examples: 'Use formal tone', 'Keep sentences short and direct'.">
+                        <TextBlock Text="ADDITIONAL STYLE INSTRUCTIONS (OPTIONAL)" Foreground="{DynamicResource LabelBrush}"
+                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBox x:Name="AcStyleInstructionsBox"
+                                 AcceptsReturn="True" TextWrapping="Wrap"
+                                 MinHeight="60" MaxHeight="120"
+                                 Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
+                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                 Padding="10,7" FontSize="12"
+                                 VerticalScrollBarVisibility="Auto"/>
+                    </StackPanel>
+                </StackPanel>
+
             </StackPanel>
         </ScrollViewer>
 

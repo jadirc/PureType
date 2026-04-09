@@ -117,6 +117,14 @@ public partial class SettingsWindow : Window
         PopulateProfileCombo();
         _lastBaseUrl = settings.Llm.BaseUrl;
 
+        // Auto-Correction
+        AutoCorrectionEnabledCheck.IsChecked = settings.AutoCorrection.Enabled;
+        AutoCorrectionSettingsPanel.Visibility = settings.AutoCorrection.Enabled ? Visibility.Visible : Visibility.Collapsed;
+        AcBaseUrlCombo.Text = settings.AutoCorrection.BaseUrl;
+        AcApiKeyBox.Password = settings.AutoCorrection.ApiKey;
+        AcModelCombo.Text = settings.AutoCorrection.Model;
+        AcStyleInstructionsBox.Text = settings.AutoCorrection.StyleInstructions;
+
         // Hook into the editable TextBox inside the ComboBox for typing detection
         LlmBaseUrlCombo.Loaded += (_, _) =>
         {
@@ -201,6 +209,7 @@ public partial class SettingsWindow : Window
                 InputDelayMs = int.TryParse(InputDelayBox.Text, out var delay) ? Math.Max(0, delay) : 0,
             },
             Llm = BuildLlmSettings(),
+            AutoCorrection = BuildAutoCorrectionSettings(),
             Window = new WindowSettings
             {
                 StartMinimized = StartMinimizedCheck.IsChecked == true,
@@ -255,6 +264,18 @@ public partial class SettingsWindow : Window
             Prompts = _prompts.ToList(),
             RecentProfiles = _recentProfiles.ToList(),
             EndpointKeys = new Dictionary<string, string>(_endpointKeys),
+        };
+    }
+
+    private AutoCorrectionSettings BuildAutoCorrectionSettings()
+    {
+        return new AutoCorrectionSettings
+        {
+            Enabled = AutoCorrectionEnabledCheck.IsChecked == true,
+            BaseUrl = AcBaseUrlCombo.Text.Trim(),
+            ApiKey = AcApiKeyBox.Password.Trim(),
+            Model = AcModelCombo.Text.Trim(),
+            StyleInstructions = AcStyleInstructionsBox.Text.Trim(),
         };
     }
 
@@ -355,6 +376,12 @@ public partial class SettingsWindow : Window
     private void LlmEnabledCheck_Changed(object sender, RoutedEventArgs e)
     {
         LlmSettingsPanel.Visibility = LlmEnabledCheck.IsChecked == true
+            ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void AutoCorrectionEnabledCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        AutoCorrectionSettingsPanel.Visibility = AutoCorrectionEnabledCheck.IsChecked == true
             ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -797,6 +824,13 @@ public partial class SettingsWindow : Window
             if (fe == LlmSettingsPanel)
             {
                 fe.Visibility = LlmEnabledCheck.IsChecked == true
+                    ? Visibility.Visible : Visibility.Collapsed;
+                return;
+            }
+
+            if (fe == AutoCorrectionSettingsPanel)
+            {
+                fe.Visibility = AutoCorrectionEnabledCheck.IsChecked == true
                     ? Visibility.Visible : Visibility.Collapsed;
                 return;
             }
