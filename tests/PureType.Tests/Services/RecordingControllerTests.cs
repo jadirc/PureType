@@ -8,13 +8,17 @@ public class RecordingControllerTests
     private readonly AudioCaptureService _audio = new();
     private readonly ReplacementService _replacements = new(Path.GetTempFileName());
 
-    private RecordingController CreateController(bool llmEnabled = false, string inputMode = "Type")
+    private RecordingController CreateController(
+        bool llmEnabled = false,
+        string inputMode = "Type",
+        bool autoCorrectionEnabled = false)
     {
         var controller = new RecordingController(_audio, _replacements);
         controller.Configure(new AppSettings
         {
             Audio = new AudioSettings { Vad = false, InputMode = inputMode },
             Llm = new LlmSettings { Enabled = llmEnabled },
+            AutoCorrection = new AutoCorrectionSettings { Enabled = autoCorrectionEnabled },
         });
         return controller;
     }
@@ -122,5 +126,20 @@ public class RecordingControllerTests
         controller.StatsUpdated += () => fired = true;
         // Event should exist and be subscribable without error
         Assert.False(fired);
+    }
+
+    // ── Auto-correction tests ─────────────────────────────────────────
+
+    [Fact]
+    public void Configure_with_auto_correction_enabled()
+    {
+        var controller = CreateController();
+        controller.Configure(new AppSettings
+        {
+            Audio = new AudioSettings(),
+            Llm = new LlmSettings(),
+            AutoCorrection = new AutoCorrectionSettings { Enabled = true },
+        });
+        // Should not throw — flag is stored internally
     }
 }

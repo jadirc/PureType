@@ -34,6 +34,7 @@ public class RecordingController
     // ── Settings ───────────────────────────────────────────────────────
     private bool _vadEnabled;
     private bool _llmEnabled;
+    private bool _autoCorrectionEnabled;
     private string _inputMode = "Type";
     private List<NamedPrompt> _prompts = new();
 
@@ -59,6 +60,8 @@ public class RecordingController
     public event Action? RecordingStopped;
     /// <summary>Request LLM post-processing with (text, prompt).</summary>
     public event Action<string, NamedPrompt>? LlmProcessingRequested;
+    /// <summary>Request auto-correction LLM processing with collected session text.</summary>
+    public event Action<string>? AutoCorrectionRequested;
     /// <summary>Request clipboard copy (clipboard mode).</summary>
     public event Action<string>? ClipboardRequested;
     /// <summary>(message, dotColor, autoClose) for toast notifications.</summary>
@@ -92,6 +95,7 @@ public class RecordingController
         _inputMode = settings.Audio.InputMode;
         _autoCapitalize = settings.Audio.AutoCapitalize;
         _prompts = settings.Llm.Prompts;
+        _autoCorrectionEnabled = settings.AutoCorrection.Enabled;
     }
 
     public void SetStatsService(StatsService stats)
@@ -212,8 +216,9 @@ public class RecordingController
         await Task.Delay(50); // allow speaker decay so mic doesn't pick up the tail
         _audio.Start();
 
-        StatusChanged?.Invoke("\u25CF Recording", Red);
-        ToastRequested?.Invoke("Recording", Red, false);
+        var recordingLabel = _autoCorrectionEnabled ? "\u25CF Recording (AI)" : "\u25CF Recording";
+        StatusChanged?.Invoke(recordingLabel, Red);
+        ToastRequested?.Invoke(recordingLabel, Red, false);
 
         // Notify UI to add separator between recording sessions
         TranscriptUpdated?.Invoke("\0separator");
@@ -247,7 +252,7 @@ public class RecordingController
         await Task.Delay(50);
 
         SoundFeedback.PlayStop();
-        if (_selectedPrompt == null)
+        if (_selectedPrompt == null && !_autoCorrectionEnabled)
             ToastRequested?.Invoke("Recording stopped", Green, true);
 
         if (_selectedPrompt != null && _sessionChunks.Count > 0)
@@ -256,6 +261,11 @@ public class RecordingController
             _selectedPrompt = null;
             var fullText = string.Join("", _sessionChunks);
             LlmProcessingRequested?.Invoke(fullText, prompt);
+        }
+        else if (_autoCorrectionEnabled && _sessionChunks.Count > 0)
+        {
+            var fullText = string.Join("", _sessionChunks);
+            AutoCorrectionRequested?.Invoke(fullText);
         }
 
         // Track stats
@@ -269,7 +279,10 @@ public class RecordingController
         }
 
         if (_connected)
-            StatusChanged?.Invoke("Connected \u2013 ready", Green);
+        {
+            var readyLabel = _autoCorrectionEnabled ? "Connected \u2013 ready (AI)" : "Connected \u2013 ready";
+            StatusChanged?.Invoke(readyLabel, Green);
+        }
         RecordingStateChanged?.Invoke();
     }
 
@@ -302,7 +315,7 @@ public class RecordingController
             _transcriptLog.Add((DateTime.Now, processed));
 
             // When AI post-processing is pending, don't type yet — LLM will type the result
-            if (_selectedPrompt == null)
+            if (_selectedPrompt == null && !_autoCorrectionEnabled)
             {
                 try
                 {
