@@ -130,29 +130,51 @@ public static class KeyboardInjector
         await ClipboardLock.WaitAsync();
         try
         {
-            // Clipboard can be locked by other apps — retry with delay
-            for (int attempt = 0; attempt < 3; attempt++)
+            // Clipboard can be locked by other apps — retry with backoff
+            bool clipboardSet = false;
+            for (int attempt = 0; attempt < 5; attempt++)
             {
                 try
                 {
                     System.Windows.Clipboard.SetText(text);
+                    clipboardSet = true;
                     break;
                 }
-                catch (COMException) when (attempt < 2)
+                catch (COMException) when (attempt < 4)
                 {
-                    await Task.Delay(50);
+                    await Task.Delay(50 * (attempt + 1)); // 50, 100, 150, 200ms
                 }
             }
 
-            var inputs = BuildCtrlV();
-            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+            if (clipboardSet)
+            {
+                var inputs = BuildCtrlV();
+                SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
 
-            // Wait for target app to process paste
-            await Task.Delay(200);
+                // Wait for target app to process paste
+                await Task.Delay(200);
+            }
+            else
+            {
+                // Clipboard unavailable — fall back to SendInput (slower but reliable)
+                Log.Warning("Clipboard locked, falling back to SendInput for {Length} chars", text.Length);
+                var inputs = BuildInputs(text);
+                SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+            }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "Clipboard paste failed");
+            // Last-resort fallback: try SendInput so text is never lost
+            Log.Warning(ex, "Clipboard paste failed, falling back to SendInput");
+            try
+            {
+                var inputs = BuildInputs(text);
+                SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+            }
+            catch (Exception fallbackEx)
+            {
+                Log.Error(fallbackEx, "SendInput fallback also failed");
+            }
         }
         finally
         {
