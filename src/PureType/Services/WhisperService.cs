@@ -164,7 +164,8 @@ public class WhisperService : ITranscriptionProvider
 
             var result = new System.Text.StringBuilder();
             int segCount = 0;
-            await foreach (var segment in _processor.ProcessAsync(samples))
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await foreach (var segment in _processor.ProcessAsync(samples, cts.Token))
             {
                 segCount++;
                 Log.Debug("Whisper segment {N}: Start={Start}, End={End}, Text=\"{Text}\", Prob={Prob:F3}",
@@ -176,6 +177,11 @@ public class WhisperService : ITranscriptionProvider
             Log.Debug("Whisper result ({Segments} segments): \"{Text}\"", segCount, text);
             if (!string.IsNullOrWhiteSpace(text))
                 TranscriptReceived?.Invoke(text, true); // always final in batch mode
+        }
+        catch (OperationCanceledException)
+        {
+            Log.Warning("Whisper transcription timed out after 30s — CUDA may be stuck");
+            ErrorOccurred?.Invoke("Whisper timed out — try reconnecting");
         }
         catch (Exception ex)
         {
