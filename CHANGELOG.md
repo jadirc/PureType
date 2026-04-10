@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.4.0](https://github.com/jadirc/PureType/compare/v1.3.0...v1.4.0) (2026-04-10)
+
+
+### Features
+
+* add auto-correction settings UI with toggle and provider fields ([92cc9d5](https://github.com/jadirc/PureType/commit/92cc9d5))
+* handle AutoCorrectionRequested with provider fallback and error handling ([2fa4898](https://github.com/jadirc/PureType/commit/2fa4898))
+* add auto-correction suppression and event in RecordingController ([0411ac1](https://github.com/jadirc/PureType/commit/0411ac1))
+* add AutoCorrectionSettings data model ([0f8729e](https://github.com/jadirc/PureType/commit/0f8729e))
+* detect silent microphone and auto-reinitialize audio device ([36ab0f1](https://github.com/jadirc/PureType/commit/36ab0f1))
+
+
+### Bug Fixes
+
+* add 30s timeout to Whisper transcription to prevent CUDA hangs ([3ed64d1](https://github.com/jadirc/PureType/commit/3ed64d1))
+
 ## [1.3.0](https://github.com/jadirc/PureType/compare/v1.2.0...v1.3.0) (2026-04-03)
 
 
