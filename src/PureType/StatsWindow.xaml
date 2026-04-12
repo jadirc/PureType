@@ -38,6 +38,8 @@
                                FontSize="14" Margin="0,8,0,0"/>
                     <TextBlock x:Name="TodayDuration" Foreground="{DynamicResource TextBrush}"
                                FontSize="14"/>
+                    <TextBlock x:Name="TodayTiming" Foreground="{DynamicResource TextDimBrush}"
+                               FontSize="12" Margin="0,4,0,0"/>
                 </StackPanel>
             </Border>
 
@@ -55,6 +57,8 @@
                                FontSize="14" Margin="0,8,0,0"/>
                     <TextBlock x:Name="TotalDuration" Foreground="{DynamicResource TextBrush}"
                                FontSize="14"/>
+                    <TextBlock x:Name="TotalTiming" Foreground="{DynamicResource TextDimBrush}"
+                               FontSize="12" Margin="0,4,0,0"/>
                 </StackPanel>
             </Border>
         </Grid>
@@ -93,6 +97,8 @@
                 <DataGridTextColumn Header="Words" Binding="{Binding Words}" Width="70"/>
                 <DataGridTextColumn Header="Sessions" Binding="{Binding Sessions}" Width="70"/>
                 <DataGridTextColumn Header="Duration" Binding="{Binding DurationDisplay}" Width="80"/>
+                <DataGridTextColumn Header="Ø STT" Binding="{Binding AvgStt}" Width="60"/>
+                <DataGridTextColumn Header="Ø AI" Binding="{Binding AvgAi}" Width="60"/>
             </DataGrid.Columns>
         </DataGrid>
     </Grid>
