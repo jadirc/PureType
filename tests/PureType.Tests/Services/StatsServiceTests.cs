@@ -132,4 +132,72 @@ public class StatsServiceTests : IDisposable
         Assert.True(snap.DayHistory.Count <= 30,
             $"Expected at most 30 day-history entries but got {snap.DayHistory.Count}");
     }
+
+    [Fact]
+    public void RecordSession_tracks_stt_milliseconds()
+    {
+        var svc = new StatsService(_tempFile);
+        svc.RecordSession(10, 30, sttMs: 1200);
+        var snap = svc.GetStats();
+        Assert.Equal(1200, snap.TodaySttMs);
+    }
+
+    [Fact]
+    public void RecordAiTime_tracks_ai_milliseconds()
+    {
+        var svc = new StatsService(_tempFile);
+        svc.RecordSession(10, 30, sttMs: 1200);
+        svc.RecordAiTime(700);
+        var snap = svc.GetStats();
+        Assert.Equal(1200, snap.TodaySttMs);
+        Assert.Equal(700, snap.TodayAiMs);
+        Assert.Equal(1, snap.TodaySessions); // RecordAiTime must NOT increment sessions
+    }
+
+    [Fact]
+    public void RecordSession_accumulates_timing()
+    {
+        var svc = new StatsService(_tempFile);
+        svc.RecordSession(10, 30, sttMs: 1000);
+        svc.RecordAiTime(500);
+        svc.RecordSession(20, 60, sttMs: 1500);
+        svc.RecordAiTime(800);
+        var snap = svc.GetStats();
+        Assert.Equal(2500, snap.TodaySttMs);
+        Assert.Equal(1300, snap.TodayAiMs);
+    }
+
+    [Fact]
+    public void RecordSession_without_timing_defaults_to_zero()
+    {
+        var svc = new StatsService(_tempFile);
+        svc.RecordSession(10, 30);
+        var snap = svc.GetStats();
+        Assert.Equal(0, snap.TodaySttMs);
+        Assert.Equal(0, snap.TodayAiMs);
+    }
+
+    [Fact]
+    public void Timing_persists_across_instances()
+    {
+        var svc1 = new StatsService(_tempFile);
+        svc1.RecordSession(10, 30, sttMs: 1200);
+        svc1.RecordAiTime(700);
+        var svc2 = new StatsService(_tempFile);
+        var snap = svc2.GetStats();
+        Assert.Equal(1200, snap.TodaySttMs);
+        Assert.Equal(700, snap.TodayAiMs);
+    }
+
+    [Fact]
+    public void DayHistory_includes_timing()
+    {
+        var svc = new StatsService(_tempFile);
+        svc.RecordSession(10, 30, sttMs: 1200);
+        svc.RecordAiTime(700);
+        var snap = svc.GetStats();
+        var entry = snap.DayHistory[0];
+        Assert.Equal(1200, entry.SttMs);
+        Assert.Equal(700, entry.AiMs);
+    }
 }

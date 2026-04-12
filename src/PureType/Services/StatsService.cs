@@ -14,6 +14,8 @@ public class DayStats
     public int Words { get; set; }
     public int Sessions { get; set; }
     public int Seconds { get; set; }
+    public int SttMilliseconds { get; set; }
+    public int AiMilliseconds { get; set; }
 }
 
 public class StatsData
@@ -21,7 +23,7 @@ public class StatsData
     public Dictionary<string, DayStats> Days { get; set; } = new();
 }
 
-public record DayHistoryEntry(string Date, int Words, int Sessions, int Seconds);
+public record DayHistoryEntry(string Date, int Words, int Sessions, int Seconds, int SttMs, int AiMs);
 
 public record StatsSnapshot(
     int TotalWords,
@@ -30,6 +32,10 @@ public record StatsSnapshot(
     int TodayWords,
     int TodaySessions,
     int TodaySeconds,
+    int TodaySttMs,
+    int TodayAiMs,
+    int TotalSttMs,
+    int TotalAiMs,
     IReadOnlyList<DayHistoryEntry> DayHistory);
 
 // ── Service ─────────────────────────────────────────────────────────────
@@ -57,7 +63,7 @@ public class StatsService
     /// <summary>
     /// Records a completed dictation session.
     /// </summary>
-    public void RecordSession(int wordCount, int durationSeconds)
+    public void RecordSession(int wordCount, int durationSeconds, int sttMs = 0)
     {
         var key = DateTime.Today.ToString("yyyy-MM-dd");
 
@@ -70,8 +76,24 @@ public class StatsService
         day.Words += wordCount;
         day.Sessions += 1;
         day.Seconds += durationSeconds;
+        day.SttMilliseconds += sttMs;
 
         Prune();
+        Save();
+    }
+
+    /// <summary>
+    /// Records AI correction time for the current day without incrementing session count.
+    /// </summary>
+    public void RecordAiTime(int aiMs)
+    {
+        var key = DateTime.Today.ToString("yyyy-MM-dd");
+        if (!_data.Days.TryGetValue(key, out var day))
+        {
+            day = new DayStats();
+            _data.Days[key] = day;
+        }
+        day.AiMilliseconds += aiMs;
         Save();
     }
 
@@ -86,15 +108,19 @@ public class StatsService
         var totalWords = _data.Days.Values.Sum(d => d.Words);
         var totalSessions = _data.Days.Values.Sum(d => d.Sessions);
         var totalSeconds = _data.Days.Values.Sum(d => d.Seconds);
+        var totalSttMs = _data.Days.Values.Sum(d => d.SttMilliseconds);
+        var totalAiMs = _data.Days.Values.Sum(d => d.AiMilliseconds);
 
         var history = _data.Days
             .OrderByDescending(kv => kv.Key)
-            .Select(kv => new DayHistoryEntry(kv.Key, kv.Value.Words, kv.Value.Sessions, kv.Value.Seconds))
+            .Select(kv => new DayHistoryEntry(kv.Key, kv.Value.Words, kv.Value.Sessions, kv.Value.Seconds, kv.Value.SttMilliseconds, kv.Value.AiMilliseconds))
             .ToList();
 
         return new StatsSnapshot(
             totalWords, totalSessions, totalSeconds,
             today?.Words ?? 0, today?.Sessions ?? 0, today?.Seconds ?? 0,
+            today?.SttMilliseconds ?? 0, today?.AiMilliseconds ?? 0,
+            totalSttMs, totalAiMs,
             history);
     }
 
