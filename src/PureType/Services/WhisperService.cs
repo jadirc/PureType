@@ -27,6 +27,7 @@ public class WhisperService : ITranscriptionProvider
 
     /// <summary>Fired when a recording is skipped because no speech was detected.</summary>
     public event Action? SilenceSkipped;
+    public event Action<TimeSpan>? TranscriptionTimed;
 
     public bool IsConnected => _connected;
 
@@ -164,6 +165,7 @@ public class WhisperService : ITranscriptionProvider
 
             var result = new System.Text.StringBuilder();
             int segCount = 0;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             await foreach (var segment in _processor.ProcessAsync(samples, cts.Token))
             {
@@ -172,9 +174,11 @@ public class WhisperService : ITranscriptionProvider
                     segCount, segment.Start, segment.End, segment.Text, segment.Probability);
                 result.Append(segment.Text);
             }
+            sw.Stop();
 
             var text = result.ToString().Trim();
-            Log.Debug("Whisper result ({Segments} segments): \"{Text}\"", segCount, text);
+            Log.Debug("Whisper result ({Segments} segments, {Elapsed}ms): \"{Text}\"", segCount, sw.ElapsedMilliseconds, text);
+            TranscriptionTimed?.Invoke(sw.Elapsed);
             if (!string.IsNullOrWhiteSpace(text))
                 TranscriptReceived?.Invoke(text, true); // always final in batch mode
         }

@@ -8,6 +8,7 @@ public interface ITranscriptionProvider : IAsyncDisposable
     event Action<string, bool>? TranscriptReceived;
     event Action<string>? ErrorOccurred;
     event Action? Disconnected;
+    event Action<TimeSpan>? TranscriptionTimed { add { } remove { } }
 
     bool IsConnected { get; }
 
