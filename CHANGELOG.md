@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.4.0](https://github.com/jadirc/PureType/compare/v1.3.0...v1.4.0) (2026-04-12)
+
+
+### Features
+
+* add auto-correction settings UI with toggle and provider fields ([92cc9d5](https://github.com/jadirc/PureType/commit/92cc9d5d2b621f653b0364c775313ac32f913a19))
+* add auto-correction suppression and event in RecordingController ([0411ac1](https://github.com/jadirc/PureType/commit/0411ac126b800a0ac066f813898cc97fb67f87f1))
+* add AutoCorrectionSettings data model ([0f8729e](https://github.com/jadirc/PureType/commit/0f8729e5979354997604f46eef955942f387de25))
+* add STT and AI timing fields to StatsService ([12fd7c6](https://github.com/jadirc/PureType/commit/12fd7c68db18a59180c3ce0c3e55b6f4cffaf92e))
+* add TranscriptionTimed event to WhisperService with Stopwatch ([d337340](https://github.com/jadirc/PureType/commit/d3373409ba360e36978215938df506dc2c1cb67b))
+* capture STT timing in RecordingController and show in toast ([3eeb08f](https://github.com/jadirc/PureType/commit/3eeb08f141a6a4eb867fafcb80a358cda9c3b482))
+* handle AutoCorrectionRequested with provider fallback and error handling ([2fa4898](https://github.com/jadirc/PureType/commit/2fa4898a3f50d75cea92c5081570a5828f023cc7))
+* show average STT and AI timing in StatsWindow ([d3630f1](https://github.com/jadirc/PureType/commit/d3630f1b4558120f9e742c1200f168c172d6aadf))
+* show STT+AI timing in toasts and record AI time in stats ([279aa3c](https://github.com/jadirc/PureType/commit/279aa3cf82d8409ae640659ffdd8b7ebf70d92a8))
+
+
+### Bug Fixes
+
+* add 30s timeout to Whisper transcription to prevent CUDA hangs ([3ed64d1](https://github.com/jadirc/PureType/commit/3ed64d15440412a42dd908899ad30ffa39f278bc))
+* fall back to SendInput when clipboard paste fails ([dd8bbdb](https://github.com/jadirc/PureType/commit/dd8bbdbe80b84ce455c984446f83abb1b91ac47a))
+* prevent phantom day entries in RecordAiTime, add timing test coverage ([fc9967c](https://github.com/jadirc/PureType/commit/fc9967c6a6b3c2f44d9d30c3bf54f2676cfe807c))
+
 ## [1.4.0](https://github.com/jadirc/PureType/compare/v1.3.0...v1.4.0) (2026-04-10)
 
 
