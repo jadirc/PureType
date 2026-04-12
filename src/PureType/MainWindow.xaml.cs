@@ -908,16 +908,25 @@ public partial class MainWindow : Window
                 ? new AnthropicLlmClient(apiKey, model)
                 : new OpenAiLlmClient(apiKey, baseUrl, model);
 
+            var sttSec = _controller.LastSttDuration.TotalSeconds;
+            var sttLabel = sttSec > 0 ? $"Whisper: {sttSec:F1}s \u2014 " : "";
+
             Log.Information("Sending {Length} chars to LLM ({BaseUrl}/{Model}) with prompt '{PromptName}'",
                 text.Length, baseUrl, model, namedPrompt.Name);
-            ToastWindow.ShowToast($"AI: {namedPrompt.Name} \u2026",
+            ToastWindow.ShowToast($"{sttLabel}AI: {namedPrompt.Name} \u2026",
                 Yellow.Color, autoClose: false);
 
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             var result = await client.ProcessAsync(namedPrompt.Prompt, text);
+            sw.Stop();
             var processed = _replacements.Apply(result);
 
-            Log.Information("LLM result: {Length} chars", processed.Length);
-            ToastWindow.ShowToast("AI processing complete", false);
+            var aiSec = sw.Elapsed.TotalSeconds;
+            var totalSec = sttSec + aiSec;
+            Log.Information("LLM result: {Length} chars in {AiMs}ms", processed.Length, sw.ElapsedMilliseconds);
+            ToastWindow.ShowToast($"Done \u2014 STT {sttSec:F1}s + AI {aiSec:F1}s = {totalSec:F1}s", Green.Color, autoClose: true);
+
+            _stats.RecordAiTime((int)sw.ElapsedMilliseconds);
 
             if (clipboardOnly)
             {
@@ -971,14 +980,23 @@ public partial class MainWindow : Window
                 ? AutoCorrectionBasePrompt
                 : AutoCorrectionBasePrompt + "\n\n" + ac.StyleInstructions.Trim();
 
-            Log.Information("Auto-correcting {Length} chars via {BaseUrl}/{Model}", text.Length, baseUrl, model);
-            ToastWindow.ShowToast("AI correcting\u2026", Yellow.Color, autoClose: false);
+            var sttSec = _controller.LastSttDuration.TotalSeconds;
+            var sttLabel = sttSec > 0 ? $"Whisper: {sttSec:F1}s \u2014 " : "";
 
+            Log.Information("Auto-correcting {Length} chars via {BaseUrl}/{Model}", text.Length, baseUrl, model);
+            ToastWindow.ShowToast($"{sttLabel}AI correcting\u2026", Yellow.Color, autoClose: false);
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             var result = await client.ProcessAsync(systemPrompt, text);
+            sw.Stop();
             var processed = _replacements.Apply(result);
 
-            Log.Information("Auto-correction result: {Length} chars", processed.Length);
-            ToastWindow.ShowToast("AI correction complete", Green.Color, autoClose: true);
+            var aiSec = sw.Elapsed.TotalSeconds;
+            var totalSec = sttSec + aiSec;
+            Log.Information("Auto-correction result: {Length} chars in {AiMs}ms", processed.Length, sw.ElapsedMilliseconds);
+            ToastWindow.ShowToast($"Done \u2014 STT {sttSec:F1}s + AI {aiSec:F1}s = {totalSec:F1}s", Green.Color, autoClose: true);
+
+            _stats.RecordAiTime((int)sw.ElapsedMilliseconds);
 
             await OutputText(processed);
         }
