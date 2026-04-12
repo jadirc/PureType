@@ -30,6 +30,10 @@ public class StatsServiceTests : IDisposable
         Assert.Equal(0, snap.TodaySessions);
         Assert.Equal(0, snap.TodaySeconds);
         Assert.Empty(snap.DayHistory);
+        Assert.Equal(0, snap.TodaySttMs);
+        Assert.Equal(0, snap.TodayAiMs);
+        Assert.Equal(0, snap.TotalSttMs);
+        Assert.Equal(0, snap.TotalAiMs);
     }
 
     [Fact]
@@ -165,6 +169,20 @@ public class StatsServiceTests : IDisposable
         var snap = svc.GetStats();
         Assert.Equal(2500, snap.TodaySttMs);
         Assert.Equal(1300, snap.TodayAiMs);
+    }
+
+    [Fact]
+    public void GetStats_returns_total_timing()
+    {
+        var svc = new StatsService(_tempFile);
+        svc.RecordSession(10, 30, sttMs: 1000);
+        svc.RecordAiTime(500);
+        svc.RecordSession(20, 60, sttMs: 1500);
+        svc.RecordAiTime(800);
+
+        var snap = svc.GetStats();
+        Assert.Equal(2500, snap.TotalSttMs);
+        Assert.Equal(1300, snap.TotalAiMs);
     }
 
     [Fact]
