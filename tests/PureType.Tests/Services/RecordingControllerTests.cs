@@ -165,4 +165,11 @@ public class RecordingControllerTests
         });
         // Should not throw
     }
+
+    [Fact]
+    public void LastSttDuration_initially_zero()
+    {
+        var controller = CreateController();
+        Assert.Equal(TimeSpan.Zero, controller.LastSttDuration);
+    }
 }

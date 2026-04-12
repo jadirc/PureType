@@ -73,6 +73,7 @@ public class RecordingController
     public bool IsRecording => _recording;
     public bool IsMuted { get; set; }
     public IReadOnlyList<(DateTime Timestamp, string Text)> TranscriptLog => _transcriptLog;
+    public TimeSpan LastSttDuration { get; private set; }
 
     public RecordingController(
         AudioCaptureService audio,
@@ -110,13 +111,19 @@ public class RecordingController
     public void SetProvider(ITranscriptionProvider? provider, bool connected)
     {
         if (_provider is not null)
+        {
             _provider.TranscriptReceived -= OnTranscriptReceived;
+            _provider.TranscriptionTimed -= OnTranscriptionTimed;
+        }
 
         _provider = provider;
         _connected = connected;
 
         if (_provider is not null)
+        {
             _provider.TranscriptReceived += OnTranscriptReceived;
+            _provider.TranscriptionTimed += OnTranscriptionTimed;
+        }
     }
 
     public void HandleToggle()
@@ -211,6 +218,7 @@ public class RecordingController
         _sessionChunks.Clear();
         _capitalizeNext = true;
         _recordingStartTime = DateTime.UtcNow;
+        LastSttDuration = TimeSpan.Zero;
         _recording = true;
         await SoundFeedback.PlayStartAsync();
         await Task.Delay(50); // allow speaker decay so mic doesn't pick up the tail
@@ -253,7 +261,12 @@ public class RecordingController
 
         SoundFeedback.PlayStop();
         if (_selectedPrompt == null && !_autoCorrectionEnabled)
-            ToastRequested?.Invoke("Recording stopped", Green, true);
+        {
+            var sttLabel = LastSttDuration > TimeSpan.Zero
+                ? $"Whisper: {LastSttDuration.TotalSeconds:F1}s"
+                : "Recording stopped";
+            ToastRequested?.Invoke(sttLabel, Green, true);
+        }
 
         if (_selectedPrompt != null && _sessionChunks.Count > 0)
         {
@@ -274,7 +287,8 @@ public class RecordingController
             var allText = string.Join("", _sessionChunks);
             var wordCount = allText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
             var duration = (int)(recordingStopTime - _recordingStartTime).TotalSeconds;
-            _stats.RecordSession(wordCount, duration);
+            var sttMs = (int)LastSttDuration.TotalMilliseconds;
+            _stats.RecordSession(wordCount, duration, sttMs: sttMs);
             StatsUpdated?.Invoke();
         }
 
@@ -287,6 +301,11 @@ public class RecordingController
     }
 
     // ── Audio → Provider ───────────────────────────────────────────────
+
+    private void OnTranscriptionTimed(TimeSpan duration)
+    {
+        LastSttDuration = duration;
+    }
 
     private async void OnAudioData(byte[] chunk)
     {
