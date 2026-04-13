@@ -443,6 +443,7 @@
                                   SelectionChanged="LlmBaseUrlCombo_SelectionChanged">
                             <ComboBoxItem Content="https://api.openai.com/v1" ToolTip="OpenAI"/>
                             <ComboBoxItem Content="https://api.anthropic.com/v1" ToolTip="Anthropic Claude"/>
+                            <ComboBoxItem Content="https://api.mistral.ai/v1" ToolTip="Mistral AI"/>
                             <ComboBoxItem Content="https://openrouter.ai/api/v1" ToolTip="OpenRouter"/>
                             <ComboBoxItem Content="https://generativelanguage.googleapis.com/v1beta/openai" ToolTip="Google Gemini"/>
                         </ComboBox>
@@ -548,6 +549,7 @@
                                   Padding="10,7" FontFamily="Consolas" FontSize="12">
                             <ComboBoxItem Content="https://api.openai.com/v1" ToolTip="OpenAI"/>
                             <ComboBoxItem Content="https://api.anthropic.com/v1" ToolTip="Anthropic Claude"/>
+                            <ComboBoxItem Content="https://api.mistral.ai/v1" ToolTip="Mistral AI"/>
                             <ComboBoxItem Content="https://openrouter.ai/api/v1" ToolTip="OpenRouter"/>
                             <ComboBoxItem Content="https://generativelanguage.googleapis.com/v1beta/openai" ToolTip="Google Gemini"/>
                         </ComboBox>

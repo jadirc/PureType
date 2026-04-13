@@ -44,11 +44,21 @@ public class OpenAiLlmClient : ILlmClient
 
         var responseJson = await response.Content.ReadAsStringAsync(ct);
         using var doc = JsonDocument.Parse(responseJson);
-        var result = doc.RootElement
+        var messageContent = doc.RootElement
             .GetProperty("choices")[0]
             .GetProperty("message")
-            .GetProperty("content")
-            .GetString();
+            .GetProperty("content");
+
+        // Standard models return content as a string; reasoning models (Magistral, o1, etc.)
+        // return an array of blocks — extract the last "text" block.
+        string? result = messageContent.ValueKind switch
+        {
+            JsonValueKind.String => messageContent.GetString(),
+            JsonValueKind.Array => messageContent.EnumerateArray()
+                .LastOrDefault(b => b.TryGetProperty("type", out var t) && t.GetString() == "text")
+                .TryGetProperty("text", out var txt) ? txt.GetString() : null,
+            _ => null
+        };
 
         Log.Debug("OpenAI LLM response: {Result}", result);
         return result ?? text;
