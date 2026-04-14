@@ -165,8 +165,7 @@
                     <TextBlock Text="VOXTRAL MODEL" Foreground="{DynamicResource LabelBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
                     <ComboBox x:Name="VoxtralModelCombo" Padding="10,7" FontSize="13">
-                        <ComboBoxItem Content="Small — fast, good quality" Tag="mistral-small-latest" IsSelected="True"/>
-                        <ComboBoxItem Content="Medium — higher quality, slower" Tag="mistral-medium-latest"/>
+                        <ComboBoxItem Content="Voxtral Mini — fast, efficient" Tag="voxtral-mini-latest" IsSelected="True"/>
                     </ComboBox>
                 </StackPanel>
 

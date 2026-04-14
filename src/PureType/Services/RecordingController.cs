@@ -263,7 +263,7 @@ public class RecordingController
         if (_selectedPrompt == null && !_autoCorrectionEnabled)
         {
             var sttLabel = LastSttDuration > TimeSpan.Zero
-                ? $"Whisper: {LastSttDuration.TotalSeconds:F1}s"
+                ? $"STT: {LastSttDuration.TotalSeconds:F1}s"
                 : "Recording stopped";
             ToastRequested?.Invoke(sttLabel, Green, true);
         }

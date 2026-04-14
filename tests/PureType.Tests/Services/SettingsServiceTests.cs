@@ -373,10 +373,10 @@ public class SettingsServiceTests
     }
 
     [Fact]
-    public void VoxtralModel_defaults_to_mistral_small_latest()
+    public void VoxtralModel_defaults_to_voxtral_mini_latest()
     {
         var settings = new TranscriptionSettings();
-        Assert.Equal("mistral-small-latest", settings.VoxtralModel);
+        Assert.Equal("voxtral-mini-latest", settings.VoxtralModel);
     }
 
     [Fact]

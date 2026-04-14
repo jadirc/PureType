@@ -25,7 +25,7 @@ public record TranscriptionSettings
     public string Keywords { get; init; } = "";
     public string WhisperModel { get; init; } = "tiny";
     public WhisperTuningSettings WhisperTuning { get; init; } = new();
-    public string VoxtralModel { get; init; } = "mistral-small-latest";
+    public string VoxtralModel { get; init; } = "voxtral-mini-latest";
 }
 
 public record WhisperTuningSettings

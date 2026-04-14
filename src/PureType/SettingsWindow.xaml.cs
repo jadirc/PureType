@@ -185,7 +185,7 @@ public partial class SettingsWindow : Window
                 Provider = (string)(providerItem?.Tag ?? _providerTag),
                 WhisperModel = (string)(whisperModelItem?.Tag ?? "tiny"),
                 Keywords = KeywordsBox.Text.Trim(),
-                VoxtralModel = (string)(voxtralModelItem?.Tag ?? "mistral-small-latest"),
+                VoxtralModel = (string)(voxtralModelItem?.Tag ?? "voxtral-mini-latest"),
                 WhisperTuning = new WhisperTuningSettings
                 {
                     SamplingStrategy = (string)((SamplingStrategyCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "greedy"),

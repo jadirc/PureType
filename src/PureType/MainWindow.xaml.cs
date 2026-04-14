@@ -199,6 +199,7 @@ public partial class MainWindow : Window
         SelectMicrophoneByName(_settings.Audio.Microphone);
         UiHelper.SelectComboByTag(InputModeComboMain, _settings.Audio.InputMode);
         UiHelper.SelectComboByTag(LanguageComboMain, _settings.Transcription.Language);
+        AutoCorrectionCheckMain.IsChecked = _settings.AutoCorrection.Enabled;
 
         // Enable settings persistence only after all controls are populated
         _isLoading = false;
@@ -229,7 +230,7 @@ public partial class MainWindow : Window
 
         // Auto-connect on startup
         var providerTag = (_settings.Transcription.Provider);
-        if (providerTag == "whisper" || !string.IsNullOrWhiteSpace(_settings.Transcription.ApiKey))
+        if (providerTag == "whisper" || providerTag == "voxtral" || !string.IsNullOrWhiteSpace(_settings.Transcription.ApiKey))
             Dispatcher.BeginInvoke(async () => await ConnectAsync());
 
         // Show window if "Start minimized" is not checked
@@ -465,6 +466,7 @@ public partial class MainWindow : Window
                 UiHelper.SelectComboByTag(ProviderCombo, newProvider);
             UiHelper.SelectComboByTag(InputModeComboMain, _settings.Audio.InputMode);
             UiHelper.SelectComboByTag(LanguageComboMain, _settings.Transcription.Language);
+            AutoCorrectionCheckMain.IsChecked = _settings.AutoCorrection.Enabled;
 
             ApplySettings();
             _settingsService.Save(_settings);
@@ -554,6 +556,21 @@ public partial class MainWindow : Window
             SaveSettings();
             ApplySettings();
         }
+    }
+
+    // ── Auto-Correction Toggle ────────────────────────────────────────
+
+    private void AutoCorrectionCheckMain_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isLoading) return;
+        var enabled = AutoCorrectionCheckMain.IsChecked == true;
+        _settings = _settings with
+        {
+            AutoCorrection = _settings.AutoCorrection with { Enabled = enabled }
+        };
+        _controller.Configure(_settings);
+        _settingsService.Save(_settings);
+        UpdateOverlay();
     }
 
     // ── Language ────────────────────────────────────────────────────────
@@ -946,7 +963,7 @@ public partial class MainWindow : Window
                 : new OpenAiLlmClient(apiKey, baseUrl, model);
 
             var sttSec = _controller.LastSttDuration.TotalSeconds;
-            var sttLabel = sttSec > 0 ? $"Whisper: {sttSec:F1}s \u2014 " : "";
+            var sttLabel = sttSec > 0 ? $"STT: {sttSec:F1}s \u2014 " : "";
 
             Log.Information("Sending {Length} chars to LLM ({BaseUrl}/{Model}) with prompt '{PromptName}'",
                 text.Length, baseUrl, model, namedPrompt.Name);
@@ -1018,7 +1035,7 @@ public partial class MainWindow : Window
                 : AutoCorrectionBasePrompt + "\n\n" + ac.StyleInstructions.Trim();
 
             var sttSec = _controller.LastSttDuration.TotalSeconds;
-            var sttLabel = sttSec > 0 ? $"Whisper: {sttSec:F1}s \u2014 " : "";
+            var sttLabel = sttSec > 0 ? $"STT: {sttSec:F1}s \u2014 " : "";
 
             Log.Information("Auto-correcting {Length} chars via {BaseUrl}/{Model}", text.Length, baseUrl, model);
             ToastWindow.ShowToast($"{sttLabel}AI correcting\u2026", Yellow.Color, autoClose: false);
