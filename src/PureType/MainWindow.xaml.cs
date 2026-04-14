@@ -653,6 +653,22 @@ public partial class MainWindow : Window
                     whisperKeywords, tuning.SamplingStrategy, tuning.BeamSize, tuning.EntropyThreshold);
                 _provider = new WhisperService(modelName, language, whisperKeywords, tuning);
             }
+            else if (providerType == "voxtral")
+            {
+                var mistralKey = ResolveMistralApiKey();
+                if (string.IsNullOrEmpty(mistralKey))
+                {
+                    MessageBox.Show("Please configure a Mistral API key in AI Post-Processing settings first.",
+                        "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ConnectButton.IsEnabled = true;
+                    SetStatus("Not connected", Red);
+                    return;
+                }
+
+                var model = _settings.Transcription.VoxtralModel;
+                Log.Information("Creating VoxtralService with model={Model}", model);
+                _provider = new VoxtralService(mistralKey, model, language);
+            }
             else
             {
                 var apiKey = _settings.Transcription.ApiKey;
@@ -680,6 +696,12 @@ public partial class MainWindow : Window
                     ToastWindow.ShowToast("No speech detected", Colors.Orange, true));
             }
 
+            if (_provider is VoxtralService voxtral)
+            {
+                voxtral.SilenceSkipped += () => Dispatcher.Invoke(() =>
+                    ToastWindow.ShowToast("No speech detected", Colors.Orange, true));
+            }
+
             if (_provider is DeepgramService deepgram)
             {
                 deepgram.Reconnecting += OnReconnecting;
@@ -694,7 +716,12 @@ public partial class MainWindow : Window
             _audio.Initialize();
             RegisterHotkeys();
 
-            var label = providerType == "whisper" ? "Whisper (local)" : "Deepgram";
+            var label = providerType switch
+            {
+                "whisper" => "Whisper (local)",
+                "voxtral" => "Voxtral (cloud)",
+                _ => "Deepgram",
+            };
             SetStatus($"Connected - {label}", Green);
             ConnectButton.Content = "Disconnect";
             ConnectButton.Background = Red;
@@ -736,6 +763,16 @@ public partial class MainWindow : Window
         Log.Information("Provider disconnected");
         _tray.Update(_connected, _controller.IsRecording, _muted);
         _overlay?.Hide();
+    }
+
+    private string? ResolveMistralApiKey()
+    {
+        foreach (var kvp in _settings.Llm.EndpointKeys)
+        {
+            if (kvp.Key.Contains("api.mistral.ai", StringComparison.OrdinalIgnoreCase))
+                return kvp.Value;
+        }
+        return null;
     }
 
     // ── Hotkeys ───────────────────────────────────────────────────────────

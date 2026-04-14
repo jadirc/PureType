@@ -79,6 +79,7 @@
                       SelectionChanged="ProviderCombo_SelectionChanged">
                 <ComboBoxItem Content="Deepgram (Cloud)" Tag="deepgram" IsSelected="True"/>
                 <ComboBoxItem Content="Whisper (Local)" Tag="whisper"/>
+                <ComboBoxItem Content="Voxtral (Cloud)" Tag="voxtral"/>
             </ComboBox>
         </StackPanel>
 
