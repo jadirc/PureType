@@ -371,4 +371,39 @@ public class SettingsServiceTests
         }
         finally { Directory.Delete(tempDir, true); }
     }
+
+    [Fact]
+    public void VoxtralModel_defaults_to_voxtral_mini_latest()
+    {
+        var settings = new TranscriptionSettings();
+        Assert.Equal("voxtral-mini-latest", settings.VoxtralModel);
+    }
+
+    [Fact]
+    public void VoxtralModel_round_trips_through_json()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "settings.json");
+        try
+        {
+            var svc = new SettingsService(path);
+            var original = new AppSettings
+            {
+                Transcription = new TranscriptionSettings
+                {
+                    Provider = "voxtral",
+                    VoxtralModel = "mistral-medium-latest",
+                }
+            };
+            svc.Save(original);
+            var loaded = svc.Load();
+            Assert.Equal("voxtral", loaded.Transcription.Provider);
+            Assert.Equal("mistral-medium-latest", loaded.Transcription.VoxtralModel);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
 }

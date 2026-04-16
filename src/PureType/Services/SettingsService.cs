@@ -25,6 +25,7 @@ public record TranscriptionSettings
     public string Keywords { get; init; } = "";
     public string WhisperModel { get; init; } = "tiny";
     public WhisperTuningSettings WhisperTuning { get; init; } = new();
+    public string VoxtralModel { get; init; } = "voxtral-mini-latest";
 }
 
 public record WhisperTuningSettings
@@ -74,6 +75,7 @@ public record LlmProfile
             {
                 var u when u.Contains("api.openai.com", StringComparison.OrdinalIgnoreCase) => "OpenAI",
                 var u when u.Contains("api.anthropic.com", StringComparison.OrdinalIgnoreCase) => "Anthropic",
+                var u when u.Contains("api.mistral.ai", StringComparison.OrdinalIgnoreCase) => "Mistral",
                 var u when u.Contains("openrouter.ai", StringComparison.OrdinalIgnoreCase) => "OpenRouter",
                 var u when u.Contains("generativelanguage.googleapis.com", StringComparison.OrdinalIgnoreCase) => "Google Gemini",
                 var u when Uri.TryCreate(u, UriKind.Absolute, out var uri) => uri.Host + (uri.Port is not (80 or 443) ? $":{uri.Port}" : ""),

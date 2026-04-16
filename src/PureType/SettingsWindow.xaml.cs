@@ -65,6 +65,7 @@ public partial class SettingsWindow : Window
         UiHelper.SelectComboByTag(ProviderCombo, settings.Transcription.Provider);
         ApiKeyBox.Password = settings.Transcription.ApiKey;
         KeywordsBox.Text = settings.Transcription.Keywords;
+        UiHelper.SelectComboByTag(VoxtralModelCombo, settings.Transcription.VoxtralModel);
         UiHelper.SelectComboByTag(LanguageCombo, settings.Transcription.Language);
 
         // Whisper Tuning
@@ -145,12 +146,12 @@ public partial class SettingsWindow : Window
 
     private void SetProviderVisibility(string providerTag)
     {
-        var isWhisper = providerTag == "whisper";
-        WhisperModelPanel.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
-        ApiKeyPanel.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
-        KeywordsPanel.Visibility = Visibility.Visible;
-        WhisperTuningHeader.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
-        WhisperTuningPanel.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
+        WhisperModelPanel.Visibility = providerTag == "whisper" ? Visibility.Visible : Visibility.Collapsed;
+        WhisperTuningHeader.Visibility = providerTag == "whisper" ? Visibility.Visible : Visibility.Collapsed;
+        WhisperTuningPanel.Visibility = providerTag == "whisper" ? Visibility.Visible : Visibility.Collapsed;
+        ApiKeyPanel.Visibility = providerTag == "deepgram" ? Visibility.Visible : Visibility.Collapsed;
+        VoxtralModelPanel.Visibility = providerTag == "voxtral" ? Visibility.Visible : Visibility.Collapsed;
+        KeywordsPanel.Visibility = providerTag != "voxtral" ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ProviderCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -172,6 +173,7 @@ public partial class SettingsWindow : Window
         var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var langItem = LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var whisperModelItem = WhisperModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
+        var voxtralModelItem = VoxtralModelCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
         var toneItem = ToneCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
 
         ResultSettings = new AppSettings
@@ -183,6 +185,7 @@ public partial class SettingsWindow : Window
                 Provider = (string)(providerItem?.Tag ?? _providerTag),
                 WhisperModel = (string)(whisperModelItem?.Tag ?? "tiny"),
                 Keywords = KeywordsBox.Text.Trim(),
+                VoxtralModel = (string)(voxtralModelItem?.Tag ?? "voxtral-mini-latest"),
                 WhisperTuning = new WhisperTuningSettings
                 {
                     SamplingStrategy = (string)((SamplingStrategyCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag ?? "greedy"),
@@ -810,14 +813,16 @@ public partial class SettingsWindow : Window
     {
         if (child is FrameworkElement fe)
         {
-            if (fe == WhisperModelPanel || fe == ApiKeyPanel || fe == WhisperTuningPanel)
+            if (fe == WhisperModelPanel || fe == ApiKeyPanel || fe == WhisperTuningPanel || fe == VoxtralModelPanel)
             {
                 var providerItem = ProviderCombo.SelectedItem as System.Windows.Controls.ComboBoxItem;
-                var isWhisper = (string)(providerItem?.Tag ?? "deepgram") == "whisper";
+                var providerTag = (string)(providerItem?.Tag ?? "deepgram");
                 if (fe == WhisperModelPanel || fe == WhisperTuningPanel)
-                    fe.Visibility = isWhisper ? Visibility.Visible : Visibility.Collapsed;
-                else
-                    fe.Visibility = isWhisper ? Visibility.Collapsed : Visibility.Visible;
+                    fe.Visibility = providerTag == "whisper" ? Visibility.Visible : Visibility.Collapsed;
+                else if (fe == VoxtralModelPanel)
+                    fe.Visibility = providerTag == "voxtral" ? Visibility.Visible : Visibility.Collapsed;
+                else // ApiKeyPanel
+                    fe.Visibility = providerTag == "deepgram" ? Visibility.Visible : Visibility.Collapsed;
                 return;
             }
 

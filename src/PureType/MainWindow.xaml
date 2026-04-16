@@ -27,7 +27,9 @@
             <RowDefinition Height="8"/>
             <RowDefinition Height="Auto"/>  <!-- Row 10: Language -->
             <RowDefinition Height="8"/>
-            <RowDefinition Height="*"/>     <!-- Row 12: Transcript -->
+            <RowDefinition Height="Auto"/>  <!-- Row 12: Auto-Correction -->
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="*"/>     <!-- Row 14: Transcript -->
             <RowDefinition Height="Auto"/>  <!-- Row 13: Stats -->
         </Grid.RowDefinitions>
 
@@ -79,6 +81,7 @@
                       SelectionChanged="ProviderCombo_SelectionChanged">
                 <ComboBoxItem Content="Deepgram (Cloud)" Tag="deepgram" IsSelected="True"/>
                 <ComboBoxItem Content="Whisper (Local)" Tag="whisper"/>
+                <ComboBoxItem Content="Voxtral (Cloud)" Tag="voxtral"/>
             </ComboBox>
         </StackPanel>
 
@@ -115,8 +118,16 @@
             </ComboBox>
         </StackPanel>
 
+        <!-- Auto-Correction Toggle -->
+        <CheckBox Grid.Row="12" x:Name="AutoCorrectionCheckMain"
+                  Content="Auto-Correction (AI)"
+                  Foreground="{DynamicResource TextBrush}" FontSize="13"
+                  Checked="AutoCorrectionCheckMain_Changed"
+                  Unchecked="AutoCorrectionCheckMain_Changed"
+                  ToolTip="Automatically correct transcribed text using AI before typing"/>
+
         <!-- Transcript -->
-        <Border Grid.Row="12" Background="{DynamicResource DeepBrush}" CornerRadius="6">
+        <Border Grid.Row="14" Background="{DynamicResource DeepBrush}" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -165,7 +176,7 @@
         </Border>
 
         <!-- Stats Summary -->
-        <TextBlock Grid.Row="13" x:Name="StatsLine"
+        <TextBlock Grid.Row="15" x:Name="StatsLine"
                    Text=""
                    Foreground="{DynamicResource TextDimBrush}"
                    FontSize="11" FontFamily="Segoe UI"

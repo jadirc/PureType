@@ -141,6 +141,7 @@
                               SelectionChanged="ProviderCombo_SelectionChanged">
                         <ComboBoxItem Content="Deepgram (Cloud)" Tag="deepgram" IsSelected="True"/>
                         <ComboBoxItem Content="Whisper (Local)" Tag="whisper"/>
+                        <ComboBoxItem Content="Voxtral (Cloud)" Tag="voxtral"/>
                     </ComboBox>
                 </StackPanel>
 
@@ -155,6 +156,17 @@
                                  BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                                  Padding="10,5" FontFamily="Consolas" FontSize="13"
                                  PasswordChar="&#x25CF;"/>
+                </StackPanel>
+
+                <!-- Voxtral Model (Voxtral only) -->
+                <StackPanel x:Name="VoxtralModelPanel" Visibility="Collapsed" Margin="0,0,0,12"
+                            Tag="voxtral model mistral cloud speech"
+                            ToolTip="Choose a Voxtral speech recognition model. Larger models are more accurate but slower.">
+                    <TextBlock Text="VOXTRAL MODEL" Foreground="{DynamicResource LabelBrush}"
+                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="VoxtralModelCombo" Padding="10,7" FontSize="13">
+                        <ComboBoxItem Content="Voxtral Mini — fast, efficient" Tag="voxtral-mini-latest" IsSelected="True"/>
+                    </ComboBox>
                 </StackPanel>
 
                 <!-- Whisper Model (Whisper only) -->
@@ -443,6 +455,7 @@
                                   SelectionChanged="LlmBaseUrlCombo_SelectionChanged">
                             <ComboBoxItem Content="https://api.openai.com/v1" ToolTip="OpenAI"/>
                             <ComboBoxItem Content="https://api.anthropic.com/v1" ToolTip="Anthropic Claude"/>
+                            <ComboBoxItem Content="https://api.mistral.ai/v1" ToolTip="Mistral AI"/>
                             <ComboBoxItem Content="https://openrouter.ai/api/v1" ToolTip="OpenRouter"/>
                             <ComboBoxItem Content="https://generativelanguage.googleapis.com/v1beta/openai" ToolTip="Google Gemini"/>
                         </ComboBox>
@@ -548,6 +561,7 @@
                                   Padding="10,7" FontFamily="Consolas" FontSize="12">
                             <ComboBoxItem Content="https://api.openai.com/v1" ToolTip="OpenAI"/>
                             <ComboBoxItem Content="https://api.anthropic.com/v1" ToolTip="Anthropic Claude"/>
+                            <ComboBoxItem Content="https://api.mistral.ai/v1" ToolTip="Mistral AI"/>
                             <ComboBoxItem Content="https://openrouter.ai/api/v1" ToolTip="OpenRouter"/>
                             <ComboBoxItem Content="https://generativelanguage.googleapis.com/v1beta/openai" ToolTip="Google Gemini"/>
                         </ComboBox>

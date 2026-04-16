@@ -199,6 +199,7 @@ public partial class MainWindow : Window
         SelectMicrophoneByName(_settings.Audio.Microphone);
         UiHelper.SelectComboByTag(InputModeComboMain, _settings.Audio.InputMode);
         UiHelper.SelectComboByTag(LanguageComboMain, _settings.Transcription.Language);
+        AutoCorrectionCheckMain.IsChecked = _settings.AutoCorrection.Enabled;
 
         // Enable settings persistence only after all controls are populated
         _isLoading = false;
@@ -229,7 +230,7 @@ public partial class MainWindow : Window
 
         // Auto-connect on startup
         var providerTag = (_settings.Transcription.Provider);
-        if (providerTag == "whisper" || !string.IsNullOrWhiteSpace(_settings.Transcription.ApiKey))
+        if (providerTag == "whisper" || providerTag == "voxtral" || !string.IsNullOrWhiteSpace(_settings.Transcription.ApiKey))
             Dispatcher.BeginInvoke(async () => await ConnectAsync());
 
         // Show window if "Start minimized" is not checked
@@ -465,6 +466,7 @@ public partial class MainWindow : Window
                 UiHelper.SelectComboByTag(ProviderCombo, newProvider);
             UiHelper.SelectComboByTag(InputModeComboMain, _settings.Audio.InputMode);
             UiHelper.SelectComboByTag(LanguageComboMain, _settings.Transcription.Language);
+            AutoCorrectionCheckMain.IsChecked = _settings.AutoCorrection.Enabled;
 
             ApplySettings();
             _settingsService.Save(_settings);
@@ -554,6 +556,21 @@ public partial class MainWindow : Window
             SaveSettings();
             ApplySettings();
         }
+    }
+
+    // ── Auto-Correction Toggle ────────────────────────────────────────
+
+    private void AutoCorrectionCheckMain_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isLoading) return;
+        var enabled = AutoCorrectionCheckMain.IsChecked == true;
+        _settings = _settings with
+        {
+            AutoCorrection = _settings.AutoCorrection with { Enabled = enabled }
+        };
+        _controller.Configure(_settings);
+        _settingsService.Save(_settings);
+        UpdateOverlay();
     }
 
     // ── Language ────────────────────────────────────────────────────────
@@ -653,6 +670,22 @@ public partial class MainWindow : Window
                     whisperKeywords, tuning.SamplingStrategy, tuning.BeamSize, tuning.EntropyThreshold);
                 _provider = new WhisperService(modelName, language, whisperKeywords, tuning);
             }
+            else if (providerType == "voxtral")
+            {
+                var mistralKey = ResolveMistralApiKey();
+                if (string.IsNullOrEmpty(mistralKey))
+                {
+                    MessageBox.Show("Please configure a Mistral API key in AI Post-Processing settings first.",
+                        "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ConnectButton.IsEnabled = true;
+                    SetStatus("Not connected", Red);
+                    return;
+                }
+
+                var model = _settings.Transcription.VoxtralModel;
+                Log.Information("Creating VoxtralService with model={Model}", model);
+                _provider = new VoxtralService(mistralKey, model, language);
+            }
             else
             {
                 var apiKey = _settings.Transcription.ApiKey;
@@ -680,6 +713,12 @@ public partial class MainWindow : Window
                     ToastWindow.ShowToast("No speech detected", Colors.Orange, true));
             }
 
+            if (_provider is VoxtralService voxtral)
+            {
+                voxtral.SilenceSkipped += () => Dispatcher.Invoke(() =>
+                    ToastWindow.ShowToast("No speech detected", Colors.Orange, true));
+            }
+
             if (_provider is DeepgramService deepgram)
             {
                 deepgram.Reconnecting += OnReconnecting;
@@ -694,7 +733,12 @@ public partial class MainWindow : Window
             _audio.Initialize();
             RegisterHotkeys();
 
-            var label = providerType == "whisper" ? "Whisper (local)" : "Deepgram";
+            var label = providerType switch
+            {
+                "whisper" => "Whisper (local)",
+                "voxtral" => "Voxtral (cloud)",
+                _ => "Deepgram",
+            };
             SetStatus($"Connected - {label}", Green);
             ConnectButton.Content = "Disconnect";
             ConnectButton.Background = Red;
@@ -736,6 +780,16 @@ public partial class MainWindow : Window
         Log.Information("Provider disconnected");
         _tray.Update(_connected, _controller.IsRecording, _muted);
         _overlay?.Hide();
+    }
+
+    private string? ResolveMistralApiKey()
+    {
+        foreach (var kvp in _settings.Llm.EndpointKeys)
+        {
+            if (kvp.Key.Contains("api.mistral.ai", StringComparison.OrdinalIgnoreCase))
+                return kvp.Value;
+        }
+        return null;
     }
 
     // ── Hotkeys ───────────────────────────────────────────────────────────
@@ -909,7 +963,7 @@ public partial class MainWindow : Window
                 : new OpenAiLlmClient(apiKey, baseUrl, model);
 
             var sttSec = _controller.LastSttDuration.TotalSeconds;
-            var sttLabel = sttSec > 0 ? $"Whisper: {sttSec:F1}s \u2014 " : "";
+            var sttLabel = sttSec > 0 ? $"STT: {sttSec:F1}s \u2014 " : "";
 
             Log.Information("Sending {Length} chars to LLM ({BaseUrl}/{Model}) with prompt '{PromptName}'",
                 text.Length, baseUrl, model, namedPrompt.Name);
@@ -981,7 +1035,7 @@ public partial class MainWindow : Window
                 : AutoCorrectionBasePrompt + "\n\n" + ac.StyleInstructions.Trim();
 
             var sttSec = _controller.LastSttDuration.TotalSeconds;
-            var sttLabel = sttSec > 0 ? $"Whisper: {sttSec:F1}s \u2014 " : "";
+            var sttLabel = sttSec > 0 ? $"STT: {sttSec:F1}s \u2014 " : "";
 
             Log.Information("Auto-correcting {Length} chars via {BaseUrl}/{Model}", text.Length, baseUrl, model);
             ToastWindow.ShowToast($"{sttLabel}AI correcting\u2026", Yellow.Color, autoClose: false);
