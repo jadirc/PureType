@@ -319,6 +319,8 @@ public class RecordingController
 
     private async void OnTranscriptReceived(string text, bool isFinal)
     {
+        Log.Debug("OnTranscriptReceived: isFinal={IsFinal}, length={Length}, recording={Recording}", isFinal, text.Length, _recording);
+
         if (isFinal)
         {
             _interimText = "";
@@ -332,6 +334,11 @@ public class RecordingController
             TranscriptUpdated?.Invoke(processed);
             _sessionChunks.Add(processed);
             _transcriptLog.Add((DateTime.Now, processed));
+
+            if (_selectedPrompt != null)
+                Log.Debug("Text buffered for LLM prompt '{Prompt}' — not typing yet", _selectedPrompt.Name);
+            else if (_autoCorrectionEnabled)
+                Log.Debug("Text buffered for auto-correction — not typing yet");
 
             // When AI post-processing is pending, don't type yet — LLM will type the result
             if (_selectedPrompt == null && !_autoCorrectionEnabled)
