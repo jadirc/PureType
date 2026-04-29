@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.4.0](https://github.com/jadirc/PureType/compare/v1.3.0...v1.4.0) (2026-04-29)
+
+
+### Features
+
+* add auto-correction settings UI with toggle and provider fields ([92cc9d5](https://github.com/jadirc/PureType/commit/92cc9d5d2b621f653b0364c775313ac32f913a19))
+* add auto-correction suppression and event in RecordingController ([0411ac1](https://github.com/jadirc/PureType/commit/0411ac126b800a0ac066f813898cc97fb67f87f1))
+* add AutoCorrectionSettings data model ([0f8729e](https://github.com/jadirc/PureType/commit/0f8729e5979354997604f46eef955942f387de25))
+* add diagnostic logging to RecordingController transcript handling ([84f7a9b](https://github.com/jadirc/PureType/commit/84f7a9bcf5fccfa565506ea5e32914e76fd2dcd2))
+* add Mistral AI endpoint and fix reasoning model response parsing ([b06f105](https://github.com/jadirc/PureType/commit/b06f105aa55774632fca5b748935cf245a3421e2))
+* add STT and AI timing fields to StatsService ([12fd7c6](https://github.com/jadirc/PureType/commit/12fd7c68db18a59180c3ce0c3e55b6f4cffaf92e))
+* add TranscriptionTimed event to WhisperService with Stopwatch ([d337340](https://github.com/jadirc/PureType/commit/d3373409ba360e36978215938df506dc2c1cb67b))
+* add Voxtral provider to MainWindow connect flow ([457b6cb](https://github.com/jadirc/PureType/commit/457b6cb246581ef8ed4f1b8f6e0412abf2aeed1e))
+* add Voxtral provider UI to SettingsWindow ([e27f6fa](https://github.com/jadirc/PureType/commit/e27f6fab0cf838429f99bc8138362a4bff93e82e))
+* add VoxtralModel to TranscriptionSettings ([01b184f](https://github.com/jadirc/PureType/commit/01b184fee1f32d0bf906cc7639fd49cae6a30602))
+* add VoxtralService with WAV packaging and silence detection ([773c339](https://github.com/jadirc/PureType/commit/773c339fe282c5c8d5af0f22ba3291c207e9b63e))
+* capture STT timing in RecordingController and show in toast ([3eeb08f](https://github.com/jadirc/PureType/commit/3eeb08f141a6a4eb867fafcb80a358cda9c3b482))
+* handle AutoCorrectionRequested with provider fallback and error handling ([2fa4898](https://github.com/jadirc/PureType/commit/2fa4898a3f50d75cea92c5081570a5828f023cc7))
+* log SendInput failures across all KeyboardInjector paths ([6296404](https://github.com/jadirc/PureType/commit/6296404da84160da25ebab6a507846f574e2d73d))
+* show average STT and AI timing in StatsWindow ([d3630f1](https://github.com/jadirc/PureType/commit/d3630f1b4558120f9e742c1200f168c172d6aadf))
+* show STT+AI timing in toasts and record AI time in stats ([279aa3c](https://github.com/jadirc/PureType/commit/279aa3cf82d8409ae640659ffdd8b7ebf70d92a8))
+
+
+### Bug Fixes
+
+* add 30s timeout to Whisper transcription to prevent CUDA hangs ([3ed64d1](https://github.com/jadirc/PureType/commit/3ed64d15440412a42dd908899ad30ffa39f278bc))
+* avoid losing AI time when first AI call of the day arrives before any session ([1b5b994](https://github.com/jadirc/PureType/commit/1b5b99479454801bbf67e6058ebda75224d7d5d0))
+* compress long silences in Voxtral audio to prevent transcript truncation ([a537883](https://github.com/jadirc/PureType/commit/a537883f08eac6871e1ab1ed0e9e99b365ecabc9))
+* correct stale row number in MainWindow grid layout comment ([3f612b3](https://github.com/jadirc/PureType/commit/3f612b33262895539d0a9d4cacc30620ce690922))
+* correct Voxtral model name, add auto-correction toggle to MainWindow ([e406343](https://github.com/jadirc/PureType/commit/e406343ce2b5850964457ab1c869bfd2848d0b58))
+* fall back to SendInput when clipboard paste fails ([dd8bbdb](https://github.com/jadirc/PureType/commit/dd8bbdbe80b84ce455c984446f83abb1b91ac47a))
+* grant write permissions to Claude Code Action workflows ([e935ec9](https://github.com/jadirc/PureType/commit/e935ec99b60bc4c0b277a15c423b8474808ca2c1))
+* guard against race condition during audio device reinitialization ([69b4b0e](https://github.com/jadirc/PureType/commit/69b4b0ea6574bf2b1de343ec1115ee569e502985))
+* prevent phantom day entries in RecordAiTime, add timing test coverage ([fc9967c](https://github.com/jadirc/PureType/commit/fc9967c6a6b3c2f44d9d30c3bf54f2676cfe807c))
+
 ## [1.4.0](https://github.com/jadirc/PureType/compare/v1.3.0...v1.4.0) (2026-04-10)
 
 
