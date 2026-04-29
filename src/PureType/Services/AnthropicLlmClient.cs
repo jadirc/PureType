@@ -7,14 +7,14 @@ namespace PureType.Services;
 
 public class AnthropicLlmClient : ILlmClient
 {
-    private readonly HttpClient _http = new();
+    private static readonly HttpClient SharedHttp = new();
+    private readonly string _apiKey;
     private readonly string _model;
 
     public AnthropicLlmClient(string apiKey, string model)
     {
+        _apiKey = apiKey;
         _model = model;
-        _http.DefaultRequestHeaders.Add("x-api-key", apiKey);
-        _http.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
     }
 
     public async Task<string> ProcessAsync(string systemPrompt, string text, CancellationToken ct = default)
@@ -37,7 +37,12 @@ public class AnthropicLlmClient : ILlmClient
         var json = JsonSerializer.Serialize(body);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var response = await _http.PostAsync("https://api.anthropic.com/v1/messages", content, ct);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages");
+        request.Headers.Add("x-api-key", _apiKey);
+        request.Headers.Add("anthropic-version", "2023-06-01");
+        request.Content = content;
+
+        var response = await SharedHttp.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
 
         var responseJson = await response.Content.ReadAsStringAsync(ct);

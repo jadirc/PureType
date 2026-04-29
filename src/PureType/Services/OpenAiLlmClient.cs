@@ -8,15 +8,16 @@ namespace PureType.Services;
 
 public class OpenAiLlmClient : ILlmClient
 {
-    private readonly HttpClient _http = new();
+    private static readonly HttpClient SharedHttp = new();
+    private readonly string _apiKey;
     private readonly string _baseUrl;
     private readonly string _model;
 
     public OpenAiLlmClient(string apiKey, string baseUrl, string model)
     {
+        _apiKey = apiKey;
         _baseUrl = baseUrl.TrimEnd('/');
         _model = model;
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
     }
 
     public async Task<string> ProcessAsync(string systemPrompt, string text, CancellationToken ct = default)
@@ -39,7 +40,11 @@ public class OpenAiLlmClient : ILlmClient
         var json = JsonSerializer.Serialize(body);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var response = await _http.PostAsync($"{_baseUrl}/chat/completions", content, ct);
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/chat/completions");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        request.Content = content;
+
+        var response = await SharedHttp.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
 
         var responseJson = await response.Content.ReadAsStringAsync(ct);
@@ -55,8 +60,9 @@ public class OpenAiLlmClient : ILlmClient
         {
             JsonValueKind.String => messageContent.GetString(),
             JsonValueKind.Array => messageContent.EnumerateArray()
-                .LastOrDefault(b => b.TryGetProperty("type", out var t) && t.GetString() == "text")
-                .TryGetProperty("text", out var txt) ? txt.GetString() : null,
+                .Where(b => b.TryGetProperty("type", out var t) && t.GetString() == "text")
+                .Select(b => b.TryGetProperty("text", out var txt) ? txt.GetString() : null)
+                .LastOrDefault(),
             _ => null
         };
 
