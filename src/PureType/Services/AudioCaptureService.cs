@@ -17,6 +17,7 @@ public class AudioCaptureService : IDisposable
     private int _lastDeviceCount;
     private int _consecutiveZeroBuffers;
     private int _reinitAttempts;
+    private volatile bool _reinitializing;
     private const int ZeroBufferThreshold = 50; // 5 seconds at 100ms buffers
     private const int MaxReinitAttempts = 3;
 
@@ -115,7 +116,7 @@ public class AudioCaptureService : IDisposable
 
     private void OnDataAvailable(object? sender, WaveInEventArgs e)
     {
-        if (e.BytesRecorded <= 0) return;
+        if (e.BytesRecorded <= 0 || _reinitializing) return;
         var chunk = new byte[e.BytesRecorded];
         Array.Copy(e.Buffer, chunk, e.BytesRecorded);
         AudioDataAvailable?.Invoke(chunk);
@@ -140,8 +141,8 @@ public class AudioCaptureService : IDisposable
             if (_consecutiveZeroBuffers == ZeroBufferThreshold && _reinitAttempts < MaxReinitAttempts)
             {
                 _reinitAttempts++;
+                _reinitializing = true;
                 ZeroAudioDetected?.Invoke();
-                // Re-open the device — this often kicks the driver awake
                 _ = Task.Run(() =>
                 {
                     try
@@ -153,6 +154,7 @@ public class AudioCaptureService : IDisposable
                         Start();
                     }
                     catch { /* best-effort recovery */ }
+                    finally { _reinitializing = false; }
                 });
             }
         }
