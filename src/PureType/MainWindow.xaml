@@ -30,7 +30,7 @@
             <RowDefinition Height="Auto"/>  <!-- Row 12: Auto-Correction -->
             <RowDefinition Height="8"/>
             <RowDefinition Height="*"/>     <!-- Row 14: Transcript -->
-            <RowDefinition Height="Auto"/>  <!-- Row 13: Stats -->
+            <RowDefinition Height="Auto"/>  <!-- Row 15: Stats -->
         </Grid.RowDefinitions>
 
         <!-- Status Indicator -->
