@@ -707,17 +707,8 @@ public partial class MainWindow : Window
             _provider.ErrorOccurred += OnError;
             _provider.Disconnected += OnDisconnected;
 
-            if (_provider is WhisperService whisper)
-            {
-                whisper.SilenceSkipped += () => Dispatcher.Invoke(() =>
-                    ToastWindow.ShowToast("No speech detected", Colors.Orange, true));
-            }
-
-            if (_provider is VoxtralService voxtral)
-            {
-                voxtral.SilenceSkipped += () => Dispatcher.Invoke(() =>
-                    ToastWindow.ShowToast("No speech detected", Colors.Orange, true));
-            }
+            _provider.SilenceSkipped += () => Dispatcher.Invoke(() =>
+                ToastWindow.ShowToast("No speech detected", Colors.Orange, true));
 
             if (_provider is DeepgramService deepgram)
             {
