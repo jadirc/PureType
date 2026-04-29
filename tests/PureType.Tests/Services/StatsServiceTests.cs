@@ -218,4 +218,14 @@ public class StatsServiceTests : IDisposable
         Assert.Equal(1200, entry.SttMs);
         Assert.Equal(700, entry.AiMs);
     }
+
+    [Fact]
+    public void RecordAiTime_creates_day_entry_when_none_exists()
+    {
+        var svc = new StatsService(_tempFile);
+        svc.RecordAiTime(500);
+        var snap = svc.GetStats();
+        Assert.Equal(500, snap.TodayAiMs);
+        Assert.Equal(0, snap.TodaySessions);
+    }
 }

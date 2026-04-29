@@ -89,7 +89,10 @@ public class StatsService
     {
         var key = DateTime.Today.ToString("yyyy-MM-dd");
         if (!_data.Days.TryGetValue(key, out var day))
-            return;
+        {
+            day = new DayStats();
+            _data.Days[key] = day;
+        }
         day.AiMilliseconds += aiMs;
         Save();
     }
