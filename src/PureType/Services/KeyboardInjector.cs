@@ -83,7 +83,11 @@ public static class KeyboardInjector
 
         var suffix = text.EndsWith('\n') ? "" : " ";
         var inputs = BuildInputs(text + suffix);
-        SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+        uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+        if (sent == 0)
+            Log.Warning("SendInput returned 0 — text injection failed (no focused window or elevated target?)");
+        else if (sent < inputs.Length)
+            Log.Warning("SendInput sent {Sent}/{Total} events — partial injection", sent, inputs.Length);
     }
 
     public static async Task TypeTextAsync(string text)
@@ -104,14 +108,20 @@ public static class KeyboardInjector
             foreach (char c in text + suffix)
             {
                 var inputs = BuildInputs(c.ToString());
-                SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+                uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+                if (sent == 0)
+                    Log.Warning("SendInput returned 0 for char '{Char}' — target window may be elevated", c);
                 await Task.Delay(InputDelayMs);
             }
         }
         else
         {
             var inputs = BuildInputs(text + suffix);
-            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+            uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+            if (sent == 0)
+                Log.Warning("SendInput returned 0 — text injection failed (no focused window or elevated target?)");
+            else if (sent < inputs.Length)
+                Log.Warning("SendInput sent {Sent}/{Total} events — partial injection", sent, inputs.Length);
         }
     }
 
@@ -149,7 +159,9 @@ public static class KeyboardInjector
             if (clipboardSet)
             {
                 var inputs = BuildCtrlV();
-                SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+                uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+                if (sent == 0)
+                    Log.Warning("Ctrl+V SendInput returned 0 — paste failed (no focused window or elevated target?)");
 
                 // Wait for target app to process paste
                 await Task.Delay(200);
