@@ -14,6 +14,7 @@ public class VoxtralService : ITranscriptionProvider
     private string _language;
     private readonly HttpClient _http = new();
     private readonly MemoryStream _audioBuffer = new();
+    private readonly object _bufferLock = new();
     private bool _connected;
 
     public event Action<string, bool>? TranscriptReceived;
@@ -41,7 +42,7 @@ public class VoxtralService : ITranscriptionProvider
     public Task SendAudioAsync(byte[] audioData)
     {
         if (!_connected) return Task.CompletedTask;
-        lock (_audioBuffer)
+        lock (_bufferLock)
         {
             _audioBuffer.Write(audioData, 0, audioData.Length);
         }
@@ -53,7 +54,7 @@ public class VoxtralService : ITranscriptionProvider
         if (!_connected) return;
 
         byte[] pcmData;
-        lock (_audioBuffer)
+        lock (_bufferLock)
         {
             pcmData = _audioBuffer.ToArray();
             _audioBuffer.SetLength(0);
@@ -62,12 +63,23 @@ public class VoxtralService : ITranscriptionProvider
         if (pcmData.Length < 3200) // less than 100ms
             return;
 
+        var originalBytes = pcmData.Length;
+        pcmData = CompressSilence(pcmData);
+        if (pcmData.Length < originalBytes)
+        {
+            Log.Debug("Voxtral: compressed silence {OriginalSeconds:F1}s → {CompressedSeconds:F1}s",
+                originalBytes / 2.0 / 16000, pcmData.Length / 2.0 / 16000);
+        }
+
         Log.Debug("Voxtral: processing {Bytes} bytes ({Seconds:F1}s) of audio",
             pcmData.Length, pcmData.Length / 2.0 / 16000);
 
+        var (peak, rms) = ComputeLevels(pcmData);
+        Log.Debug("Voxtral audio stats: peak={Peak:F4}, rms={Rms:F4}", peak, rms);
+
         if (!HasSpeech(pcmData))
         {
-            Log.Debug("Voxtral: skipping likely silence");
+            Log.Debug("Voxtral: skipping likely silence (peak={Peak:F4}, rms={Rms:F4}, threshold=0.0350)", peak, rms);
             SilenceSkipped?.Invoke();
             return;
         }
@@ -110,6 +122,8 @@ public class VoxtralService : ITranscriptionProvider
 
             if (!string.IsNullOrWhiteSpace(text))
                 TranscriptReceived?.Invoke(text.Trim(), true);
+            else
+                Log.Warning("Voxtral returned empty transcript for {Bytes} bytes of audio", pcmData.Length);
         }
         catch (OperationCanceledException)
         {
@@ -163,6 +177,91 @@ public class VoxtralService : ITranscriptionProvider
         bw.Write(pcmData);
 
         return wav;
+    }
+
+    internal static (float peak, float rms) ComputeLevels(byte[] pcmData)
+    {
+        int sampleCount = pcmData.Length / 2;
+        if (sampleCount == 0) return (0f, 0f);
+
+        float peak = 0f;
+        float sumSq = 0f;
+        for (int i = 0; i < sampleCount; i++)
+        {
+            short s = (short)(pcmData[i * 2] | (pcmData[i * 2 + 1] << 8));
+            float sample = s / 32768f;
+            float abs = Math.Abs(sample);
+            if (abs > peak) peak = abs;
+            sumSq += sample * sample;
+        }
+        return (peak, (float)Math.Sqrt(sumSq / sampleCount));
+    }
+
+    /// <summary>
+    /// Shortens runs of silence longer than <paramref name="minSilenceForCompressionMs"/>
+    /// down to <paramref name="maxSilenceMs"/>. Whisper-based models (incl. Voxtral) tend
+    /// to emit the end-of-transcript token early when they encounter long silences,
+    /// dropping anything spoken after a pause. Compressing silence keeps both segments
+    /// in the same decoding pass.
+    /// </summary>
+    internal static byte[] CompressSilence(
+        byte[] pcmData,
+        float silenceRmsThreshold = 0.01f,
+        int maxSilenceMs = 300,
+        int minSilenceForCompressionMs = 1000)
+    {
+        const int sampleRate = 16000;
+        const int chunkMs = 100;
+        const int chunkSamples = sampleRate * chunkMs / 1000; // 1600
+        const int chunkBytes = chunkSamples * 2;              // 3200
+
+        int chunkCount = pcmData.Length / chunkBytes;
+        if (chunkCount == 0) return pcmData;
+
+        var isSilent = new bool[chunkCount];
+        for (int c = 0; c < chunkCount; c++)
+        {
+            float sumSq = 0;
+            int start = c * chunkSamples;
+            int end = start + chunkSamples;
+            for (int k = start; k < end; k++)
+            {
+                short s = (short)(pcmData[k * 2] | (pcmData[k * 2 + 1] << 8));
+                float sample = s / 32768f;
+                sumSq += sample * sample;
+            }
+            float rms = (float)Math.Sqrt(sumSq / chunkSamples);
+            isSilent[c] = rms < silenceRmsThreshold;
+        }
+
+        int maxSilenceChunks = maxSilenceMs / chunkMs;
+        int minCompressChunks = minSilenceForCompressionMs / chunkMs;
+
+        using var ms = new MemoryStream(pcmData.Length);
+        int i = 0;
+        while (i < chunkCount)
+        {
+            if (!isSilent[i])
+            {
+                ms.Write(pcmData, i * chunkBytes, chunkBytes);
+                i++;
+            }
+            else
+            {
+                int runStart = i;
+                while (i < chunkCount && isSilent[i]) i++;
+                int runLength = i - runStart;
+                int emitChunks = runLength >= minCompressChunks ? maxSilenceChunks : runLength;
+                ms.Write(pcmData, runStart * chunkBytes, emitChunks * chunkBytes);
+            }
+        }
+
+        // Preserve any trailing partial chunk verbatim (never compress what we can't classify)
+        int processedBytes = chunkCount * chunkBytes;
+        if (pcmData.Length > processedBytes)
+            ms.Write(pcmData, processedBytes, pcmData.Length - processedBytes);
+
+        return ms.ToArray();
     }
 
     internal static bool HasSpeech(byte[] pcmData)
