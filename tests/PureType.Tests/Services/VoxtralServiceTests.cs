@@ -200,4 +200,18 @@ public class VoxtralServiceTests
         int silenceBytes = sampleRate * 300 / 1000 * 2;
         Assert.Equal(speechPcm, compressed[(speechPcm.Length + silenceBytes)..]);
     }
+
+    [Fact]
+    public void ParseKeywords_splits_and_trims_comma_separated_terms()
+    {
+        Assert.Equal(new[] { "PureType", "Deepgram" },
+            VoxtralService.ParseKeywords(" PureType , Deepgram ,, "));
+    }
+
+    [Fact]
+    public void ParseKeywords_returns_empty_for_null_or_blank()
+    {
+        Assert.Empty(VoxtralService.ParseKeywords(null));
+        Assert.Empty(VoxtralService.ParseKeywords("   "));
+    }
 }

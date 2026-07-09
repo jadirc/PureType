@@ -683,8 +683,9 @@ public partial class MainWindow : Window
                 }
 
                 var model = _settings.Transcription.VoxtralModel;
-                Log.Information("Creating VoxtralService with model={Model}", model);
-                _provider = new VoxtralService(mistralKey, model, language);
+                Log.Information("Creating VoxtralService with model={Model}, keywords={Keywords}",
+                    model, _settings.Transcription.Keywords);
+                _provider = new VoxtralService(mistralKey, model, language, _settings.Transcription.Keywords);
             }
             else
             {

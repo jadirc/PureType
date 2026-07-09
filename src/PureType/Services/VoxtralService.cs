@@ -25,12 +25,22 @@ public class VoxtralService : ITranscriptionProvider
 
     public bool IsConnected => _connected;
 
-    public VoxtralService(string apiKey, string model, string language = "de")
+    private readonly string[] _contextBias;
+
+    public VoxtralService(string apiKey, string model, string language = "de", string? keywords = null)
     {
         _apiKey = apiKey;
         _model = model;
         _language = string.IsNullOrEmpty(language) ? "auto" : language;
+        _contextBias = ParseKeywords(keywords);
     }
+
+    /// <summary>Splits the comma-separated keywords setting into context_bias terms.</summary>
+    internal static string[] ParseKeywords(string? keywords) =>
+        (keywords ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .ToArray();
 
     public Task ConnectAsync()
     {
@@ -98,6 +108,8 @@ public class VoxtralService : ITranscriptionProvider
             content.Add(new StringContent(_model), "model");
             if (_language != "auto")
                 content.Add(new StringContent(_language), "language");
+            foreach (var term in _contextBias)
+                content.Add(new StringContent(term), "context_bias");
 
             using var request = new HttpRequestMessage(HttpMethod.Post,
                 "https://api.mistral.ai/v1/audio/transcriptions");
