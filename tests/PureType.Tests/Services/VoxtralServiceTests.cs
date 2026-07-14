@@ -214,4 +214,15 @@ public class VoxtralServiceTests
         Assert.Empty(VoxtralService.ParseKeywords(null));
         Assert.Empty(VoxtralService.ParseKeywords("   "));
     }
+
+    [Fact]
+    public void ParseKeywords_drops_terms_containing_whitespace()
+    {
+        // Mistral rejects context_bias items with commas or whitespace
+        // (error code 3051) and fails the whole request with HTTP 400.
+        // Multi-word entries like "Isel (not EaseL)" are meant for the
+        // Whisper prompt and must not reach the Voxtral API.
+        Assert.Equal(new[] { "PureType", "Isel" },
+            VoxtralService.ParseKeywords("PureType, Isel (not EaseL), Isel"));
+    }
 }

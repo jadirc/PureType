@@ -35,12 +35,26 @@ public class VoxtralService : ITranscriptionProvider
         _contextBias = ParseKeywords(keywords);
     }
 
-    /// <summary>Splits the comma-separated keywords setting into context_bias terms.</summary>
-    internal static string[] ParseKeywords(string? keywords) =>
-        (keywords ?? "")
+    /// <summary>
+    /// Splits the comma-separated keywords setting into context_bias terms.
+    /// Terms containing whitespace are dropped: Mistral rejects them (error 3051)
+    /// and fails the whole request with HTTP 400. Multi-word entries such as
+    /// "Isel (not EaseL)" are meant for the Whisper prompt, not this API.
+    /// </summary>
+    internal static string[] ParseKeywords(string? keywords)
+    {
+        var terms = (keywords ?? "")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(k => !string.IsNullOrWhiteSpace(k))
             .ToArray();
+
+        var dropped = terms.Where(t => t.Any(char.IsWhiteSpace)).ToArray();
+        if (dropped.Length > 0)
+            Log.Warning("Voxtral: dropping context_bias terms with whitespace (API rejects them): {Terms}",
+                string.Join(" | ", dropped));
+
+        return terms.Except(dropped).ToArray();
+    }
 
     public Task ConnectAsync()
     {
